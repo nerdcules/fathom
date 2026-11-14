@@ -11,27 +11,58 @@ windows framed in a cyan-to-violet gradient.
 ```bash
 git clone <this repo> ~/Work/fathom
 cd ~/Work/fathom
-./install.sh            # installs and applies the theme
+./install.sh            # installs and applies the desktop theme
+./install.sh --signin   # adds the sign-in screen (asks for your password)
 ```
 
 | Option | What it does |
 |---|---|
-| `--skin` | Install the theme (the default while it is the only part) |
-| `--link` | Symlink the theme to this repo instead of copying, for working on it |
-| `--no-apply` | Install without switching to it |
+| `--skin` | The desktop theme (what you get when no part is named) |
+| `--signin` | The sign-in screen. Needs your password |
+| `--all` | Every part |
+| `--link` | Symlink the desktop theme to this repo instead of copying, for working on it |
+| `--no-apply` | Install the desktop theme without switching to it |
 
-`./uninstall.sh` switches back to the theme that was on before and removes
-what the installer added. It leaves alone any `fathom` theme it did not make.
+`./uninstall.sh` switches back to the theme that was on before, removes
+what the installer added, and puts Omarchy's sign-in screen back. It leaves
+alone any `fathom` theme it did not make.
 
 ## What's here
 
 ```
-theme/          The Omarchy theme: colours, wallpapers, icons, preview,
-                boot unlock logo
+theme/          The Omarchy desktop theme: colours, wallpapers, icons,
+                preview, boot unlock logo
+signin/fathom/  The sign-in screen, an SDDM theme in QML
+signin/install-root.sh
+                The only part that runs as root: copies the sign-in theme
+                and selects it
 art/            make-art.py, which draws the wallpapers, preview and logo
 install.sh      Installer
 uninstall.sh    Undo the installer
 ```
+
+## Sign-in screen
+
+![Fathom sign-in screen](signin/preview.jpg)
+
+A large clock, your initial in a glowing ring, and a password field. A wrong
+password turns the ring and field red, shakes the field and says so. Caps Lock
+gets a warning. Bottom right: the session to start, the keyboard layout (when
+there is more than one), and sleep, restart and shut down.
+
+Try it in a window without installing anything:
+
+```bash
+sddm-greeter-qt6 --test-mode --theme ~/Work/fathom/signin/fathom
+```
+
+Installing adds two things and changes nothing of Omarchy's:
+`/usr/share/sddm/themes/fathom` and `/etc/sddm.conf.d/99-zz-fathom.conf`, which
+sorts after Omarchy's own config so it takes effect. Delete that one file to get
+Omarchy's sign-in screen back.
+
+If the machine signs in automatically at boot (Omarchy's default with disk
+encryption), the sign-in screen only appears after signing out.
 
 The theme has three wallpapers: **horizon** (a planet's glowing rim), **eclipse**
 (a black disc with a cyan-to-violet corona) and **hexgrid** (quiet, for working).
@@ -58,8 +89,8 @@ already.
 
 | # | Part | Status |
 |---|---|---|
-| 1 | Skin: Omarchy theme | **in progress** |
-| 2 | Sign-in screen: SDDM theme in QML | planned |
+| 1 | Skin: Omarchy theme | done |
+| 2 | Sign-in screen: SDDM theme in QML | **first version** |
 | 3 | Face login: Howdy with the IR camera (lock screen, sudo) | planned |
 | 4 | Mini-player: mpv + yt-dlp | planned |
 | 5 | Command Deck widgets: Docker, .NET, AI, disk | planned |

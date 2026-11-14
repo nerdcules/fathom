@@ -1,0 +1,13 @@
+[SddmGreeterTheme]
+Name=Fathom
+Description=Fathom sign-in screen: deep-space navy, cyan and violet
+Author=Alan Seunarayan
+License=MIT
+Type=sddm-theme
+Version=0.1
+Website=https://github.com/nerdcules/fathom
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=fathom
+Theme-API=2.0
+QtVersion=6

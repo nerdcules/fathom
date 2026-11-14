@@ -9,6 +9,7 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fathom"
 MARKER=".fathom-install"
 
 skin=false
+signin=false
 link=false
 apply=true
 
@@ -16,20 +17,31 @@ usage() {
   cat <<EOF
 Usage: ./install.sh [options]
 
-  --skin       Install the Fathom theme (the default when no part is named)
-  --link       Symlink the theme to this repo instead of copying it, so edits
-               here show up after 'omarchy theme set fathom'
-  --no-apply   Install without switching to the theme
+Parts (with none named, only --skin is installed):
+  --skin       The Fathom desktop theme
+  --signin     The Fathom sign-in screen (SDDM). Needs your password, since
+               it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
+  --all        Every part
+
+Options:
+  --link       Symlink the desktop theme to this repo instead of copying it,
+               so edits here show up after 'omarchy theme set fathom'
+  --no-apply   Install the desktop theme without switching to it
   -h, --help   Show this help
 
-Command Deck widgets, apps, the sign-in screen and face login will be added
-as options here as they are built.
+Preview the sign-in screen without installing it:
+  sddm-greeter-qt6 --test-mode --theme $REPO/signin/fathom
 EOF
 }
 
 while (($#)); do
   case $1 in
     --skin) skin=true ;;
+    --signin) signin=true ;;
+    --all)
+      skin=true
+      signin=true
+      ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
     -h | --help)
@@ -45,8 +57,8 @@ while (($#)); do
   shift
 done
 
-# No part named: install every part that exists so far.
-$skin || skin=true
+# No part named: just the desktop theme, which needs no password.
+$skin || $signin || skin=true
 
 if ! command -v omarchy >/dev/null; then
   echo "install.sh: Fathom needs Omarchy (https://omarchy.org)." >&2
@@ -87,4 +99,25 @@ install_skin() {
   fi
 }
 
+# Run a command as root: sudo in a terminal, a polkit prompt otherwise.
+as_root() {
+  if [[ -t 0 ]]; then
+    sudo "$@"
+  else
+    pkexec "$@"
+  fi
+}
+
+install_signin() {
+  if [[ ! -d /usr/share/sddm/themes ]]; then
+    echo "install.sh: SDDM is not installed, so there is no sign-in screen to theme." >&2
+    return 1
+  fi
+  as_root bash "$REPO/signin/install-root.sh" install "$REPO/signin/fathom"
+  echo "You will see it the next time you sign out. This laptop signs in"
+  echo "automatically at boot, so it does not appear when you start up."
+}
+
 $skin && install_skin
+$signin && install_signin
+exit 0
