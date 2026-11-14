@@ -1,0 +1,36 @@
+# Fathom: deep-space navy, cyan and violet. A futuristic dark theme for
+# Docker, .NET and AI work. Windows are framed in a cyan-to-violet gradient.
+mode = "dark"
+
+accent = "#4cc9f0"
+selection = "#1f3a5c"
+muted = "#6b7f9e"
+
+background = "#0a1020"
+dark_background = "#070c18"
+darker_background = "#04070f"
+lighter_background = "#13203a"
+
+foreground = "#e6f0ff"
+dark_foreground = "#8fa3bf"
+light_foreground = "#c4d2e6"
+bright_foreground = "#ffffff"
+
+red = "#ff6b81"
+yellow = "#ffb547"
+orange = "#ff8a5c"
+green = "#3ddc97"
+cyan = "#4cc9f0"
+blue = "#5b8cff"
+magenta = "#9d8cff"
+brown = "#b08a6a"
+
+bright_red = "#ff8a9b"
+bright_yellow = "#ffd38a"
+bright_green = "#7ee8b8"
+bright_cyan = "#8be0f7"
+bright_blue = "#8cafff"
+bright_magenta = "#c7bdff"
+
+hyprland_active_border = "rgba(4cc9f0ee) rgba(9d8cffee) 45deg"
+hyprland_inactive_border = "rgba(1f3350aa)"
