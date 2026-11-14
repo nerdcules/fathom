@@ -1,0 +1,7 @@
+{
+  "loading": "Loading…",
+  "position": "%1 / %2",
+  "paused": "Paused",
+  "muted": "Muted",
+  "hint": "Click: pause or play · Scroll: skip · Middle-click: mute · Right-click: close"
+}

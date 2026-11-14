@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# Fathom mini-player: plays a video link in a small floating mpv window and
+# controls it. Hyprland rules (hypr/fathom-player.lua) pin the window to the
+# bottom-right corner; the bar widget (fathom.player) shows what is playing.
+#
+#   fathom-player play [url]   play a link (default: the one on the clipboard);
+#                              replaces what is playing
+#   fathom-player toggle       pause or resume
+#   fathom-player back [s]     skip back (default 10 seconds)
+#   fathom-player forward [s]  skip forward (default 10 seconds)
+#   fathom-player mute         mute or unmute
+#   fathom-player stop         close the player
+#   fathom-player status       print what is playing, as JSON
+#
+# FATHOM_PLAYER_MAX_HEIGHT caps the video resolution (default 720).
+set -euo pipefail
+
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/fathom-player.sock"
+APP_ID="fathom.player"
+MAX_HEIGHT="${FATHOM_PLAYER_MAX_HEIGHT:-720}"
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+notify() {
+  if command -v notify-send >/dev/null; then
+    notify-send -a "Mini-player" "$1" "${2:-}"
+  else
+    echo "fathom-player: $1${2:+ ($2)}" >&2
+  fi
+}
+
+# Send one JSON command to mpv and print its reply.
+send() {
+  printf '%s\n' "$1" | socat -t 1 - "UNIX-CONNECT:$SOCK" 2>/dev/null
+}
+
+command_json() {
+  jq -cn '{command: $ARGS.positional}' --args "$@"
+}
+
+running() {
+  [[ -S $SOCK ]] && send '{"command":["get_property","pid"]}' | grep -q '"error":"success"'
+}
+
+need_running() {
+  if ! running; then
+    echo "fathom-player: nothing is playing" >&2
+    exit 1
+  fi
+}
+
+# Only plain http(s) links, no spaces, of a sane length. The link goes to mpv
+# after "--" and to mpv's IPC as a JSON string, never through a shell.
+valid_url() {
+  local url=$1
+  ((${#url} <= 2048)) && [[ $url =~ ^https?://[^[:space:]]+$ ]]
+}
+
+clipboard_url() {
+  # Read a bounded amount so a huge clipboard cannot stall us.
+  wl-paste --no-newline --type text 2>/dev/null | head -c 4096 | tr -d '\r' | sed -n '1p'
+}
+
+play() {
+  local url=${1:-}
+  [[ -n $url ]] || url=$(clipboard_url || true)
+  url=$(printf '%s' "$url" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+
+  if ! valid_url "$url"; then
+    notify "Copy a video link first" "The clipboard has no http(s) link to play."
+    exit 1
+  fi
+
+  if running; then
+    send "$(jq -cn --arg u "$url" '{command: ["loadfile", $u, "replace"]}')" >/dev/null
+    send '{"command":["set_property","pause",false]}' >/dev/null
+    return
+  fi
+
+  rm -f "$SOCK"
+  local launcher=(setsid -f)
+  command -v uwsm-app >/dev/null && launcher=(uwsm-app --)
+
+  "${launcher[@]}" mpv \
+    --no-terminal \
+    --force-window=immediate \
+    --wayland-app-id="$APP_ID" \
+    --title='${media-title}' \
+    --input-ipc-server="$SOCK" \
+    --ytdl-format="bestvideo[height<=?$MAX_HEIGHT]+bestaudio/best[height<=?$MAX_HEIGHT]/best" \
+    --auto-window-resize=no \
+    --keep-open=no \
+    --idle=no \
+    --script-opts=osc-layout=bottombar,osc-hidetimeout=1200 \
+    -- "$url" >/dev/null 2>&1 &
+  disown || true
+}
+
+status() {
+  if ! running; then
+    echo '{"playing":false}'
+    return
+  fi
+  local title pause pos dur
+  title=$(send '{"command":["get_property","media-title"]}' | jq -c '.data // ""')
+  pause=$(send '{"command":["get_property","pause"]}' | jq -c '.data // false')
+  pos=$(send '{"command":["get_property","time-pos"]}' | jq -c '.data // 0')
+  dur=$(send '{"command":["get_property","duration"]}' | jq -c '.data // 0')
+  jq -cn --argjson t "$title" --argjson p "$pause" --argjson s "$pos" --argjson d "$dur" \
+    '{playing: true, title: $t, paused: $p, position: $s, duration: $d}'
+}
+
+seconds() {
+  local s=${1:-10}
+  [[ $s =~ ^[0-9]+$ ]] || { echo "fathom-player: seconds must be a whole number" >&2; exit 2; }
+  echo "$s"
+}
+
+for tool in mpv socat jq; do
+  command -v "$tool" >/dev/null || { echo "fathom-player: $tool is not installed" >&2; exit 1; }
+done
+
+case ${1:-} in
+  play) play "${2:-}" ;;
+  toggle) need_running; send '{"command":["cycle","pause"]}' >/dev/null ;;
+  back) need_running; send "$(command_json seek "-$(seconds "${2:-}")" relative)" >/dev/null ;;
+  forward) need_running; send "$(command_json seek "$(seconds "${2:-}")" relative)" >/dev/null ;;
+  mute) need_running; send '{"command":["cycle","mute"]}' >/dev/null ;;
+  stop) running && send '{"command":["quit"]}' >/dev/null; rm -f "$SOCK" ;;
+  status) status ;;
+  -h | --help | help | "") usage ;;
+  *)
+    echo "fathom-player: unknown command '$1'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

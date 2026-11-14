@@ -30,6 +30,19 @@ fi
 
 rm -rf "$STATE_DIR"
 
+# Mini-player: stop it, then remove the bar widget, keys, rules and command.
+if [[ -e $HOME/.local/bin/fathom-player || -d $HOME/.config/omarchy/plugins/fathom.player ]]; then
+  "$HOME/.local/bin/fathom-player" stop >/dev/null 2>&1 || true
+  omarchy plugin disable fathom.player >/dev/null 2>&1 || true
+  rm -rf "$HOME/.config/omarchy/plugins/fathom.player"
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  main="$HOME/.config/hypr/hyprland.lua"
+  [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
+  rm -f "$HOME/.config/hypr/fathom-player.lua" "$HOME/.local/bin/fathom-player"
+  hyprctl reload >/dev/null 2>&1 || true
+  echo "Removed the mini-player."
+fi
+
 if [[ -d /usr/share/sddm/themes/fathom || -f /etc/sddm.conf.d/99-zz-fathom.conf ]]; then
   if [[ -t 0 ]]; then
     sudo bash "$REPO/signin/install-root.sh" uninstall

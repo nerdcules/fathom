@@ -8,8 +8,15 @@ THEME_DIR="$THEMES_DIR/fathom"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fathom"
 MARKER=".fathom-install"
 
+BIN_DIR="$HOME/.local/bin"
+HYPR_DIR="$HOME/.config/hypr"
+PLUGINS_DIR="$HOME/.config/omarchy/plugins"
+HYPR_BEGIN="-- fathom: begin (added by Fathom's install.sh; uninstall.sh removes it)"
+HYPR_END="-- fathom: end"
+
 skin=false
 signin=false
+player=false
 link=false
 apply=true
 
@@ -17,15 +24,19 @@ usage() {
   cat <<EOF
 Usage: ./install.sh [options]
 
-Parts (with none named, only --skin is installed):
+Parts (with none named, the ones that need no password: --skin --player):
   --skin       The Fathom desktop theme
+  --player     The mini-player: 'fathom-player', its window rules and keys
+               (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
+               and a bar widget showing what is playing
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part
 
 Options:
-  --link       Symlink the desktop theme to this repo instead of copying it,
-               so edits here show up after 'omarchy theme set fathom'
+  --link       Symlink the desktop theme, fathom-player and its Hyprland file
+               to this repo instead of copying them, so edits here take effect
+               (the bar widget is always copied: Omarchy refuses symlinks there)
   --no-apply   Install the desktop theme without switching to it
   -h, --help   Show this help
 
@@ -38,9 +49,11 @@ while (($#)); do
   case $1 in
     --skin) skin=true ;;
     --signin) signin=true ;;
+    --player) player=true ;;
     --all)
       skin=true
       signin=true
+      player=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -57,8 +70,11 @@ while (($#)); do
   shift
 done
 
-# No part named: just the desktop theme, which needs no password.
-$skin || $signin || skin=true
+# No part named: the parts that need no password.
+if ! $skin && ! $signin && ! $player; then
+  skin=true
+  player=true
+fi
 
 if ! command -v omarchy >/dev/null; then
   echo "install.sh: Fathom needs Omarchy (https://omarchy.org)." >&2
@@ -118,6 +134,88 @@ install_signin() {
   echo "automatically at boot, so it does not appear when you start up."
 }
 
+# Copy a file into place, or link it to the repo with --link.
+place() {
+  local src=$1 dest=$2
+  mkdir -p "$(dirname "$dest")"
+  rm -f "$dest"
+  if $link; then
+    ln -s "$src" "$dest"
+  else
+    cp "$src" "$dest"
+  fi
+}
+
+hypr_errors() {
+  hyprctl reload >/dev/null 2>&1 || true
+  hyprctl configerrors 2>/dev/null | sed '/^[[:space:]]*$/d'
+}
+
+remove_hypr_block() {
+  local main="$HYPR_DIR/hyprland.lua"
+  [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
+}
+
+install_player() {
+  local missing=() tool
+  for tool in mpv yt-dlp socat jq wl-paste; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: the mini-player needs: ${missing[*]}" >&2
+    echo "  Install them with: omarchy pkg add mpv yt-dlp socat jq wl-clipboard" >&2
+    return 1
+  fi
+
+  place "$REPO/player/bin/fathom-player" "$BIN_DIR/fathom-player"
+  chmod +x "$REPO/player/bin/fathom-player"
+  place "$REPO/player/hypr/fathom-player.lua" "$HYPR_DIR/fathom-player.lua"
+
+  # Load the rules and keys from hyprland.lua, once, keeping a backup.
+  local main="$HYPR_DIR/hyprland.lua"
+  if [[ ! -f $main ]]; then
+    echo "install.sh: $main not found; is this an Omarchy Hyprland setup?" >&2
+    return 1
+  fi
+  if ! grep -qF -- "$HYPR_BEGIN" "$main"; then
+    cp "$main" "$main.bak.$(date +%s)"
+    # Start on a fresh line, without leaving a blank one behind on uninstall.
+    [[ -s $main && -n $(tail -c 1 "$main") ]] && printf '\n' >>"$main"
+    printf '%s\nrequire("hypr.fathom-player")\n%s\n' "$HYPR_BEGIN" "$HYPR_END" >>"$main"
+  fi
+
+  local errors
+  errors=$(hypr_errors)
+  if [[ -n $errors ]]; then
+    echo "install.sh: Hyprland reported config errors, so the player's rules were taken out again:" >&2
+    echo "$errors" >&2
+    remove_hypr_block
+    rm -f "$HYPR_DIR/fathom-player.lua"
+    hypr_errors >/dev/null
+    return 1
+  fi
+
+  # The bar widget. Always a copy: Omarchy refuses plugin folders with symlinks.
+  local plugin="$PLUGINS_DIR/fathom.player"
+  rm -rf "$plugin"
+  mkdir -p "$PLUGINS_DIR"
+  cp -r "$REPO/player/plugin/fathom.player" "$plugin"
+  omarchy plugin validate "$plugin" >/dev/null
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  # The shell finds the new plugin a moment after the rescan, so retry briefly.
+  local tries=0
+  until omarchy plugin enable fathom.player --section centerEnd --index 0 >/dev/null 2>&1; do
+    if ((++tries >= 10)); then
+      echo "install.sh: couldn't add the mini-player to the bar; try: omarchy plugin enable fathom.player" >&2
+      break
+    fi
+    sleep 0.5
+  done
+
+  echo "Mini-player installed. Copy a video link and press Super+Alt+Y."
+}
+
 $skin && install_skin
+$player && install_player
 $signin && install_signin
 exit 0

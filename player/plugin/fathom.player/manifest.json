@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.player",
+  "name": "Mini-player",
+  "version": "0.1.0",
+  "author": "Alan Seunarayan",
+  "description": "What the Fathom mini-player is playing, with pause, skip and close",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Mini-player",
+    "description": "What the Fathom mini-player is playing, with pause, skip and close",
+    "category": "Media",
+    "defaultSection": "centerEnd",
+    "allowMultiple": false
+  }
+}

@@ -11,17 +11,21 @@ windows framed in a cyan-to-violet gradient.
 ```bash
 git clone <this repo> ~/Work/fathom
 cd ~/Work/fathom
-./install.sh            # installs and applies the desktop theme
+./install.sh            # the desktop theme and the mini-player
 ./install.sh --signin   # adds the sign-in screen (asks for your password)
 ```
 
 | Option | What it does |
 |---|---|
-| `--skin` | The desktop theme (what you get when no part is named) |
+| `--skin` | The desktop theme |
+| `--player` | The mini-player, its keys and its bar widget |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part |
-| `--link` | Symlink the desktop theme to this repo instead of copying, for working on it |
+| `--link` | Link the theme, `fathom-player` and its Hyprland file to this repo instead of copying, for working on them |
 | `--no-apply` | Install the desktop theme without switching to it |
+
+With no part named, it installs the parts that need no password: `--skin` and
+`--player`.
 
 `./uninstall.sh` switches back to the theme that was on before, removes
 what the installer added, and puts Omarchy's sign-in screen back. It leaves
@@ -36,10 +40,43 @@ signin/fathom/  The sign-in screen, an SDDM theme in QML
 signin/install-root.sh
                 The only part that runs as root: copies the sign-in theme
                 and selects it
+player/bin/fathom-player
+                The mini-player command (plays and controls mpv)
+player/hypr/    Its window rules and keys
+player/plugin/fathom.player/
+                Its bar widget
 art/            make-art.py, which draws the wallpapers, preview and logo
+tests/          node --test tests/
 install.sh      Installer
 uninstall.sh    Undo the installer
 ```
+
+## Mini-player
+
+Copy a YouTube (or any [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported)
+link and press **Super+Alt+Y**. It plays in a 640×360 window pinned to the
+bottom-right corner, above everything and on every workspace, without taking
+focus from what you're doing. Press Super+Alt+Y with another link copied to
+switch to it. **Super+Ctrl+Y** closes it.
+
+While it plays, the bar shows the title. Click it to pause, scroll to skip,
+middle-click to mute and right-click to close. Your keyboard's media keys work
+too (through `mpv-mpris`).
+
+From a terminal or script:
+
+```bash
+fathom-player play https://www.youtube.com/watch?v=...
+fathom-player toggle | back 10 | forward 10 | mute | stop | status
+```
+
+Video is capped at 720p to spare the battery; set `FATHOM_PLAYER_MAX_HEIGHT`
+to change that. It needs `mpv`, `yt-dlp`, `socat`, `jq` and `wl-clipboard`,
+all on Omarchy already.
+
+Installing adds `~/.local/bin/fathom-player`, `~/.config/hypr/fathom-player.lua`,
+three marked lines at the end of `~/.config/hypr/hyprland.lua` (after a
+backup), and the `fathom.player` bar widget.
 
 ## Sign-in screen
 
@@ -90,9 +127,9 @@ already.
 | # | Part | Status |
 |---|---|---|
 | 1 | Skin: Omarchy theme | done |
-| 2 | Sign-in screen: SDDM theme in QML | **first version** |
-| 3 | Face login: Howdy with the IR camera (lock screen, sudo) | planned |
-| 4 | Mini-player: mpv + yt-dlp | planned |
+| 2 | Sign-in screen: SDDM theme in QML | first version |
+| 3 | Face login: Howdy with the IR camera (lock screen, sudo) | later |
+| 4 | Mini-player: mpv + yt-dlp | **first version** |
 | 5 | Command Deck widgets: Docker, .NET, AI, disk | planned |
 | 6 | Notifications: mail with AI summaries | planned |
 | 7 | Care: disk, warnings, one-click updates | planned |
