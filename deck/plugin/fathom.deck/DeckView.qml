@@ -65,10 +65,11 @@ Item {
   }
 
   // The scrim. Hyprland blurs what's behind it (see fathom-deck.lua) when
-  // blur is on; without blur it is nearly solid, so text behind can't show.
+  // blur is on; without blur it is solid, so text behind can't show (at 94%
+  // it still read faintly: brightest 0.085 grayscale).
   Rectangle {
     anchors.fill: parent
-    color: Qt.rgba(Skin.bg.r * 0.5, Skin.bg.g * 0.5, Skin.bg.b * 0.5, Skin.glass ? 0.62 : 0.94)
+    color: Qt.rgba(Skin.bg.r * 0.5, Skin.bg.g * 0.5, Skin.bg.b * 0.5, Skin.glass ? 0.62 : 1)
     MouseArea { anchors.fill: parent; onClicked: deck.closeRequested() }
   }
 

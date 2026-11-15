@@ -16,9 +16,10 @@ QtObject {
   property real motion: 1
   property real u: 1
   // Whether Hyprland blurs what's behind the desk's glass (see the deck's
-  // Skin.qml). Without blur, glass goes solid: on this machine a surface at
-  // alpha 0.94 still let terminal text behind it read, and only 1.0 hid it
-  // (checked by screenshot, 2026-11-15).
+  // Skin.qml). Without blur, glass goes solid: over white terminal text
+  // (0.92 grayscale), a surface of this colour at alpha 0.94 measured 0.110
+  // at its brightest against its own 0.059, faint but legible; at 1.0, 0.059
+  // (2026-11-15).
   property bool glass: false
   property var strings: null
 

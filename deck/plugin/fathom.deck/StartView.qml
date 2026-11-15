@@ -203,7 +203,7 @@ Item {
     anchors.horizontalCenter: parent.horizontalCenter
     y: Math.max(32 * Skin.u, parent.height * 0.09)
     radius: 22 * Skin.u
-    color: Skin.tint(Skin.bg, Skin.glass ? 0.9 : 0.98)
+    color: Skin.tint(Skin.bg, Skin.glass ? 0.9 : 1)
     border.width: 1
     border.color: Skin.tint(Skin.accent, 0.25)
     clip: true

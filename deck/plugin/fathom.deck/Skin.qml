@@ -19,7 +19,7 @@ QtObject {
   property real u: 1
   // Whether Hyprland blurs what's behind the deck. Omarchy turns blur off
   // desktop-wide unless a Glassy mode is on, and then see-through surfaces
-  // show sharp text behind them, so they go nearly solid. Panel.qml asks
+  // show sharp text behind them, so they go solid. Panel.qml asks
   // Hyprland each time the deck opens.
   property bool glass: false
   property var locale: Qt.locale()
