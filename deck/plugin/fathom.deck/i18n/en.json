@@ -1,6 +1,6 @@
 {
   "loading": "Reading…",
-  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care",
+  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care · Super+Alt+X Sentinel · tap Super for Start",
   "updated": "Updated %1",
   "readFailed": "Couldn't read the machine's state: %1",
   "summary.containers": "%1 of %2 containers running",
@@ -248,5 +248,83 @@
   "start.focus": "Focus",
   "start.focusOn": "Focus mode is on: notifications are quiet",
   "start.focusOff": "Focus mode is off",
-  "start.power": "Power"
+  "start.power": "Power",
+  "tab.sentinel": "Sentinel",
+  "tab.sentinelCount": "Sentinel · %1",
+  "start.sentinel": "Sentinel",
+  "start.sentinelDetail": "Firewall, sign-ins and devices on your network",
+  "sentinel.title": "Shield",
+  "sentinel.protected": "Protected",
+  "sentinel.exposed": "Exposed",
+  "sentinel.needsLook": "Needs a look",
+  "sentinel.summary.attention": {
+    "one": "%1 thing needs a look",
+    "other": "%1 things need a look"
+  },
+  "sentinel.summary.blocked": {
+    "one": "%1 connection blocked today",
+    "other": "%1 connections blocked today"
+  },
+  "sentinel.summary.devices": {
+    "one": "%1 device on %2",
+    "other": "%1 devices on %2"
+  },
+  "sentinel.fwOff": "The firewall is off",
+  "sentinel.notWatching": "Sentinel isn't watching",
+  "sentinel.notWatchingDetail": "Sentinel's watcher isn't running, so nothing new is being noticed. Start it with: systemctl --user start fathom-sentinel",
+  "sentinel.fwOnTitle": "Firewall on",
+  "sentinel.blockedToday": {
+    "one": "%1 incoming connection blocked today",
+    "other": "%1 incoming connections blocked today"
+  },
+  "sentinel.lockdown": "Lockdown",
+  "sentinel.endLockdown": "End lockdown",
+  "sentinel.lockdownOn": "Lockdown is on",
+  "sentinel.lockdownDetail": "Lockdown: every new incoming connection is blocked, including ones you allowed",
+  "sentinel.lockdownTip": "Block every incoming connection on Wi-Fi and wired networks. Asks for your password.",
+  "sentinel.snitchOn": "OpenSnitch is watching outgoing connections",
+  "sentinel.snitchOff": "OpenSnitch is installed but not running",
+  "sentinel.snitchMissing": "No outgoing firewall",
+  "sentinel.snitchMissingDetail": "Add OpenSnitch with ./install.sh --sentinel --opensnitch",
+  "sentinel.snitchRules": {
+    "one": "%1 rule · %2 allowed · %3 blocked",
+    "other": "%1 rules · %2 allowed · %3 blocked"
+  },
+  "sentinel.openSnitch": "Open OpenSnitch",
+  "sentinel.filesPending": "System files: first check running",
+  "sentinel.filesMatch": "System files match their packages",
+  "sentinel.filesDiffer": {
+    "one": "%1 system file differs from its package",
+    "other": "%1 system files differ from their packages"
+  },
+  "sentinel.filesDetail": "%1 files checked %2. New differences are flagged in Today.",
+  "sentinel.filesFirst": "The first check takes a few minutes.",
+  "sentinel.filesNotInstalled": "Install the daily check with ./install.sh --sentinel",
+  "sentinel.checkFiles": "Check now (asks for your password)",
+  "sentinel.showLog": "Show the log",
+  "sentinel.watchingTitle": "Watching",
+  "sentinel.watchingList": "Firewall blocks, sign-ins and sudo, USB storage, devices on your network, system files",
+  "sentinel.today": "Today",
+  "sentinel.quiet": "Quiet so far today.",
+  "sentinel.trust": "Trust",
+  "sentinel.forget": "Forget",
+  "sentinel.block": "Block",
+  "sentinel.unblock": "Unblock",
+  "sentinel.blockedFrom": "Blocked most today",
+  "sentinel.fromInternet": "from the internet",
+  "sentinel.fromNetwork": "from your network",
+  "sentinel.times": {
+    "one": "%1 time",
+    "other": "%1 times"
+  },
+  "sentinel.network": "Network",
+  "sentinel.devices": {
+    "one": "%1 device",
+    "other": "%1 devices"
+  },
+  "sentinel.noDevices": "No other devices seen yet.",
+  "sentinel.router": "router",
+  "sentinel.unknownMaker": "Unknown maker",
+  "sentinel.new": "new",
+  "sentinel.blockedList": "Blocked addresses"
 }

@@ -16,3 +16,4 @@ Panel 1.0 Panel.qml
 StartView 1.0 StartView.qml
 AppIcon 1.0 AppIcon.qml
 Stage 1.0 Stage.qml
+SentinelPage 1.0 SentinelPage.qml

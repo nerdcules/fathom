@@ -1,0 +1,52 @@
+#!/bin/bash
+# Fathom Sentinel's firewall buttons. Installed root-owned to
+# /usr/local/lib/fathom-sentinel/admin and run through pkexec, so it takes
+# only these exact commands and checks every argument.
+#
+#   admin lockdown on|off   block (or stop blocking) every new incoming
+#                           connection on Wi-Fi and wired networks
+#   admin block <ip>        block an address
+#   admin unblock <ip>
+set -euo pipefail
+export PATH=/usr/bin
+LOCKDOWN_TAG=fathom-lockdown
+BLOCK_TAG=fathom-block
+
+die() { echo "fathom-sentinel admin: $1" >&2; exit 2; }
+
+# Wi-Fi, wired and mobile interfaces; not loopback, Docker or VPN.
+outside_ifaces() {
+  ip -j link | jq -r '.[].ifname | select(test("^(wl|en|eth|ww)[A-Za-z0-9]{0,13}$"))'
+}
+
+valid_ip() {
+  python3 -I -c 'import ipaddress, sys; print(ipaddress.ip_address(sys.argv[1]))' "$1" 2>/dev/null ||
+    die "'$1' is not an IP address"
+}
+
+case "${1:-}" in
+  lockdown)
+    case "${2:-}" in
+      on)
+        while read -r iface; do
+          ufw prepend deny in on "$iface" comment "$LOCKDOWN_TAG" >/dev/null
+        done < <(outside_ifaces)
+        ;;
+      off)
+        while read -r iface; do
+          ufw delete deny in on "$iface" >/dev/null 2>&1 || true
+        done < <(outside_ifaces)
+        ;;
+      *) die "lockdown takes on or off" ;;
+    esac
+    ;;
+  block)
+    ip=$(valid_ip "${2:-}")
+    ufw prepend deny from "$ip" comment "$BLOCK_TAG" >/dev/null
+    ;;
+  unblock)
+    ip=$(valid_ip "${2:-}")
+    ufw delete deny from "$ip" >/dev/null
+    ;;
+  *) die "takes lockdown on|off, block <ip> or unblock <ip>" ;;
+esac

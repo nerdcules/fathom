@@ -20,6 +20,8 @@ signin=false
 player=false
 deck=false
 mail=false
+sentinel=false
+opensnitch=false
 link=false
 apply=true
 
@@ -39,11 +41,17 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
   --mail       New-mail notifications (Outlook.com for now): 'fathom-mail'
                and its service. Then add your account with
                fathom-mail add outlook --client-id <id> (see the README)
+  --sentinel   Sentinel: watches firewall blocks, sign-ins, USB storage, new
+               devices on your network and system files (Super+Alt+X).
+               Needs your password for its daily file check and firewall
+               buttons
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
-  --all        Every part
+  --all        Every part (OpenSnitch only if asked for)
 
 Options:
+  --opensnitch With --sentinel: also install OpenSnitch, which asks the first
+               time each app connects somewhere new
   --link       Symlink the desktop theme, the commands and their Hyprland
                files to this repo instead of copying them, so edits here take
                effect (shell plugins are always copied: Omarchy refuses
@@ -63,12 +71,15 @@ while (($#)); do
     --player) player=true ;;
     --deck) deck=true ;;
     --mail) mail=true ;;
+    --sentinel) sentinel=true ;;
+    --opensnitch) opensnitch=true ;;
     --all)
       skin=true
       signin=true
       player=true
       deck=true
       mail=true
+      sentinel=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -86,7 +97,12 @@ while (($#)); do
 done
 
 # No part named: the parts that need no password.
-if ! $skin && ! $signin && ! $player && ! $deck && ! $mail; then
+if $opensnitch && ! $sentinel; then
+  echo "install.sh: --opensnitch goes with --sentinel" >&2
+  exit 2
+fi
+
+if ! $skin && ! $signin && ! $player && ! $deck && ! $mail && ! $sentinel; then
   skin=true
   player=true
   deck=true
@@ -325,9 +341,54 @@ install_mail() {
   fi
 }
 
+install_sentinel() {
+  local missing=() tool
+  for tool in python3 ufw jq busctl iw ip; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: Sentinel needs: ${missing[*]}" >&2
+    return 1
+  fi
+
+  # The watcher runs as you.
+  if $link; then
+    rm -rf "$SHARE_DIR/sentinel"
+    place "$REPO/sentinel/bin/fathom-sentinel" "$BIN_DIR/fathom-sentinel"
+  else
+    rm -rf "$SHARE_DIR/sentinel"
+    mkdir -p "$SHARE_DIR"
+    mkdir -p "$SHARE_DIR/sentinel"
+    cp -r "$REPO/sentinel/bin" "$REPO/sentinel/fathom_sentinel" "$SHARE_DIR/sentinel/"
+    find "$SHARE_DIR/sentinel" -name __pycache__ -prune -exec rm -rf {} +
+    mkdir -p "$BIN_DIR"
+    ln -sfn "$SHARE_DIR/sentinel/bin/fathom-sentinel" "$BIN_DIR/fathom-sentinel"
+  fi
+  chmod +x "$REPO/sentinel/bin/fathom-sentinel"
+  hypr_load fathom-sentinel "$REPO/sentinel/hypr/fathom-sentinel.lua" || return 1
+
+  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  mkdir -p "$units"
+  cp "$REPO/sentinel/systemd/fathom-sentinel.service" "$units/fathom-sentinel.service"
+  systemctl --user daemon-reload
+  systemctl --user enable fathom-sentinel.service >/dev/null 2>&1 || true
+  systemctl --user restart fathom-sentinel.service
+
+  # The daily file check, the firewall buttons and OpenSnitch need root.
+  local args=(install "$REPO/sentinel")
+  $opensnitch && args+=(--opensnitch)
+  as_root bash "$REPO/sentinel/install-root.sh" "${args[@]}"
+  if $opensnitch && ! pgrep -x opensnitch-ui >/dev/null; then
+    setsid uwsm-app -- opensnitch-ui >/dev/null 2>&1 &
+  fi
+
+  echo "Sentinel is watching. Press Super+Alt+X to see it."
+}
+
 $skin && install_skin
 $player && install_player
 $deck && install_deck
 $mail && install_mail
+$sentinel && install_sentinel
 $signin && install_signin
 exit 0

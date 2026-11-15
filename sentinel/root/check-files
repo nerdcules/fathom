@@ -1,0 +1,29 @@
+#!/bin/bash
+# Fathom Sentinel's daily file check: does every file pacman installed still
+# match its package? Runs as root (to read every file) from
+# fathom-sentinel-files.service, which keeps it read-only and offline. Writes
+# /var/lib/fathom-sentinel/integrity.json for Sentinel to compare day to day.
+#
+# Config files pacman marks as "backup" are meant to be edited, and a changed
+# timestamp alone means nothing, so neither counts.
+set -euo pipefail
+export PATH=/usr/bin
+out=/var/lib/fathom-sentinel/integrity.json
+tmp=$(mktemp /var/lib/fathom-sentinel/.integrity.XXXXXX)
+trap 'rm -f "$tmp" "$tmp.log"' EXIT
+
+pacman -Qkk >"$tmp.log" 2>&1 || true
+
+jq -Rn --argjson packages "$(pacman -Q | wc -l)" --argjson now "$(date +%s)" '
+  [inputs] as $lines
+  | ($lines | map(capture("^[^:]+: (?<n>[0-9]+) total files") | .n | tonumber) | add // 0) as $files
+  | ($lines
+     | map(select(startswith("warning: ")) | capture("^warning: (?<pkg>[^:]+): (?<path>/.*) \\((?<why>[^)]*)\\)$"))
+     | map(select(.why != "Modification time mismatch"))
+     | group_by(.pkg + "\u0000" + .path)
+     | map({pkg: .[0].pkg, path: .[0].path, why: (map(.why) | unique)})) as $altered
+  | {checkedAt: $now, packages: $packages, files: $files,
+     alteredCount: ($altered | length), altered: $altered[0:2000]}
+' <"$tmp.log" >"$tmp"
+chmod 0644 "$tmp"
+mv "$tmp" "$out"

@@ -1,0 +1,29 @@
+[Unit]
+Description=Fathom Sentinel: check system files against their packages
+Documentation=https://github.com/nerdcules/fathom
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/fathom-sentinel/check-files
+StateDirectory=fathom-sentinel
+StateDirectoryMode=0755
+Nice=19
+IOSchedulingClass=idle
+# Read every file, change none, talk to nobody.
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+# No ProtectKernelModules: it hides /usr/lib/modules, and pacman would then
+# report every kernel module as missing. CAP_SYS_MODULE is not in the
+# bounding set above, so the check still cannot load a module.
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native

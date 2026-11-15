@@ -8,7 +8,7 @@
 #   fathom-start status                Focus mode, Docker, you and this machine, as JSON
 #   fathom-start config                pinned apps and suggestions, as JSON
 #   fathom-start pin <id> | unpin <id> pin or unpin an app (its desktop id) or
-#                                      fathom:deck / fathom:care
+#                                      fathom:deck / fathom:care / fathom:sentinel
 #   fathom-start open <editor|terminal|files|claude> <project folder>
 #   fathom-start ask <text> [folder]   ask Claude Code, in a terminal
 #   fathom-start focus                 turn Focus mode (do not disturb) on or off
@@ -189,7 +189,7 @@ config() {
 }
 
 valid_pin() {
-  [[ ${1:-} =~ ^(fathom:(deck|care)|[A-Za-z0-9][A-Za-z0-9._\ -]{0,199})$ ]] || die "'${1:-}' is not an app id" 2
+  [[ ${1:-} =~ ^(fathom:(deck|care|sentinel)|[A-Za-z0-9][A-Za-z0-9._\ -]{0,199})$ ]] || die "'${1:-}' is not an app id" 2
 }
 
 pin() {

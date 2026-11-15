@@ -9,11 +9,12 @@ import "."
 Item {
   id: deck
 
-  // "deck" or "care".
+  // "deck", "care" or "sentinel".
   property string page: "deck"
   // Status JSON from `fathom-deck status` and `fathom-care status`.
   property var info: null
   property var care: null
+  property var sentinel: null
   property string error: ""
   // Container names and Care items with an action in flight.
   property var busy: ({})
@@ -31,15 +32,28 @@ Item {
   signal unitLogRequested(string scope, string unit)
   signal updateRequested()
   signal checkRequested()
+  signal lockdownRequested(bool on)
+  signal blockRequested(string ip)
+  signal unblockRequested(string ip)
+  signal trustRequested(string mac, bool trust)
+  signal checkFilesRequested()
+  signal sentinelLogRequested(string what)
+  signal snitchRequested()
 
-  function switchPage() { pageRequested(page === "deck" ? "care" : "deck") }
+  readonly property var pages: ["deck", "care", "sentinel"]
+  function switchPage(step) {
+    var i = pages.indexOf(page)
+    pageRequested(pages[(i + (step || 1) + pages.length) % pages.length])
+  }
 
   focus: true
   Keys.onEscapePressed: deck.closeRequested()
   Keys.onPressed: function(event) {
-    if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab
-        || event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp)) {
-      deck.switchPage()
+    if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Tab || event.key === Qt.Key_PageDown)) {
+      deck.switchPage(1)
+      event.accepted = true
+    } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Backtab || event.key === Qt.Key_PageUp)) {
+      deck.switchPage(-1)
       event.accepted = true
     }
   }
@@ -107,6 +121,14 @@ Item {
               selected: deck.page === "care"
               onClicked: deck.pageRequested("care")
             }
+            Pill {
+              readonly property int alerts: deck.sentinel ? deck.sentinel.attention || 0 : 0
+              text: alerts > 0 ? Skin.t("tab.sentinelCount").arg(Skin.n(alerts)) : Skin.t("tab.sentinel")
+              glyph: "\uf132"
+              glyphColor: alerts > 0 ? Skin.warn : Skin.accent
+              selected: deck.page === "sentinel"
+              onClicked: deck.pageRequested("sentinel")
+            }
           }
         }
 
@@ -116,7 +138,8 @@ Item {
           Layout.alignment: Qt.AlignBottom
           spacing: 8 * Skin.u
           Repeater {
-            model: deck.page === "care" ? carePage.summary() : deckPage.summary()
+            model: deck.page === "care" ? carePage.summary()
+              : (deck.page === "sentinel" ? sentinelPage.summary() : deckPage.summary())
             delegate: RowLayout {
               required property var modelData
               spacing: 10 * Skin.u
@@ -164,6 +187,24 @@ Item {
         onCheckRequested: deck.checkRequested()
       }
 
+      SentinelPage {
+        id: sentinelPage
+        visible: deck.page === "sentinel"
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: implicitHeight
+        Layout.maximumHeight: column.pageRoom
+        columns: stage.contentWidth >= 1100 * Skin.u ? 3 : 1
+        sentinel: deck.sentinel
+        onLockdownRequested: function(on) { deck.lockdownRequested(on) }
+        onBlockRequested: function(ip) { deck.blockRequested(ip) }
+        onUnblockRequested: function(ip) { deck.unblockRequested(ip) }
+        onTrustRequested: function(mac, trust) { deck.trustRequested(mac, trust) }
+        onCheckFilesRequested: deck.checkFilesRequested()
+        onLogRequested: function(what) { deck.sentinelLogRequested(what) }
+        onSnitchRequested: deck.snitchRequested()
+      }
+
       Item { Layout.fillHeight: true }
 
       // Footer.
@@ -177,7 +218,7 @@ Item {
           Layout.fillWidth: true
         }
         Label {
-          readonly property var source: deck.page === "care" ? deck.care : deck.info
+          readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel : deck.info)
           visible: !!source
           text: source ? Skin.t("updated").arg(new Date(source.time * 1000).toLocaleTimeString(Skin.locale, "HH:mm:ss")) : ""
           color: Skin.dim

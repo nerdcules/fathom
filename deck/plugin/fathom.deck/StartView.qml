@@ -37,12 +37,14 @@ Item {
 
   readonly property var builtins: [
     { id: "fathom:deck", name: Skin.t("start.deck"), glyph: "", page: "deck", keywords: "docker containers dotnet ai system" },
-    { id: "fathom:care", name: Skin.t("start.care"), glyph: "", page: "care", keywords: "disk updates warnings clean space" }
+    { id: "fathom:care", name: Skin.t("start.care"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
+    { id: "fathom:sentinel", name: Skin.t("start.sentinel"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices" }
   ]
 
   readonly property var actions: [
     { id: "deck", name: Skin.t("start.deck"), detail: Skin.t("start.deckDetail"), glyph: "", page: "deck", keywords: "docker containers dotnet ai" },
     { id: "care", name: Skin.t("start.care"), detail: Skin.t("start.careDetail"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
+    { id: "sentinel", name: Skin.t("start.sentinel"), detail: Skin.t("start.sentinelDetail"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices lockdown" },
     { id: "focus", name: Skin.t("start.focusToggle"), detail: Skin.t("start.focusDetail"), glyph: "", keywords: "do not disturb dnd notifications quiet" },
     { id: "play", name: Skin.t("start.play"), detail: Skin.t("start.playDetail"), glyph: "", keywords: "youtube video mini player" },
     { id: "lock", name: Skin.t("start.lock"), glyph: "", keywords: "screen" },

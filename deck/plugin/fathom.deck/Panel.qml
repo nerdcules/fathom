@@ -23,6 +23,7 @@ Item {
   property string page: "deck"
   property var info: null
   property var care: null
+  property var sentinel: null
   property var startMenu: null
   property var apps: []
   property string error: ""
@@ -34,6 +35,7 @@ Item {
   readonly property string careTool: home + "/.local/bin/fathom-care"
   readonly property string startTool: home + "/.local/bin/fathom-start"
   readonly property string playerTool: home + "/.local/bin/fathom-player"
+  readonly property string sentinelTool: home + "/.local/bin/fathom-sentinel"
   readonly property string pluginId: (manifest && manifest.id) || "fathom.deck"
   // Care runs its own check when it's this stale (the timer may be off).
   readonly property int staleSeconds: 3 * 3600
@@ -58,7 +60,7 @@ Item {
     var wanted = "deck"
     try {
       var payload = JSON.parse(payloadJson || "{}")
-      if (payload && (payload.page === "care" || payload.page === "start")) wanted = payload.page
+      if (payload && ["care", "start", "sentinel"].indexOf(payload.page) !== -1) wanted = payload.page
     } catch (e) {}
     if (opened && page === wanted) {
       dismiss()
@@ -89,6 +91,8 @@ Item {
       apps = collectApps()
     } else if (page === "deck") {
       if (!deckProc.running) deckProc.running = true
+    } else if (page === "sentinel") {
+      if (!sentinelProc.running) sentinelProc.running = true
     } else if (!careProc.running) {
       careProc.running = true
     }
@@ -264,6 +268,21 @@ Item {
   }
 
   Process {
+    id: sentinelProc
+    command: [root.sentinelTool, "status"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var parsed = root.parse(text)
+        if (parsed && parsed.firewall) { root.sentinel = parsed; root.error = "" }
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0 && root.error === "") root.error = catalog.t("readFailed").arg("exit " + exitCode)
+      if (root.opened) pause.restart()
+    }
+  }
+
+  Process {
     id: startProc
     command: [root.startTool, "menu"]
     stdout: StdioCollector {
@@ -313,7 +332,7 @@ Item {
         anchors.fill: parent
         visible: root.page !== "start"
         shown: window.contentRevealed && visible
-        page: root.page === "care" ? "care" : "deck"
+        page: root.page === "start" ? "deck" : root.page
         info: root.info
         care: root.care
         error: root.error
@@ -331,6 +350,15 @@ Item {
         onUnitLogRequested: function(scope, unit) { root.handOff([root.careTool, "log", scope, unit]) }
         onUpdateRequested: root.handOff([root.careTool, "update"])
         onCheckRequested: root.check()
+        sentinel: root.sentinel
+        // Firewall changes ask for your password, so the deck steps aside.
+        onLockdownRequested: function(on) { root.handOff([root.sentinelTool, "lockdown", on ? "on" : "off"]) }
+        onBlockRequested: function(ip) { root.handOff([root.sentinelTool, "block", ip]) }
+        onUnblockRequested: function(ip) { root.handOff([root.sentinelTool, "unblock", ip]) }
+        onTrustRequested: function(mac, trust) { root.run([root.sentinelTool, trust ? "trust" : "forget", mac]) }
+        onCheckFilesRequested: root.handOff([root.sentinelTool, "check-files"])
+        onSentinelLogRequested: function(what) { root.handOff([root.sentinelTool, "log", what]) }
+        onSnitchRequested: root.handOff(["uwsm-app", "--", "opensnitch-ui"])
       }
 
       StartView {

@@ -21,8 +21,10 @@ cd ~/Work/fathom
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck and its Care page, their keys, and Care's check every 3 hours |
 | `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
+| `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
+| `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--signin` | The sign-in screen. Needs your password |
-| `--all` | Every part |
+| `--all` | Every part (OpenSnitch only with `--opensnitch`) |
 | `--link` | Link the theme, the commands and their Hyprland files to this repo instead of copying, for working on them |
 | `--no-apply` | Install the desktop theme without switching to it |
 
@@ -30,7 +32,8 @@ With no part named, it installs the parts that need no password: `--skin`,
 `--player`, `--deck` and `--mail`.
 
 `./uninstall.sh` switches back to the theme that was on before, removes
-what the installer added, and puts Omarchy's sign-in screen back. It leaves
+what the installer added (OpenSnitch only if Fathom installed it), and puts
+Omarchy's sign-in screen back. It leaves
 alone any `fathom` theme it did not make.
 
 ## What's here
@@ -52,8 +55,8 @@ deck/bin/fathom-deck
                 starts, stops and restarts containers
 deck/hypr/      Its key and blur
 deck/plugin/fathom.deck/
-                The deck itself, an Omarchy shell panel: the Deck and Care
-                pages and the Start menu
+                The deck itself, an Omarchy shell panel: the Deck, Care and
+                Sentinel pages and the Start menu
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -67,6 +70,18 @@ mail/fathom_mail/
                 Its package: core.py (keyring, HTTP, notifications) and one
                 module per mail service (outlook.py)
 mail/systemd/   The service that watches for new mail
+sentinel/bin/fathom-sentinel
+                Sentinel's command and watcher (Python, standard library only)
+sentinel/fathom_sentinel/
+                detect.py: turns journal lines, neighbours and file checks
+                into events
+sentinel/root/  The root parts: admin (the firewall buttons, run through
+                pkexec) and check-files (the daily file check)
+sentinel/systemd/
+                The watcher (a user service) and the file check's service
+                and timer (system)
+sentinel/install-root.sh
+                Installs and removes the root parts
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/ && python3 -m unittest discover -s tests
 install.sh      Installer
@@ -205,6 +220,58 @@ fathom-care check             # check now
 fathom-care clean trash npm   # free those (names from `status`)
 ```
 
+## Sentinel
+
+Sentinel is the deck's third page: **Super+Alt+X**, or Ctrl+Tab from Care. It
+keeps watch over the machine and tells you when something needs you. Install
+it with `./install.sh --sentinel` (it asks for your password).
+
+A user service, `fathom-sentinel.service`, follows the system journal, looks at
+the network every 30 seconds, and reads OpenSnitch's rules and the file
+check's results every minute. It runs as you. What it watches:
+
+- **Firewall blocks** (ufw). Ordinary blocked chatter is counted, and the
+  addresses blocked most today are listed. 12 or more different ports blocked
+  from one address within 5 minutes is reported as a port scan, at most once
+  an hour per address.
+- **Sign-ins and sudo.** A failed SSH sign-in is reported at once. A single
+  wrong password is listed; 3 within 10 minutes is a warning. Each sudo
+  command is listed.
+- **USB storage** being plugged in.
+- **Devices on your network.** On a network it hasn't seen before, it spends
+  the first 10 minutes learning what's there and trusts those devices. After
+  that, a new device is a warning until you mark it as yours. Devices not seen
+  for 60 days are forgotten.
+- **System files.** A root timer, `fathom-sentinel-files.timer`, runs
+  `pacman -Qkk` once a day and records which files no longer match their
+  package. A changed timestamp alone doesn't count. The first check sets the
+  baseline; after that, only new differences are reported. The service is
+  sandboxed: it can read every file but not change any, and it has no network.
+- **OpenSnitch**, if installed: its rule counts, and new rules as they appear.
+
+Warnings, port scans, failed SSH sign-ins and USB storage send a notification;
+clicking it opens Sentinel. Events found while catching up on the journal
+(after a restart, say) show in the deck without notifications.
+
+The page's buttons: **Lockdown** blocks every new incoming connection on
+Wi-Fi, wired and mobile interfaces (not loopback, Docker or VPNs); block or
+unblock an address; trust or forget a device; check files now; and open the
+firewall, sign-in or file-check log. The firewall buttons run a fixed root
+script, `/usr/local/lib/fathom-sentinel/admin`, through pkexec, and it checks
+every argument. Nothing leaves the machine.
+
+```bash
+fathom-sentinel status | jq .        # what Sentinel shows, as JSON
+fathom-sentinel trust <mac>          # mark a device as yours
+fathom-sentinel lockdown on          # asks for your password
+fathom-sentinel log firewall         # today's blocks, in a terminal
+```
+
+It needs `ufw`, `jq`, `iw` and `ip`. `--opensnitch` also installs OpenSnitch
+and starts its window, which asks the first time each app connects somewhere
+new. `uninstall.sh` removes the firewall rules Sentinel's buttons added, and
+removes OpenSnitch only if Fathom installed it.
+
 ## Mail
 
 Once an account is added (see below), new mail in your Outlook.com inbox
@@ -313,10 +380,10 @@ already.
 | 5 | Command Deck: system, Docker, .NET, AI | first version |
 | 6 | Mail notifications (Outlook.com); AI summaries later | built, parked: needs an app registration |
 | 7 | Care: disk, warnings, one-click updates | first version |
-| 8 | Start menu and Ask bar (asks Claude Code) | **first version** |
-| 9 | Security monitor: OpenSnitch, CrowdSec, daemon, UI | planned |
+| 8 | Start menu and Ask bar (asks Claude Code) | first version |
+| 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
 | 10 | Pulse: stack map from OpenTelemetry | planned |
 
-Parts that change system files (sign-in screen, face login, firewall) will be
-opt-in flags on `install.sh`, back up what they replace, and be undone by
+Parts that change system files (sign-in screen, face login, Sentinel) are
+opt-in flags on `install.sh`, back up what they replace, and are undone by
 `uninstall.sh`. Secrets such as mail tokens and API keys never go in this repo.

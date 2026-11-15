@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily check of system files against their packages
+Documentation=https://github.com/nerdcules/fathom
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

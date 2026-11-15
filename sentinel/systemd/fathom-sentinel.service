@@ -1,0 +1,14 @@
+[Unit]
+Description=Fathom Sentinel: keep watch and tell you when something needs you
+Documentation=https://github.com/nerdcules/fathom
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/fathom-sentinel watch
+Restart=on-failure
+RestartSec=30s
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target

@@ -73,6 +73,28 @@ if [[ -e $HOME/.local/bin/fathom-mail || -f $UNITS/fathom-mail.service ]]; then
   echo "Removed Fathom Mail and its sign-ins."
 fi
 
+# Sentinel: stop watching, remove the watcher, its key and state, then its
+# root parts (asks for your password), including OpenSnitch if Fathom
+# installed it.
+if [[ -e $HOME/.local/bin/fathom-sentinel || -f $UNITS/fathom-sentinel.service || -d /usr/local/lib/fathom-sentinel ]]; then
+  systemctl --user disable --now fathom-sentinel.service >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-sentinel.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  rm -f "$HOME/.local/bin/fathom-sentinel" "$HYPR/fathom-sentinel.lua" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/sentinel.json"
+  rmdir "${XDG_CONFIG_HOME:-$HOME/.config}/fathom" 2>/dev/null || true
+  rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/fathom/sentinel"
+  rmdir "${XDG_DATA_HOME:-$HOME/.local/share}/fathom" 2>/dev/null || true
+  if [[ -d /usr/local/lib/fathom-sentinel ]]; then
+    if [[ -t 0 ]]; then
+      sudo bash "$REPO/sentinel/install-root.sh" uninstall
+    else
+      pkexec bash "$REPO/sentinel/install-root.sh" uninstall
+    fi
+  fi
+  hypr_changed=true
+  echo "Removed Sentinel."
+fi
+
 # The block in hyprland.lua that loaded them.
 if $hypr_changed; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true

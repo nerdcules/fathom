@@ -1,0 +1,460 @@
+#!/usr/bin/python3 -I
+"""Fathom Sentinel: keeps watch over this machine and tells you when
+something needs you.
+
+  fathom-sentinel                 open Sentinel in the Command Deck
+  fathom-sentinel watch           keep watch (what the fathom-sentinel service runs)
+  fathom-sentinel status          what Sentinel shows, as JSON
+  fathom-sentinel trust <mac>     mark a device on your network as yours
+  fathom-sentinel forget <mac>    stop trusting it
+  fathom-sentinel lockdown on|off block every incoming connection (asks for your password)
+  fathom-sentinel block <ip>      block an address in the firewall (asks for your password)
+  fathom-sentinel unblock <ip>
+  fathom-sentinel check-files     check system files against their packages now
+  fathom-sentinel log <firewall|signins|files>
+                                  the matching log, in a terminal
+
+It runs as you, reading the system journal (firewall blocks, sudo, failed
+sign-ins), the network's neighbour table, USB storage and, if installed,
+OpenSnitch's rules. Only the daily file check and the firewall buttons use
+root. Nothing leaves the machine.
+"""
+
+import ipaddress
+import json
+import os
+import queue
+import re
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+from fathom_sentinel import detect  # noqa: E402
+
+HOME = os.path.expanduser("~")
+STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "fathom")
+CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "fathom")
+STATE = os.path.join(STATE_DIR, "sentinel.json")
+CONFIG = os.path.join(CONFIG_DIR, "sentinel.json")
+INTEGRITY = "/var/lib/fathom-sentinel/integrity.json"
+ADMIN = "/usr/local/lib/fathom-sentinel/admin"
+OPENSNITCH_RULES = "/etc/opensnitchd/rules"
+OUI = "/usr/share/hwdata/oui.txt"
+LOCKDOWN_TAG = "fathom-lockdown"
+BLOCK_TAG = "fathom-block"
+MAX_EVENTS = 300
+SHIELD = "\U000f0498"   # nf-md-shield_half_full
+
+# Notified as they happen; the rest only show in the deck.
+NOTIFY = {"bad", "warn"}
+NOTIFY_KINDS = {"usb"}
+
+
+# ---------------------------------------------------------------- files
+
+def read_json(path, default):
+    try:
+        with open(path, encoding="utf-8") as f:
+            value = json.load(f)
+        return value if isinstance(value, type(default)) else default
+    except (OSError, ValueError):
+        return default
+
+
+def write_json(path, value):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".sentinel-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(value, f)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def config():
+    c = read_json(CONFIG, {})
+    trusted = c.get("trusted")
+    c["trusted"] = [m for m in trusted if isinstance(m, str)] if isinstance(trusted, list) else []
+    return c
+
+
+def run(argv, timeout=10):
+    try:
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        return out.stdout if out.returncode == 0 else ""
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def notify(headline, body, urgency=1):
+    """As Omarchy does: straight to the notification service, so text stays
+    text. The body may be read as markup, so it's escaped."""
+    body = body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    hints = ["urgency", "y", str(urgency), "omarchy-glyph", "s", SHIELD,
+             "omarchy-exec-argv", "s", json.dumps([os.path.join(HOME, ".local/bin/fathom-sentinel")])]
+    run(["busctl", "--user", "--", "call", "org.freedesktop.Notifications", "/org/freedesktop/Notifications",
+         "org.freedesktop.Notifications", "Notify", "susssasa{sv}i", "Sentinel", "0", "", headline, body,
+         "0", str(len(hints) // 3), *hints, "-1"])
+
+
+# ---------------------------------------------------------------- the machine
+
+def firewall():
+    enabled = False
+    try:
+        with open("/etc/ufw/ufw.conf", encoding="utf-8") as f:
+            enabled = any(line.strip() == "ENABLED=yes" for line in f)
+    except OSError:
+        pass
+    active = run(["systemctl", "is-active", "ufw.service"]).strip() == "active"
+    lockdown, blocked = False, []
+    try:
+        with open("/etc/ufw/user.rules", encoding="utf-8") as f:
+            for line in f:
+                if not line.startswith("### tuple ###"):
+                    continue
+                m = re.search(r"comment=([0-9a-f]+)", line)
+                tag = bytes.fromhex(m.group(1)).decode("utf-8", "replace") if m else ""
+                if tag == LOCKDOWN_TAG:
+                    lockdown = True
+                elif tag == BLOCK_TAG:
+                    parts = line.split()
+                    # ### tuple ### deny any any 0.0.0.0/0 any <src> in comment=...
+                    if len(parts) >= 9:
+                        blocked.append(parts[8].split("/")[0])
+    except OSError:
+        pass
+    return {"on": enabled and active, "lockdown": lockdown, "blocked": sorted(set(blocked))[:50]}
+
+
+def opensnitch():
+    installed = os.path.exists("/usr/bin/opensnitchd")
+    if not installed:
+        return {"installed": False}
+    active = run(["systemctl", "is-active", "opensnitchd.service"]).strip() == "active"
+    rules = []
+    try:
+        names = sorted(os.listdir(OPENSNITCH_RULES))[:500]
+    except OSError:
+        names = []
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        r = read_json(os.path.join(OPENSNITCH_RULES, name), {})
+        op = r.get("operator") or {}
+        what = op.get("data") if isinstance(op.get("data"), str) else ""
+        rules.append({"name": detect.plain(r.get("name", name), 80), "action": detect.plain(r.get("action", ""), 10),
+                      "what": detect.plain(what, 120), "enabled": r.get("enabled", True) is True,
+                      "created": detect.plain(r.get("created", ""), 40)})
+    allow = sum(1 for r in rules if r["action"] == "allow")
+    deny = sum(1 for r in rules if r["action"] in ("deny", "reject"))
+    return {"installed": True, "active": active, "rules": len(rules), "allow": allow, "deny": deny,
+            "recent": sorted(rules, key=lambda r: r["created"], reverse=True)[:8]}
+
+
+def network():
+    route = json.loads(run(["ip", "-j", "route", "show", "default"]) or "[]")
+    if not route:
+        return None
+    iface, gateway = route[0].get("dev", ""), route[0].get("gateway", "")
+    neigh = json.loads(run(["ip", "-j", "neigh"]) or "[]")
+    found = detect.neighbours(neigh, iface)
+    gw_mac = next((m for m, ip in found.items() if ip == gateway), "")
+    ssid = ""
+    m = re.search(r"^\s*SSID: (.+)$", run(["iw", "dev", iface, "link"]), re.M)
+    if m:
+        ssid = detect.plain(m.group(1), 64)
+    return {"iface": iface, "gateway": gateway, "id": gw_mac or gateway, "ssid": ssid, "found": found}
+
+
+def usb_storage():
+    out = {}
+    for name in os.listdir("/sys/block"):
+        path = os.path.realpath(os.path.join("/sys/block", name))
+        if "/usb" not in path:
+            continue
+        def read(rel):
+            try:
+                with open(os.path.join("/sys/block", name, rel), encoding="utf-8") as f:
+                    return f.read().strip()
+            except OSError:
+                return ""
+        size = int(read("size") or 0) * 512
+        if size <= 0:
+            continue
+        out[name] = {"vendor": detect.plain(read("device/vendor"), 40), "model": detect.plain(read("device/model"), 60), "size": size}
+    return out
+
+
+# ---------------------------------------------------------------- watching
+
+def journal_reader(cursor, q, stop):
+    """Follow the journal's firewall, sudo and sign-in lines into q."""
+    matches = ["_TRANSPORT=kernel", "+", "SYSLOG_IDENTIFIER=sudo", "+", "SYSLOG_IDENTIFIER=sshd",
+               "+", "SYSLOG_IDENTIFIER=su", "+", "SYSLOG_IDENTIFIER=login", "+", "SYSLOG_IDENTIFIER=polkit-1",
+               "+", "SYSLOG_IDENTIFIER=hyprlock", "+", "SYSLOG_IDENTIFIER=sddm-helper"]
+    # The first time, catch up on today; after that, carry on where it left off.
+    where = ["--after-cursor", cursor] if cursor else ["--since", "today"]
+    while not stop.is_set():
+        proc = subprocess.Popen(["journalctl", "-f", "-o", "json", "--no-pager", "--output-fields",
+                                 "MESSAGE,SYSLOG_IDENTIFIER,_TRANSPORT,__REALTIME_TIMESTAMP,__CURSOR", *where, *matches],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        for line in proc.stdout:
+            if stop.is_set():
+                break
+            try:
+                q.put(json.loads(line))
+            except ValueError:
+                continue
+        proc.kill()
+        where = ["-n", "0"]   # an old cursor that failed won't work next time either
+        stop.wait(5)
+
+
+def watch():
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    signal.signal(signal.SIGINT, lambda *_: stop.set())
+
+    state = read_json(STATE, {})
+    events = state.get("events", []) if isinstance(state.get("events"), list) else []
+    blocks = state.get("blocks", {}) if isinstance(state.get("blocks"), dict) else {}
+    devices = detect.DeviceWatch(state.get("networks"))
+    usb_seen = set(usb_storage())
+    snitch_seen = set(state.get("snitchRules", []))
+    integrity_seen = state.get("integrity") if isinstance(state.get("integrity"), dict) else None
+    scans, fails = detect.ScanDetector(), detect.FailureDetector()
+
+    try:
+        with open(OUI, encoding="utf-8", errors="replace") as f:
+            index = detect.oui_index(f)
+    except OSError:
+        index = {}
+
+    q = queue.Queue()
+    reader = threading.Thread(target=journal_reader, args=(state.get("cursor"), q, stop), daemon=True)
+    reader.start()
+
+    cursor = state.get("cursor")
+    last_net = last_shield = 0
+    dirty = True
+    while not stop.is_set():
+        now = int(time.time())
+        today = time.strftime("%Y-%m-%d")
+        new = []
+
+        # The journal.
+        while True:
+            try:
+                entry = q.get_nowait()
+            except queue.Empty:
+                break
+            cursor = entry.get("__CURSOR", cursor)
+            when = int(int(entry.get("__REALTIME_TIMESTAMP", now * 1e6)) / 1e6)
+            message = entry.get("MESSAGE", "")
+            if isinstance(message, list):   # journal sends bytes as a list
+                message = bytes(message).decode("utf-8", "replace")
+            block = detect.parse_ufw(message)
+            if block:
+                day = blocks.setdefault(time.strftime("%Y-%m-%d", time.localtime(when)), {"total": 0, "sources": {}})
+                day["total"] += 1
+                if len(day["sources"]) < 500 or block["src"] in day["sources"]:
+                    day["sources"][block["src"]] = day["sources"].get(block["src"], 0) + 1
+                hit = scans.feed(block, when)
+                if hit:
+                    new.append(hit)
+                dirty = True
+                continue
+            auth = detect.parse_auth(entry.get("SYSLOG_IDENTIFIER"), message)
+            if auth and auth["type"] == "sudo":
+                new.append(detect.event("sudo", "info", "sudo: " + detect.plain(auth["command"], 80),
+                                        f"by {auth['user']}", when))
+            elif auth and auth["type"] == "login":
+                new.append(detect.event("auth", "warn", f"SSH sign-in as {auth['user']} from {auth['from']}",
+                                        "If that wasn't you, lock this machine down.", when, src=auth["from"]))
+            elif auth:
+                hit = fails.feed(auth, when)
+                if hit:
+                    new.append(hit)
+
+        # USB storage.
+        attached = usb_storage()
+        for name in set(attached) - usb_seen:
+            new.append(detect.usb_event(name, attached[name], now))
+        usb_seen = set(attached)
+
+        # The network, every 30 seconds.
+        net = None
+        if now - last_net >= 30:
+            last_net = now
+            net = network()
+            if net and net["id"]:
+                new += devices.feed(net["id"], net["found"], index, now)
+                state["network"] = {k: net[k] for k in ("iface", "gateway", "id", "ssid")}
+                dirty = True
+
+        # OpenSnitch's new rules and the daily file check, every minute.
+        if now - last_shield >= 60:
+            last_shield = now
+            snitch = opensnitch()
+            if snitch.get("installed"):
+                for r in snitch.get("recent", []):
+                    key = r["name"]
+                    if key not in snitch_seen and snitch_seen:
+                        verb = "Allowed" if r["action"] == "allow" else "Blocked"
+                        new.append(detect.event("snitch", "info", f"{verb}: {r['what'] or r['name']}",
+                                                f"OpenSnitch rule {r['name']}", now))
+                    snitch_seen.add(key)
+                snitch_seen = set(list(snitch_seen)[-1000:])
+            checked = read_json(INTEGRITY, {})
+            if checked.get("checkedAt") and (not integrity_seen or checked["checkedAt"] != integrity_seen.get("checkedAt")):
+                new.append(detect.integrity_event(integrity_seen, checked, now))
+                integrity_seen = {"checkedAt": checked["checkedAt"], "altered": checked.get("altered", [])}
+                dirty = True
+
+        # Tell about what's new.
+        trusted = set(config()["trusted"])
+        for e in new:
+            if e["kind"] == "device" and e["data"].get("mac") in trusted:
+                continue
+            events.append(e)
+            # Only what just happened: catching up on the journal after a
+            # restart shows in the deck without a burst of notifications.
+            if (e["level"] in NOTIFY or e["kind"] in NOTIFY_KINDS) and e["time"] >= now - 120:
+                notify(e["title"], e["detail"], 2 if e["level"] == "bad" else 1)
+            dirty = True
+
+        if dirty:
+            keep_days = sorted(blocks)[-14:]
+            state.update(
+                events=events[-MAX_EVENTS:], cursor=cursor, networks=devices.networks,
+                blocks={d: blocks[d] for d in keep_days}, snitchRules=sorted(snitch_seen),
+                integrity=integrity_seen, updatedAt=now)
+            events = state["events"]
+            blocks = state["blocks"]
+            write_json(STATE, state)
+            dirty = False
+        stop.wait(5)
+
+
+# ---------------------------------------------------------------- reporting
+
+def status():
+    state = read_json(STATE, {})
+    trusted = set(config()["trusted"])
+    today = time.strftime("%Y-%m-%d")
+    since = int(time.time()) - 86400
+    events = [e for e in state.get("events", []) if isinstance(e, dict)]
+    recent = [e for e in events if e.get("time", 0) >= since]
+    net = state.get("network") or {}
+    devices = []
+    for mac, d in ((state.get("networks") or {}).get(net.get("id"), {}).get("devices", {}) or {}).items():
+        devices.append({"mac": mac, "ip": d.get("ip", ""), "vendor": d.get("vendor", ""),
+                        "trusted": bool(d.get("trusted")) or mac in trusted, "first": d.get("first", 0),
+                        "last": d.get("last", 0), "gateway": d.get("ip") == net.get("gateway")})
+    devices.sort(key=lambda d: (d["trusted"], -d["last"]))
+    day = (state.get("blocks") or {}).get(today, {"total": 0, "sources": {}})
+    sources = sorted(day.get("sources", {}).items(), key=lambda kv: -kv[1])[:6]
+    integrity = read_json(INTEGRITY, {})
+    watching = bool(state.get("updatedAt")) and int(time.time()) - state.get("updatedAt", 0) < 600
+    print(json.dumps({
+        "time": int(time.time()),
+        "watching": watching,
+        "firewall": firewall(),
+        "opensnitch": opensnitch(),
+        "integrity": {"checkedAt": integrity.get("checkedAt"), "files": integrity.get("files", 0),
+                      "packages": integrity.get("packages", 0), "altered": integrity.get("alteredCount", len(integrity.get("altered", [])))}
+        if integrity else None,
+        "rootParts": os.path.exists(ADMIN),
+        "network": {"ssid": net.get("ssid", ""), "gateway": net.get("gateway", ""), "devices": devices[:40]},
+        "blocksToday": {"total": day.get("total", 0), "top": [{"src": s, "count": n, "public": detect.is_public(s)} for s, n in sources]},
+        "events": sorted(recent, key=lambda e: -e.get("time", 0))[:40],
+        "attention": sum(1 for e in recent if e.get("level") in ("warn", "bad")
+                         and not (e.get("kind") == "device" and (e.get("data") or {}).get("mac") in trusted)),
+    }))
+
+
+# ---------------------------------------------------------------- acting
+
+def mac_arg(args):
+    mac = (args[0] if args else "").lower()
+    if not re.fullmatch(r"([0-9a-f]{2}:){5}[0-9a-f]{2}", mac):
+        sys.exit("fathom-sentinel: give a device address like aa:bb:cc:dd:ee:ff")
+    return mac
+
+
+def trust(args, on):
+    mac = mac_arg(args)
+    c = config()
+    c["trusted"] = sorted(set(c["trusted"]) | {mac}) if on else [m for m in c["trusted"] if m != mac]
+    write_json(CONFIG, c)
+
+
+def admin(*args):
+    if not os.path.exists(ADMIN):
+        sys.exit("fathom-sentinel: the firewall buttons aren't installed; run ./install.sh --sentinel")
+    sys.exit(subprocess.run(["pkexec", ADMIN, *args]).returncode)
+
+
+def ip_arg(args):
+    try:
+        return str(ipaddress.ip_address(args[0] if args else ""))
+    except ValueError:
+        sys.exit("fathom-sentinel: give an IP address")
+
+
+def show_log(args):
+    what = args[0] if args else ""
+    commands = {
+        "firewall": ["journalctl", "-k", "--grep", "UFW BLOCK", "--since", "today", "-e"],
+        "signins": ["journalctl", "--since", "today", "-e", "SYSLOG_IDENTIFIER=sudo", "+", "SYSLOG_IDENTIFIER=sshd",
+                    "+", "SYSLOG_IDENTIFIER=su", "+", "SYSLOG_IDENTIFIER=login", "+", "SYSLOG_IDENTIFIER=polkit-1"],
+        "files": ["journalctl", "-u", "fathom-sentinel-files.service", "-e"],
+    }
+    if what not in commands:
+        sys.exit("fathom-sentinel: log takes firewall, signins or files")
+    os.execvp("omarchy-launch-tui", ["omarchy-launch-tui", "--app-id=fathom.sentinel.log", *commands[what]])
+
+
+def main():
+    args = sys.argv[1:]
+    cmd = args[0] if args else ""
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+    elif cmd == "":
+        os.execvp("omarchy-shell", ["omarchy-shell", "shell", "summon", "fathom.deck", '{"page":"sentinel"}'])
+    elif cmd == "watch":
+        watch()
+    elif cmd == "status":
+        status()
+    elif cmd == "trust":
+        trust(args[1:], True)
+    elif cmd == "forget":
+        trust(args[1:], False)
+    elif cmd == "lockdown" and len(args) == 2 and args[1] in ("on", "off"):
+        admin("lockdown", args[1])
+    elif cmd == "block":
+        admin("block", ip_arg(args[1:]))
+    elif cmd == "unblock":
+        admin("unblock", ip_arg(args[1:]))
+    elif cmd == "check-files":
+        sys.exit(subprocess.run(["systemctl", "start", "--no-block", "fathom-sentinel-files.service"]).returncode)
+    elif cmd == "log":
+        show_log(args[1:])
+    else:
+        sys.exit(f"fathom-sentinel: unknown command '{cmd}'")
+
+
+if __name__ == "__main__":
+    main()
