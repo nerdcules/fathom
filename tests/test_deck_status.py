@@ -1,33 +1,124 @@
-"""fathom-deck status, run as the deck runs it."""
+"""fathom-deck status and fathom-care, run with stand-ins for the tools they
+read, so one odd answer from one tool can be shown not to blank a page."""
 
 import json
 import os
 import subprocess
 import tempfile
+import time
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECK = os.path.join(REPO, "deck", "bin", "fathom-deck")
+CARE = os.path.join(REPO, "care", "bin", "fathom-care")
 
 
-class DisksTest(unittest.TestCase):
+def stub(folder, name, script):
+    path = os.path.join(folder, name)
+    with open(path, "w") as f:
+        f.write("#!/bin/sh\n" + script)
+    os.chmod(path, 0o755)
+
+
+class Stubbed(unittest.TestCase):
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.dir = self._dir.name
+        self.bin = os.path.join(self.dir, "bin")
+        os.mkdir(self.bin)
+        # No Ollama, whatever this machine runs.
+        stub(self.bin, "curl", "exit 7\n")
+
+    def tearDown(self):
+        self._dir.cleanup()
+
+    def run_tool(self, tool, *args, env=None, timeout=60):
+        e = dict(os.environ, PATH=self.bin + os.pathsep + os.environ["PATH"])
+        e.update(env or {})
+        return subprocess.run([tool, *args], capture_output=True, text=True, env=e, timeout=timeout)
+
+    def deck(self, env=None, timeout=60):
+        out = self.run_tool(DECK, "status", env=env, timeout=timeout)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+
+class DeckTest(Stubbed):
     def test_one_unreadable_mount_doesnt_lose_the_rest(self):
         # df prints the mounts it could read and exits 1 when one can't be
         # read, as with a FUSE mount whose program died.
-        with tempfile.TemporaryDirectory() as stub:
-            df = os.path.join(stub, "df")
-            with open(df, "w") as f:
-                f.write("#!/bin/sh\n"
-                        "echo 'Filesystem Mounted-on 1B-blocks Used Avail'\n"
-                        "echo '/dev/test / 1000 400 600'\n"
-                        "echo 'df: /tmp/gone: Transport endpoint is not connected' >&2\n"
-                        "exit 1\n")
-            os.chmod(df, 0o755)
-            env = dict(os.environ, PATH=stub + os.pathsep + os.environ["PATH"])
-            out = subprocess.run([DECK, "status"], capture_output=True, text=True, env=env, timeout=60)
-        self.assertEqual(out.returncode, 0, out.stderr)
-        disks = json.loads(out.stdout)["system"]["disks"]
+        stub(self.bin, "df", "echo 'Filesystem Mounted-on 1B-blocks Used Avail'\n"
+                             "echo '/dev/test / 1000 400 600'\n"
+                             "echo 'df: /tmp/gone: Transport endpoint is not connected' >&2\n"
+                             "exit 1\n")
+        disks = self.deck()["system"]["disks"]
         self.assertEqual(disks, [{"mount": "/", "size": 1000, "used": 400, "free": 600}])
+
+    def test_a_gpu_it_cant_read(self):
+        # A card with neither Intel's idle counter nor AMD's busy percent
+        # (NVIDIA, a virtual machine).
+        drm = os.path.join(self.dir, "drm")
+        os.makedirs(os.path.join(drm, "card0", "device"))
+        status = self.deck(env={"FATHOM_DECK_DRM": drm})
+        self.assertIsNone(status["system"]["gpu"])
+        self.assertIsNotNone(status["system"]["cpu"])
+
+    def test_a_cut_off_line_from_docker(self):
+        # docker stats stopped by its time limit partway through a line.
+        stub(self.bin, "docker", """case "$1" in
+  ps) echo '{"name":"web","state":"running","status":"Up","image":"nginx","ports":"","project":"shop"}' ;;
+  stats) echo '{"name":"web","cpu":"1.5%","mem":"20MiB / 1GiB"}'; printf '{"name":"db","cpu":' ;;
+  system) echo '{"type":"Images","size":"1GB","reclaimable":"0B"}' ;;
+esac
+""")
+        docker = self.deck()["docker"]
+        self.assertEqual(docker["state"], "ok")
+        self.assertEqual([(c["name"], c["cpu"]) for c in docker["containers"]], [("web", "1.5%")])
+
+    def test_not_json_from_ollamas_port(self):
+        # Something else on 11434 answering with a page, not JSON.
+        stub(self.bin, "curl", "echo '<html>hello</html>'\n")
+        self.assertIsNone(self.deck()["ai"]["ollama"])
+
+    def test_a_docker_that_doesnt_answer(self):
+        stub(self.bin, "docker", "exec sleep 60\n")
+        started = time.monotonic()
+        status = self.deck(timeout=30)
+        self.assertEqual(status["docker"]["state"], "down")
+        self.assertLess(time.monotonic() - started, 15)
+
+
+class CareTest(Stubbed):
+    def setUp(self):
+        super().setUp()
+        self.home = os.path.join(self.dir, "home")
+        os.mkdir(self.home)
+        self.env = {"HOME": self.home, "XDG_STATE_HOME": os.path.join(self.home, ".state"),
+                    "XDG_RUNTIME_DIR": self.dir}
+        for tool in ("checkupdates", "yay", "docker", "notify-send"):
+            stub(self.bin, tool, "exit 0\n")
+
+    def check(self):
+        out = self.run_tool(CARE, "check", env=self.env)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        with open(os.path.join(self.home, ".state", "fathom", "care.json")) as f:
+            return json.load(f)
+
+    def test_figures_from_tools_that_then_fail(self):
+        # Each prints its answer and then exits with an error.
+        stub(self.bin, "fwupdmgr", "echo '{\"Devices\":[{\"Releases\":[{}]}]}'\nexit 2\n")
+        stub(self.bin, "paccache", "echo '==> finished dry run: 3 packages (disk space saved: 1.5 GiB)'\nexit 1\n")
+        cache = self.check()
+        self.assertEqual(cache["updates"]["firmware"], 1)
+        pacman = [r for r in cache["reclaim"] if r["id"] == "pacman"]
+        self.assertEqual(pacman, [{"id": "pacman", "bytes": 1610612736, "root": True}])
+
+    def test_tools_that_print_nonsense(self):
+        stub(self.bin, "fwupdmgr", "echo 'not json'\n")
+        stub(self.bin, "paccache", "echo 'something else entirely'\n")
+        cache = self.check()
+        self.assertEqual(cache["updates"]["firmware"], 0)
+        self.assertEqual([r for r in cache["reclaim"] if r["id"] == "pacman"], [])
 
 
 if __name__ == "__main__":

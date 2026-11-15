@@ -63,6 +63,15 @@ total() {
   sizes "$@" | awk -F'\t' '{ s += $2 } END { print s + 0 }'
 }
 
+# A whole number from a tool's answer, or 0. Tools can print a figure and
+# then exit with an error, or print something else entirely; neither may
+# stop the check.
+whole() {
+  local v
+  v=$(cat 2>/dev/null | head -n 1) || true
+  [[ $v =~ ^[0-9]+$ ]] && echo "$v" || echo 0
+}
+
 # Docker prints sizes like "20.57GB" or "4.096kB" (powers of 1000).
 docker_bytes() {
   awk -v s="$1" 'BEGIN {
@@ -76,10 +85,10 @@ docker_bytes() {
 
 # paccache reports "disk space saved: 1.53 GiB".
 paccache_bytes() {
-  paccache -dk1 2>/dev/null | awk '/disk space saved/ {
+  { paccache -dk1 2>/dev/null || true; } | awk '/disk space saved/ {
     match($0, /saved: [0-9.]+ [KMGT]?i?B/); split(substr($0, RSTART + 7, RLENGTH - 7), a, " ")
     m = 1; if (a[2] ~ /^K/) m = 1024; else if (a[2] ~ /^M/) m = 1048576; else if (a[2] ~ /^G/) m = 1073741824; else if (a[2] ~ /^T/) m = 1099511627776
-    printf "%.0f", a[1] * m }'
+    printf "%.0f", a[1] * m }' | whole
 }
 
 HOME_MODELS=("$HOME/.ollama" "$HOME/.local/share/ollama" "$HOME/.cache/huggingface" "$HOME/.lmstudio" "$HOME/.cache/lm-studio")
@@ -144,9 +153,9 @@ reclaim() {
   add uv "$(total "$HOME/.cache/uv")" false
   add pip "$(total "$HOME/.cache/pip")" false
   add yay "$(total "$HOME/.cache/yay")" false
-  command -v paccache >/dev/null && add pacman "$(paccache_bytes || echo 0)" true
+  command -v paccache >/dev/null && add pacman "$(paccache_bytes)" true
   local journal
-  journal=$(du -sb /var/log/journal 2>/dev/null | cut -f1 || echo 0)
+  journal=$({ du -sb /var/log/journal 2>/dev/null || true; } | cut -f1 | whole)
   add journal "$((journal > 200000000 ? journal - 200000000 : 0))" true
 
   printf '%s\n' "${items[@]}" | jq -sc 'sort_by(-.bytes)'
@@ -164,7 +173,8 @@ updates() {
   aur=""
   command -v yay >/dev/null && aur=$(timeout 60 yay -Qua 2>/dev/null || true)
   if command -v fwupdmgr >/dev/null; then
-    fw=$(timeout 30 fwupdmgr get-updates --json 2>/dev/null | jq '[.Devices[]?.Releases[]?] | length' 2>/dev/null || echo 0)
+    fw=$({ timeout 30 fwupdmgr get-updates --json 2>/dev/null || true; } |
+      { jq '[.Devices[]?.Releases[]?] | length' 2>/dev/null || true; } | whole)
   fi
   jq -n --arg repo "$repo" --arg aur "$aur" --argjson sizes "$sizes_json" --argjson fw "${fw:-0}" '
     def rows: split("\n") | map(select(length > 0) | split(" ") | select(length >= 4)
@@ -241,7 +251,7 @@ failed_units() {
 status() {
   local size used avail src model
   read -r size used avail < <(df -B1 --output=size,used,avail / | tail -1)
-  src=$(findmnt -no SOURCE / 2>/dev/null | sed 's/\[.*//')
+  src=$({ findmnt -no SOURCE / 2>/dev/null || true; } | sed 's/\[.*//')
   model=$(lsblk -sno TYPE,MODEL "$src" 2>/dev/null | awk '$1 == "disk" { $1 = ""; sub(/^ +/, ""); print; exit }' || true)
 
   local bat_health=null cycles=null b
@@ -259,8 +269,9 @@ status() {
   local temp=null h
   for h in /sys/class/hwmon/hwmon*; do
     if [[ $(cat "$h/name" 2>/dev/null) == coretemp || $(cat "$h/name" 2>/dev/null) == k10temp ]]; then
-      temp=$(cat "$h"/temp*_input 2>/dev/null | sort -n | tail -1)
-      temp=$(( ${temp:-0} / 1000 ))
+      # A sensor can fail to read while the others answer.
+      temp=$({ cat "$h"/temp*_input 2>/dev/null || true; } | sort -n | tail -1 | whole)
+      temp=$((temp / 1000))
       break
     fi
   done
@@ -281,7 +292,8 @@ status() {
 
   local units cache='null'
   units=$({ failed_units system; failed_units user; } | jq -sc '.[0:20]')
-  [[ -s $CACHE ]] && cache=$(cat "$CACHE")
+  [[ -s $CACHE ]] && cache=$(jq -c 'objects' "$CACHE" 2>/dev/null || echo null)
+  [[ -n $cache ]] || cache=null
 
   jq -n \
     --argjson size "$size" --argjson used "$used" --argjson free "$avail" \

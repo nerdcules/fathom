@@ -14,6 +14,11 @@ set -euo pipefail
 
 SAMPLE=0.4        # seconds between the two CPU readings
 MAX_ITEMS=40      # cap on containers, processes and models listed
+DRM=${FATHOM_DECK_DRM:-/sys/class/drm}   # graphics cards (the tests point this elsewhere)
+
+# Each reading below copes with its tool failing or answering oddly, and
+# says nothing rather than end the script: one odd answer mustn't blank the
+# whole deck.
 
 usage() {
   sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
@@ -39,22 +44,24 @@ cpu_ticks() {
 # Intel GPUs: milliseconds spent idle (rc6). Empty when there is no such GPU.
 gpu_idle_ms() {
   local c
-  for c in /sys/class/drm/card[0-9]*; do
+  for c in "$DRM"/card[0-9]*; do
     [[ $c == *-* ]] && continue
     if [[ -r $c/gt/gt0/rc6_residency_ms ]]; then
-      cat "$c/gt/gt0/rc6_residency_ms"
-      return
+      cat "$c/gt/gt0/rc6_residency_ms" 2>/dev/null || true
+      return 0
     fi
   done
+  return 0
 }
 
 # AMD GPUs report busy percent directly.
 gpu_busy_pct() {
   local c
-  for c in /sys/class/drm/card[0-9]*; do
+  for c in "$DRM"/card[0-9]*; do
     [[ $c == *-* ]] && continue
-    [[ -r $c/device/gpu_busy_percent ]] && { cat "$c/device/gpu_busy_percent"; return; }
+    [[ -r $c/device/gpu_busy_percent ]] && { cat "$c/device/gpu_busy_percent" 2>/dev/null || true; return 0; }
   done
+  return 0
 }
 
 # CPU ticks a process has used (user + system). Fields after the
@@ -73,7 +80,7 @@ proc_rss_kb() {
 }
 
 proc_args() {
-  tr '\0' ' ' <"/proc/$1/cmdline" 2>/dev/null | head -c 1000
+  { tr '\0' ' ' <"/proc/$1/cmdline"; } 2>/dev/null | head -c 1000 || true
 }
 
 proc_folder() {
@@ -142,9 +149,10 @@ agent_pids() {
   done
 }
 
-# Containers as JSON lines. Fields are formatted by docker itself.
+# Containers as JSON lines. Fields are formatted by docker itself. A
+# daemon that doesn't answer counts as down.
 docker_containers() {
-  docker ps -a --format '{"name":{{json .Names}},"state":{{json .State}},"status":{{json .Status}},"image":{{json .Image}},"ports":{{json .Ports}},"project":{{json (.Label "com.docker.compose.project")}}}' 2>/dev/null
+  timeout 4 docker ps -a --format '{"name":{{json .Names}},"state":{{json .State}},"status":{{json .Status}},"image":{{json .Image}},"ports":{{json .Ports}},"project":{{json (.Label "com.docker.compose.project")}}}' 2>/dev/null
 }
 
 docker_stats() {
@@ -153,6 +161,19 @@ docker_stats() {
 
 docker_df() {
   timeout 4 docker system df --format '{"type":{{json .Type}},"size":{{json .Size}},"reclaimable":{{json .Reclaimable}}}' 2>/dev/null
+}
+
+# The JSON objects in a file, one per line, skipping any line that isn't
+# one (cut off by a time limit, or not JSON at all). Nothing if it's missing.
+json_lines() {
+  [[ -f $1 ]] || return 0
+  jq -cR 'fromjson? | objects' "$1" 2>/dev/null || true
+}
+
+# A file holding one JSON object, or nothing.
+json_doc() {
+  [[ -f $1 ]] || return 0
+  jq -c 'objects' "$1" 2>/dev/null || true
 }
 
 ollama_get() {
@@ -262,12 +283,12 @@ status() {
     --rawfile dotnet "$tmp/dotnet" \
     --rawfile agents "$tmp/agents" \
     --arg sdks "$sdks" \
-    --slurpfile containers <(cat "$tmp/containers" 2>/dev/null || true) \
-    --slurpfile stats <(cat "$tmp/stats" 2>/dev/null || true) \
-    --slurpfile dockerDf <(cat "$tmp/df" 2>/dev/null || true) \
-    --slurpfile ollamaPs <(cat "$tmp/ollama-ps" 2>/dev/null || true) \
-    --slurpfile ollamaTags <(cat "$tmp/ollama-tags" 2>/dev/null || true) \
-    --slurpfile mail <(cat "${XDG_STATE_HOME:-$HOME/.local/state}/fathom/mail.json" 2>/dev/null || true) \
+    --slurpfile containers <(json_lines "$tmp/containers") \
+    --slurpfile stats <(json_lines "$tmp/stats") \
+    --slurpfile dockerDf <(json_lines "$tmp/df") \
+    --slurpfile ollamaPs <(json_doc "$tmp/ollama-ps") \
+    --slurpfile ollamaTags <(json_doc "$tmp/ollama-tags") \
+    --slurpfile mail <(json_doc "${XDG_STATE_HOME:-$HOME/.local/state}/fathom/mail.json") \
     '
     def s($n): tostring | .[0:$n];
     def rows: split("\n") | map(select(length > 0) | split("\t"));
@@ -299,7 +320,7 @@ status() {
         }))
       },
       mail: (($mail[0] // {}) | {
-        accounts: (.accounts // [] | .[0:10] | map({
+        accounts: ([.accounts[]? | objects] | .[0:10] | map({
           id: (.id // "" | s(32)), email: (.email // "" | s(120)),
           unread: (if (.unread | type) == "number" then .unread else null end),
           signedIn: (.signedIn != false), error: (.error // "" | s(200))
@@ -312,8 +333,8 @@ status() {
           cpu: (.[4] | num), rss: ((.[5] | num) * 1024)
         })),
         ollama: (if ($ollamaTags | length) == 0 then null else {
-          models: ($ollamaTags[0].models // [] | .[0:$max] | map({name: (.name | s(96)), size: (.size // 0)})),
-          loaded: ($ollamaPs[0].models // [] | .[0:$max] | map({name: (.name | s(96)), vram: (.size_vram // 0)}))
+          models: ([$ollamaTags[0].models[]? | objects] | .[0:$max] | map({name: (.name | s(96)), size: (.size // 0)})),
+          loaded: ([$ollamaPs[0].models[]? | objects] | .[0:$max] | map({name: (.name | s(96)), vram: (.size_vram // 0)}))
         } end)
       }
     }'
