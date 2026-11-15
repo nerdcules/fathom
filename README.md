@@ -20,13 +20,14 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Command Deck and its Care page, their keys, and Care's check every 3 hours |
+| `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part |
 | `--link` | Link the theme, the commands and their Hyprland files to this repo instead of copying, for working on them |
 | `--no-apply` | Install the desktop theme without switching to it |
 
 With no part named, it installs the parts that need no password: `--skin`,
-`--player` and `--deck`.
+`--player`, `--deck` and `--mail`.
 
 `./uninstall.sh` switches back to the theme that was on before, removes
 what the installer added, and puts Omarchy's sign-in screen back. It leaves
@@ -57,8 +58,14 @@ care/bin/fathom-care
                 Care's command: measures the disk, finds failed services
                 and updates, and cleans up
 care/systemd/   The timer that runs Care's check every 3 hours
+mail/bin/fathom-mail
+                Mail's command (Python, standard library only)
+mail/fathom_mail/
+                Its package: core.py (keyring, HTTP, notifications) and one
+                module per mail service (outlook.py)
+mail/systemd/   The service that watches for new mail
 art/            make-art.py, which draws the wallpapers, preview and logo
-tests/          node --test tests/
+tests/          node --test tests/ && python3 -m unittest discover -s tests
 install.sh      Installer
 uninstall.sh    Undo the installer
 ```
@@ -162,6 +169,54 @@ fathom-care check             # check now
 fathom-care clean trash npm   # free those (names from `status`)
 ```
 
+## Mail
+
+New mail in your Outlook.com inbox shows up as a notification within a
+minute: the sender, the subject and the first line. Click it to open the
+message in Outlook on the web. Several at once become one notification. Only
+your Focused inbox notifies, like Outlook's own app; set `"focusedOnly":
+false` for the account in `~/.config/fathom/mail.json` to include Other. The
+deck's summary line shows how many unread emails you have.
+
+Gmail and IMAP accounts can come later: each mail service is one module in
+`mail/fathom_mail/`.
+
+### Adding your Outlook.com account
+
+Microsoft only lets apps read mail through an app registration of their own,
+so you make one (free, about five minutes, once):
+
+1. Sign in at [entra.microsoft.com](https://entra.microsoft.com) with your
+   Microsoft account. If it says you need a directory, create the free
+   default one it offers.
+2. **App registrations › New registration.** Name it *Fathom Mail*. Under
+   *Supported account types* pick **Personal Microsoft accounts only**. Leave
+   *Redirect URI* empty and click **Register**.
+3. **Authentication › Advanced settings:** set **Allow public client flows**
+   to **Yes** and save.
+4. **API permissions › Add a permission › Microsoft Graph › Delegated:** add
+   **Mail.Read**. (User.Read is already there.)
+5. From **Overview**, copy the **Application (client) ID**, then:
+
+```bash
+fathom-mail add outlook --client-id <that id>
+```
+
+It opens microsoft.com/link and prints a code to enter there. Once you've
+signed in, the watcher starts.
+
+Fathom only asks to **read** mail. The sign-in token is kept in your GNOME
+keyring, and the client ID and settings in `~/.config/fathom/mail.json`;
+neither is ever in this repo. Mail is read only from Microsoft. If Microsoft
+asks you to sign in again (after a password change, say), a notification
+tells you to run `fathom-mail login`.
+
+```bash
+fathom-mail test        # a sample notification
+fathom-mail check       # look for new mail now
+fathom-mail logout      # forget the sign-in
+```
+
 ## Sign-in screen
 
 ![Fathom sign-in screen](signin/preview.jpg)
@@ -215,8 +270,8 @@ already.
 | 3 | Face login: Howdy with the IR camera (lock screen, sudo) | later |
 | 4 | Mini-player: mpv + yt-dlp | first version |
 | 5 | Command Deck: system, Docker, .NET, AI | first version |
-| 6 | Notifications: mail with AI summaries | planned |
-| 7 | Care: disk, warnings, one-click updates | **first version** |
+| 6 | Mail notifications (Outlook.com); AI summaries later | **first version** |
+| 7 | Care: disk, warnings, one-click updates | first version |
 | 8 | Start menu and Ask bar | planned |
 | 9 | Security monitor: OpenSnitch, CrowdSec, daemon, UI | planned |
 | 10 | Pulse: stack map from OpenTelemetry | planned |

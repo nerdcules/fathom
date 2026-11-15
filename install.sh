@@ -10,6 +10,7 @@ MARKER=".fathom-install"
 
 BIN_DIR="$HOME/.local/bin"
 HYPR_DIR="$HOME/.config/hypr"
+SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fathom"
 PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 HYPR_BEGIN="-- fathom: begin (added by Fathom's install.sh; uninstall.sh removes it)"
 HYPR_END="-- fathom: end"
@@ -18,6 +19,7 @@ skin=false
 signin=false
 player=false
 deck=false
+mail=false
 link=false
 apply=true
 
@@ -25,7 +27,7 @@ usage() {
   cat <<EOF
 Usage: ./install.sh [options]
 
-Parts (with none named, the ones that need no password: --skin --player --deck):
+Parts (with none named, the ones that need no password: --skin --player --deck --mail):
   --skin       The Fathom desktop theme
   --player     The mini-player: 'fathom-player', its window rules and keys
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
@@ -34,6 +36,9 @@ Parts (with none named, the ones that need no password: --skin --player --deck):
                (Super+Alt+D), and its Care page: disk, warnings and
                updates (Super+Alt+C), checked every 3 hours by a systemd
                user timer
+  --mail       New-mail notifications (Outlook.com for now): 'fathom-mail'
+               and its service. Then add your account with
+               fathom-mail add outlook --client-id <id> (see the README)
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part
@@ -57,11 +62,13 @@ while (($#)); do
     --signin) signin=true ;;
     --player) player=true ;;
     --deck) deck=true ;;
+    --mail) mail=true ;;
     --all)
       skin=true
       signin=true
       player=true
       deck=true
+      mail=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -79,10 +86,11 @@ while (($#)); do
 done
 
 # No part named: the parts that need no password.
-if ! $skin && ! $signin && ! $player && ! $deck; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $mail; then
   skin=true
   player=true
   deck=true
+  mail=true
 fi
 
 if ! command -v omarchy >/dev/null; then
@@ -276,8 +284,49 @@ install_deck() {
   echo "Command Deck installed. Press Super+Alt+D to open it, Super+Alt+C for Care."
 }
 
+install_mail() {
+  local missing=() tool
+  for tool in python3 secret-tool busctl xdg-open; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: Fathom Mail needs: ${missing[*]}" >&2
+    return 1
+  fi
+
+  # The command and its Python package. With --link, the command points into
+  # this repo and finds the package next to it.
+  if $link; then
+    rm -rf "$SHARE_DIR/mail"
+    place "$REPO/mail/bin/fathom-mail" "$BIN_DIR/fathom-mail"
+  else
+    rm -rf "$SHARE_DIR/mail"
+    mkdir -p "$SHARE_DIR"
+    cp -r "$REPO/mail" "$SHARE_DIR/mail"
+    rm -rf "$SHARE_DIR/mail/systemd"
+    find "$SHARE_DIR/mail" -name __pycache__ -prune -exec rm -rf {} +
+    mkdir -p "$BIN_DIR"
+    ln -sfn "$SHARE_DIR/mail/bin/fathom-mail" "$BIN_DIR/fathom-mail"
+  fi
+  chmod +x "$REPO/mail/bin/fathom-mail"
+
+  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  mkdir -p "$units"
+  cp "$REPO/mail/systemd/fathom-mail.service" "$units/fathom-mail.service"
+  systemctl --user daemon-reload
+  systemctl --user enable fathom-mail.service >/dev/null 2>&1 || true
+  systemctl --user restart fathom-mail.service >/dev/null 2>&1 || true
+
+  if [[ -s ${XDG_CONFIG_HOME:-$HOME/.config}/fathom/mail.json ]]; then
+    echo "Fathom Mail installed and watching your accounts."
+  else
+    echo "Fathom Mail installed. Add your account: fathom-mail add outlook --client-id <id> (see the README)"
+  fi
+}
+
 $skin && install_skin
 $player && install_player
 $deck && install_deck
+$mail && install_mail
 $signin && install_signin
 exit 0

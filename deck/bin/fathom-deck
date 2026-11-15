@@ -265,6 +265,7 @@ status() {
     --slurpfile dockerDf <(cat "$tmp/df" 2>/dev/null || true) \
     --slurpfile ollamaPs <(cat "$tmp/ollama-ps" 2>/dev/null || true) \
     --slurpfile ollamaTags <(cat "$tmp/ollama-tags" 2>/dev/null || true) \
+    --slurpfile mail <(cat "${XDG_STATE_HOME:-$HOME/.local/state}/fathom/mail.json" 2>/dev/null || true) \
     '
     def s($n): tostring | .[0:$n];
     def rows: split("\n") | map(select(length > 0) | split("\t"));
@@ -295,6 +296,14 @@ status() {
           cpu: (.[4] | num), rss: ((.[5] | num) * 1024)
         }))
       },
+      mail: (($mail[0] // {}) | {
+        accounts: (.accounts // [] | .[0:10] | map({
+          id: (.id // "" | s(32)), email: (.email // "" | s(120)),
+          unread: (if (.unread | type) == "number" then .unread else null end),
+          signedIn: (.signedIn != false), error: (.error // "" | s(200))
+        })),
+        checkedAt: (if (.checkedAt | type) == "number" then .checkedAt else null end)
+      }),
       ai: {
         agents: ($agents | rows | map({
           pid: (.[0] | num), name: (.[1] | s(32)), where: .[2], folder: (.[3] // "" | s(64)),

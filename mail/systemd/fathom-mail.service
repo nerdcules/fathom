@@ -1,0 +1,14 @@
+[Unit]
+Description=Fathom Mail: notifications for new mail
+Documentation=https://github.com/nerdcules/fathom
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/fathom-mail watch
+Restart=on-failure
+RestartSec=2min
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target

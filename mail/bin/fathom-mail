@@ -1,0 +1,254 @@
+#!/usr/bin/python3 -I
+"""Fathom Mail: notifications for new mail.
+
+  fathom-mail add outlook --client-id <id>   add an Outlook.com account and sign in
+  fathom-mail login [account]                sign in again
+  fathom-mail logout [account]               forget the sign-in (removes it from the keyring)
+  fathom-mail remove <account>               remove an account
+  fathom-mail accounts                       list accounts
+  fathom-mail check                          look for new mail once
+  fathom-mail watch                          keep looking (what the fathom-mail service runs)
+  fathom-mail status                         what the deck shows, as JSON
+  fathom-mail test                           send a sample notification
+
+Sign-in tokens live in the GNOME keyring; account settings in
+~/.config/fathom/mail.json. Only the mail service itself is contacted.
+"""
+
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+from fathom_mail import PROVIDERS, core  # noqa: E402
+
+INTERVAL = 60           # seconds between checks
+MAX_BACKOFF = 600       # seconds, after repeated failures
+RECENT = 10             # new messages kept for the deck
+GUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def say(text):
+    print(text, flush=True)
+
+
+def fail(text, code=1):
+    print(f"fathom-mail: {text}", file=sys.stderr)
+    sys.exit(code)
+
+
+def provider_for(account):
+    cls = PROVIDERS.get(account.get("provider"))
+    if not cls:
+        raise core.MailError(f"Fathom doesn't know the mail service '{account.get('provider')}'")
+    return cls(account)
+
+
+def find(config, account_id):
+    accounts = config["accounts"]
+    if account_id is None:
+        if len(accounts) == 1:
+            return accounts[0]
+        fail("name the account: " + ", ".join(a["id"] for a in accounts) if accounts else "no accounts yet; see fathom-mail add", 2)
+    for a in accounts:
+        if a["id"] == account_id:
+            return a
+    fail(f"no account called '{account_id}'", 2)
+
+
+def restart_service():
+    subprocess.run(["systemctl", "--user", "restart", "fathom-mail.service"], capture_output=True)
+
+
+# ---------------------------------------------------------------- commands
+
+def cmd_add(args):
+    if not args or args[0] not in PROVIDERS:
+        fail("say which service: " + ", ".join(PROVIDERS), 2)
+    kind = args[0]
+    client_id = None
+    if "--client-id" in args:
+        i = args.index("--client-id")
+        client_id = args[i + 1] if i + 1 < len(args) else None
+    if not client_id or not GUID.match(client_id):
+        fail("--client-id needs your app registration's Application (client) ID, like 00000000-0000-0000-0000-000000000000", 2)
+    config = core.load_config()
+    taken = {a["id"] for a in config["accounts"]}
+    account_id = kind
+    n = 2
+    while account_id in taken:
+        account_id = f"{kind}-{n}"
+        n += 1
+    account = {"id": account_id, "provider": kind, "clientId": client_id, "focusedOnly": True}
+    provider = provider_for(account)
+    try:
+        account["email"] = provider.login(say)
+    except core.MailError as e:
+        fail(str(e))
+    config["accounts"].append(account)
+    core.save_config(config)
+    say(f"Signed in as {account['email'] or account_id}. New mail will show as notifications.")
+    restart_service()
+
+
+def cmd_login(args):
+    config = core.load_config()
+    account = find(config, args[0] if args else None)
+    try:
+        account["email"] = provider_for(account).login(say) or account.get("email", "")
+    except core.MailError as e:
+        fail(str(e))
+    core.save_config(config)
+    say(f"Signed in as {account['email'] or account['id']}.")
+    restart_service()
+
+
+def cmd_logout(args):
+    config = core.load_config()
+    account = find(config, args[0] if args else None)
+    provider_for(account).logout()
+    say(f"Signed out of {account['id']}; its token is gone from the keyring.")
+    restart_service()
+
+
+def cmd_remove(args):
+    if not args:
+        fail("name the account to remove", 2)
+    config = core.load_config()
+    account = find(config, args[0])
+    try:
+        provider_for(account).logout()
+    except core.MailError:
+        pass
+    config["accounts"] = [a for a in config["accounts"] if a["id"] != account["id"]]
+    core.save_config(config)
+    state = core.read_json(core.STATE_FILE, {})
+    if isinstance(state, dict):
+        state.get("cursors", {}).pop(account["id"], None)
+        state["accounts"] = [a for a in state.get("accounts", []) if a.get("id") != account["id"]]
+        state["recent"] = [m for m in state.get("recent", []) if m.get("account") != account["id"]]
+        core.write_json(core.STATE_FILE, state)
+    say(f"Removed {account['id']}.")
+    restart_service()
+
+
+def cmd_accounts(_args):
+    config = core.load_config()
+    if not config["accounts"]:
+        say("No accounts yet. Add one with: fathom-mail add outlook --client-id <id>")
+    for a in config["accounts"]:
+        say(f"{a['id']}\t{a.get('provider')}\t{a.get('email', '')}")
+
+
+def check_once(state, providers, config):
+    """One round over every account. Returns True if every account worked."""
+    cursors = state.setdefault("cursors", {})
+    recent = state.get("recent", [])
+    summaries = []
+    all_ok = True
+    for account in config["accounts"]:
+        provider = providers.get(account["id"])
+        entry = {"id": account["id"], "provider": account.get("provider"), "email": account.get("email", ""),
+                 "unread": None, "signedIn": True, "error": ""}
+        previous = next((a for a in state.get("accounts", []) if a.get("id") == account["id"]), {})
+        try:
+            if provider is None:
+                provider = providers[account["id"]] = provider_for(account)
+            messages, unread, cursor = provider.poll(cursors.get(account["id"], {}), account.get("focusedOnly", True))
+            cursors[account["id"]] = cursor
+            entry["unread"] = unread
+            core.announce(provider.label, messages, provider.inbox_link)
+            for m in messages:
+                recent.append({"account": account["id"], "sender": m["sender"], "subject": m["subject"],
+                               "received": m["received"], "link": m.get("link")})
+        except core.SignedOut as e:
+            all_ok = False
+            entry.update(signedIn=False, error=str(e), unread=previous.get("unread"))
+            if previous.get("signedIn", True):
+                core.notify("Sign in to your mail again", core.escape_markup(
+                    f"{entry['email'] or account['id']}: run fathom-mail login {account['id']} in a terminal."))
+        except core.MailError as e:
+            all_ok = False
+            entry.update(error=str(e), unread=previous.get("unread"))
+        summaries.append(entry)
+    state["accounts"] = summaries
+    state["recent"] = sorted(recent, key=lambda m: m.get("received", 0))[-RECENT:]
+    state["checkedAt"] = core.now()
+    core.write_json(core.STATE_FILE, state)
+    return all_ok
+
+
+def cmd_check(_args):
+    config = core.load_config()
+    if not config["accounts"]:
+        fail("no accounts yet; add one with: fathom-mail add outlook --client-id <id>")
+    state = core.read_json(core.STATE_FILE, {})
+    ok = check_once(state if isinstance(state, dict) else {}, {}, config)
+    for a in state.get("accounts", []):
+        unread = "?" if a["unread"] is None else a["unread"]
+        say(f"{a['id']}: {unread} unread" + (f" ({a['error']})" if a["error"] else ""))
+    sys.exit(0 if ok else 1)
+
+
+def cmd_watch(_args):
+    config = core.load_config()
+    if not config["accounts"]:
+        say("No mail accounts; nothing to watch.")
+        return
+    stop = {"now": False}
+    signal.signal(signal.SIGTERM, lambda *_: stop.update(now=True))
+    signal.signal(signal.SIGINT, lambda *_: stop.update(now=True))
+    providers = {}
+    wait = INTERVAL
+    while not stop["now"]:
+        state = core.read_json(core.STATE_FILE, {})
+        ok = check_once(state if isinstance(state, dict) else {}, providers, config)
+        wait = INTERVAL if ok else min(MAX_BACKOFF, wait * 2)
+        for _ in range(wait):
+            if stop["now"]:
+                break
+            time.sleep(1)
+
+
+def cmd_status(_args):
+    state = core.read_json(core.STATE_FILE, {})
+    if not isinstance(state, dict):
+        state = {}
+    state.pop("cursors", None)
+    print(json.dumps({"accounts": state.get("accounts", []), "recent": state.get("recent", []),
+                      "checkedAt": state.get("checkedAt")}))
+
+
+def cmd_test(_args):
+    core.announce("Outlook", [{
+        "sender": "Fathom", "subject": "This is what new mail looks like",
+        "preview": "Click it to open the message in Outlook. <b>Markup</b> & such stays plain text.",
+        "received": core.now(), "link": None,
+    }], "https://outlook.live.com/mail/0/inbox")
+
+
+COMMANDS = {
+    "add": cmd_add, "login": cmd_login, "logout": cmd_logout, "remove": cmd_remove,
+    "accounts": cmd_accounts, "check": cmd_check, "watch": cmd_watch, "status": cmd_status,
+    "test": cmd_test,
+}
+
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return
+    command = COMMANDS.get(args[0])
+    if not command:
+        fail(f"unknown command '{args[0]}'", 2)
+    command(args[1:])
+
+
+if __name__ == "__main__":
+    main()

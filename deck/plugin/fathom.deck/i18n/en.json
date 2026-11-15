@@ -17,6 +17,11 @@
     "other": "%1 agents, %2 working"
   },
   "summary.disk": "Disk %1% full",
+  "summary.mail": {
+    "one": "%1 unread email",
+    "other": "%1 unread emails"
+  },
+  "summary.mailSignIn": "Sign in to your mail again: fathom-mail login",
   "system.title": "System",
   "system.cpu": "CPU",
   "system.gpu": "GPU",

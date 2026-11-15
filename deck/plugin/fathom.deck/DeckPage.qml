@@ -64,6 +64,17 @@ GridLayout {
       var w = agentsWorking()
       out.push({ tone: w > 0 ? "ok" : "stopped", text: Skin.tn("summary.agents", agents.length).arg(Skin.n(agents.length)).arg(Skin.n(w)) })
     }
+    var mail = info.mail && Array.isArray(info.mail.accounts) ? info.mail.accounts : []
+    if (mail.length > 0) {
+      var unread = 0
+      var signedOut = false
+      for (var m = 0; m < mail.length; m++) {
+        if (typeof mail[m].unread === "number") unread += mail[m].unread
+        if (mail[m].signedIn === false) signedOut = true
+      }
+      if (signedOut) out.push({ tone: "warn", text: Skin.t("summary.mailSignIn") })
+      else out.push({ tone: unread > 0 ? "ok" : "stopped", text: Skin.tn("summary.mail", unread).arg(Skin.n(unread)) })
+    }
     if (mainDisk) {
       var p = F.percent(mainDisk.used, mainDisk.size)
       out.push({ tone: F.level(p), text: Skin.t("summary.disk").arg(Skin.n(p)) })

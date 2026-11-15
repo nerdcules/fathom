@@ -57,6 +57,20 @@ if [[ -e $HOME/.local/bin/fathom-deck || -d $PLUGINS/fathom.deck || -f $UNITS/fa
   echo "Removed the Command Deck."
 fi
 
+# Mail: stop watching, forget every sign-in (the keyring entries), and
+# remove the command, its service and your account settings.
+if [[ -e $HOME/.local/bin/fathom-mail || -f $UNITS/fathom-mail.service ]]; then
+  systemctl --user disable --now fathom-mail.service >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-mail.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  secret-tool clear application fathom-mail >/dev/null 2>&1 || true
+  rm -f "$HOME/.local/bin/fathom-mail" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/mail.json"
+  rmdir "${XDG_CONFIG_HOME:-$HOME/.config}/fathom" 2>/dev/null || true
+  rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/fathom/mail"
+  rmdir "${XDG_DATA_HOME:-$HOME/.local/share}/fathom" 2>/dev/null || true
+  echo "Removed Fathom Mail and its sign-ins."
+fi
+
 # The block in hyprland.lua that loaded them.
 if $hypr_changed; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
