@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.deck",
+  "name": "Command Deck",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Fathom's Command Deck: system, Docker, .NET and AI at a glance. Open with Super+Alt+D or: omarchy-shell shell toggle fathom.deck",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Panel.qml"
+  }
+}

@@ -17,6 +17,7 @@ HYPR_END="-- fathom: end"
 skin=false
 signin=false
 player=false
+deck=false
 link=false
 apply=true
 
@@ -24,19 +25,22 @@ usage() {
   cat <<EOF
 Usage: ./install.sh [options]
 
-Parts (with none named, the ones that need no password: --skin --player):
+Parts (with none named, the ones that need no password: --skin --player --deck):
   --skin       The Fathom desktop theme
   --player     The mini-player: 'fathom-player', its window rules and keys
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
                and a bar widget showing what is playing
+  --deck       The Command Deck: system, Docker, .NET and AI at a glance
+               (Super+Alt+D)
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part
 
 Options:
-  --link       Symlink the desktop theme, fathom-player and its Hyprland file
-               to this repo instead of copying them, so edits here take effect
-               (the bar widget is always copied: Omarchy refuses symlinks there)
+  --link       Symlink the desktop theme, the commands and their Hyprland
+               files to this repo instead of copying them, so edits here take
+               effect (shell plugins are always copied: Omarchy refuses
+               symlinks there)
   --no-apply   Install the desktop theme without switching to it
   -h, --help   Show this help
 
@@ -50,10 +54,12 @@ while (($#)); do
     --skin) skin=true ;;
     --signin) signin=true ;;
     --player) player=true ;;
+    --deck) deck=true ;;
     --all)
       skin=true
       signin=true
       player=true
+      deck=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -71,9 +77,10 @@ while (($#)); do
 done
 
 # No part named: the parts that need no password.
-if ! $skin && ! $signin && ! $player; then
+if ! $skin && ! $signin && ! $player && ! $deck; then
   skin=true
   player=true
+  deck=true
 fi
 
 if ! command -v omarchy >/dev/null; then
@@ -156,6 +163,68 @@ remove_hypr_block() {
   [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
 }
 
+# Load ~/.config/hypr/<name>.lua from hyprland.lua, inside one marked block
+# that all of Fathom's parts share. Backs hyprland.lua up the first time,
+# and takes the part out again if Hyprland reports errors.
+hypr_load() {
+  local name=$1 src=$2
+  local main="$HYPR_DIR/hyprland.lua"
+  local line="require(\"hypr.$name\")"
+  if [[ ! -f $main ]]; then
+    echo "install.sh: $main not found; is this an Omarchy Hyprland setup?" >&2
+    return 1
+  fi
+  place "$src" "$HYPR_DIR/$name.lua"
+
+  if ! grep -qF -- "$HYPR_BEGIN" "$main"; then
+    cp "$main" "$main.bak.$(date +%s)"
+    # Start on a fresh line, without leaving a blank one behind on uninstall.
+    [[ -s $main && -n $(tail -c 1 "$main") ]] && printf '\n' >>"$main"
+    printf '%s\n%s\n' "$HYPR_BEGIN" "$HYPR_END" >>"$main"
+  fi
+  if ! grep -qxF -- "$line" "$main"; then
+    sed -i "/^-- fathom: end\$/i $line" "$main"
+  fi
+
+  local errors
+  errors=$(hypr_errors)
+  if [[ -n $errors ]]; then
+    echo "install.sh: Hyprland reported config errors, so $name.lua was taken out again:" >&2
+    echo "$errors" >&2
+    sed -i "/^require(\"hypr\.$name\")\$/d" "$main"
+    # Drop the block too if nothing else is in it.
+    if [[ $(sed -n "/^-- fathom: begin/,/^-- fathom: end\$/p" "$main" | wc -l) -le 2 ]]; then
+      remove_hypr_block
+    fi
+    rm -f "$HYPR_DIR/$name.lua"
+    hypr_errors >/dev/null
+    return 1
+  fi
+}
+
+# Copy a shell plugin into place and turn it on. Always a copy: Omarchy
+# refuses plugin folders with symlinks. Extra arguments go to
+# `omarchy plugin enable` (bar placement).
+install_plugin() {
+  local id=$1
+  shift
+  local plugin="$PLUGINS_DIR/$id"
+  rm -rf "$plugin"
+  mkdir -p "$PLUGINS_DIR"
+  cp -r "$REPO/${id#fathom.}/plugin/$id" "$plugin"
+  omarchy plugin validate "$plugin" >/dev/null
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  # The shell finds the new plugin a moment after the rescan, so retry briefly.
+  local tries=0
+  until omarchy plugin enable "$id" "$@" >/dev/null 2>&1; do
+    if ((++tries >= 10)); then
+      echo "install.sh: couldn't turn on $id; try: omarchy plugin enable $id" >&2
+      return 1
+    fi
+    sleep 0.5
+  done
+}
+
 install_player() {
   local missing=() tool
   for tool in mpv yt-dlp socat jq wl-paste; do
@@ -169,53 +238,33 @@ install_player() {
 
   place "$REPO/player/bin/fathom-player" "$BIN_DIR/fathom-player"
   chmod +x "$REPO/player/bin/fathom-player"
-  place "$REPO/player/hypr/fathom-player.lua" "$HYPR_DIR/fathom-player.lua"
-
-  # Load the rules and keys from hyprland.lua, once, keeping a backup.
-  local main="$HYPR_DIR/hyprland.lua"
-  if [[ ! -f $main ]]; then
-    echo "install.sh: $main not found; is this an Omarchy Hyprland setup?" >&2
-    return 1
-  fi
-  if ! grep -qF -- "$HYPR_BEGIN" "$main"; then
-    cp "$main" "$main.bak.$(date +%s)"
-    # Start on a fresh line, without leaving a blank one behind on uninstall.
-    [[ -s $main && -n $(tail -c 1 "$main") ]] && printf '\n' >>"$main"
-    printf '%s\nrequire("hypr.fathom-player")\n%s\n' "$HYPR_BEGIN" "$HYPR_END" >>"$main"
-  fi
-
-  local errors
-  errors=$(hypr_errors)
-  if [[ -n $errors ]]; then
-    echo "install.sh: Hyprland reported config errors, so the player's rules were taken out again:" >&2
-    echo "$errors" >&2
-    remove_hypr_block
-    rm -f "$HYPR_DIR/fathom-player.lua"
-    hypr_errors >/dev/null
-    return 1
-  fi
-
-  # The bar widget. Always a copy: Omarchy refuses plugin folders with symlinks.
-  local plugin="$PLUGINS_DIR/fathom.player"
-  rm -rf "$plugin"
-  mkdir -p "$PLUGINS_DIR"
-  cp -r "$REPO/player/plugin/fathom.player" "$plugin"
-  omarchy plugin validate "$plugin" >/dev/null
-  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-  # The shell finds the new plugin a moment after the rescan, so retry briefly.
-  local tries=0
-  until omarchy plugin enable fathom.player --section centerEnd --index 0 >/dev/null 2>&1; do
-    if ((++tries >= 10)); then
-      echo "install.sh: couldn't add the mini-player to the bar; try: omarchy plugin enable fathom.player" >&2
-      break
-    fi
-    sleep 0.5
-  done
+  hypr_load fathom-player "$REPO/player/hypr/fathom-player.lua" || return 1
+  install_plugin fathom.player --section centerEnd --index 0
 
   echo "Mini-player installed. Copy a video link and press Super+Alt+Y."
 }
 
+install_deck() {
+  local missing=() tool
+  for tool in jq curl; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: the Command Deck needs: ${missing[*]}" >&2
+    return 1
+  fi
+  command -v docker >/dev/null || echo "Docker isn't installed; the deck's Containers card will say so."
+
+  place "$REPO/deck/bin/fathom-deck" "$BIN_DIR/fathom-deck"
+  chmod +x "$REPO/deck/bin/fathom-deck"
+  hypr_load fathom-deck "$REPO/deck/hypr/fathom-deck.lua" || return 1
+  install_plugin fathom.deck
+
+  echo "Command Deck installed. Press Super+Alt+D to open it."
+}
+
 $skin && install_skin
 $player && install_player
+$deck && install_deck
 $signin && install_signin
 exit 0

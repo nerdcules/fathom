@@ -1,0 +1,362 @@
+#!/usr/bin/env bash
+# Fathom Command Deck: gathers what the deck shows and runs its actions.
+# The deck overlay (plugin fathom.deck) calls this; you can too.
+#
+#   fathom-deck                          open or close the deck
+#   fathom-deck status                   print system, Docker, .NET and AI state as JSON
+#   fathom-deck container start <name>   start a container (also stop, restart)
+#   fathom-deck logs <name>              follow a container's logs in a terminal
+#   fathom-deck docker                   open lazydocker
+#
+# Everything is read from this machine. Nothing is sent anywhere; the only
+# network call is to Ollama on 127.0.0.1, if it is running.
+set -euo pipefail
+
+SAMPLE=0.4        # seconds between the two CPU readings
+MAX_ITEMS=40      # cap on containers, processes and models listed
+
+usage() {
+  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+notify() {
+  if command -v notify-send >/dev/null; then
+    notify-send -a "Command Deck" "$1" "${2:-}"
+  else
+    echo "fathom-deck: $1${2:+ ($2)}" >&2
+  fi
+}
+
+# ---------------------------------------------------------------- reading
+
+# Total and idle CPU ticks, from the first line of /proc/stat.
+cpu_ticks() {
+  local _ u n s i w q sq st
+  read -r _ u n s i w q sq st _ </proc/stat
+  echo "$((u + n + s + i + w + q + sq + st)) $((i + w))"
+}
+
+# Intel GPUs: milliseconds spent idle (rc6). Empty when there is no such GPU.
+gpu_idle_ms() {
+  local c
+  for c in /sys/class/drm/card[0-9]*; do
+    [[ $c == *-* ]] && continue
+    if [[ -r $c/gt/gt0/rc6_residency_ms ]]; then
+      cat "$c/gt/gt0/rc6_residency_ms"
+      return
+    fi
+  done
+}
+
+# AMD GPUs report busy percent directly.
+gpu_busy_pct() {
+  local c
+  for c in /sys/class/drm/card[0-9]*; do
+    [[ $c == *-* ]] && continue
+    [[ -r $c/device/gpu_busy_percent ]] && { cat "$c/device/gpu_busy_percent"; return; }
+  done
+}
+
+# CPU ticks a process has used (user + system). Fields after the
+# parenthesised name, which may itself contain spaces.
+proc_ticks() {
+  local stat
+  stat=$(cat "/proc/$1/stat" 2>/dev/null) || { echo 0; return; }
+  stat=${stat##*) }
+  local -a f
+  read -ra f <<<"$stat"
+  echo $((f[11] + f[12]))
+}
+
+proc_rss_kb() {
+  awk '/^VmRSS:/ { print $2; exit }' "/proc/$1/status" 2>/dev/null || echo 0
+}
+
+proc_args() {
+  tr '\0' ' ' <"/proc/$1/cmdline" 2>/dev/null | head -c 1000
+}
+
+proc_folder() {
+  local cwd
+  cwd=$(readlink "/proc/$1/cwd" 2>/dev/null) || return 0
+  [[ $cwd == "$HOME" ]] && { echo "~"; return; }
+  basename -- "$cwd"
+}
+
+# .NET processes: anything of ours that has loaded the .NET runtime.
+dotnet_pids() {
+  local p
+  for p in $(pgrep -u "$UID" 2>/dev/null); do
+    grep -qsF libcoreclr.so "/proc/$p/maps" && echo "$p"
+  done
+}
+
+# A readable name for a .NET process: the app's own name rather than "dotnet".
+dotnet_name() {
+  local pid=$1 comm exe args a
+  comm=$(cat "/proc/$pid/comm" 2>/dev/null || true)
+  exe=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+  if [[ $(basename -- "$exe") != dotnet ]]; then
+    basename -- "${exe:-$comm}"
+    return
+  fi
+  read -ra args <<<"$(proc_args "$pid")"
+  for a in "${args[@]:1}"; do
+    case $a in
+      run | watch | test | build | exec | publish) echo "dotnet $a"; return ;;
+      *.dll) basename -- "$a" .dll; return ;;
+      -*) continue ;;
+    esac
+  done
+  echo dotnet
+}
+
+# Editor and build plumbing: language servers, MSBuild nodes and the like.
+dotnet_is_tooling() {
+  local name=$1 args=$2
+  [[ $args == *"/.vscode/extensions/"* || $args == *"/.vscode-server/"* || $args == *"/JetBrains/"* ]] && return 0
+  [[ $name =~ (LanguageServer|MSBuild|VBCSCompiler|Razor|ServiceHub|Microsoft\.Visua|build-server) ]]
+}
+
+# Coding agents, by process name.
+AGENT_NAMES=(claude codex gemini opencode aider goose cursor-agent copilot)
+
+agent_label() {
+  case $1 in
+    claude) echo "Claude Code" ;;
+    codex) echo "Codex" ;;
+    gemini) echo "Gemini CLI" ;;
+    opencode) echo "opencode" ;;
+    aider) echo "Aider" ;;
+    goose) echo "Goose" ;;
+    cursor-agent) echo "Cursor agent" ;;
+    copilot) echo "Copilot CLI" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+agent_pids() {
+  local n
+  for n in "${AGENT_NAMES[@]}"; do
+    pgrep -u "$UID" -x "$n" 2>/dev/null || true
+  done
+}
+
+# Containers as JSON lines. Fields are formatted by docker itself.
+docker_containers() {
+  docker ps -a --format '{"name":{{json .Names}},"state":{{json .State}},"status":{{json .Status}},"image":{{json .Image}},"ports":{{json .Ports}},"project":{{json (.Label "com.docker.compose.project")}}}' 2>/dev/null
+}
+
+docker_stats() {
+  timeout 4 docker stats --no-stream --format '{"name":{{json .Name}},"cpu":{{json .CPUPerc}},"mem":{{json .MemUsage}}}' 2>/dev/null
+}
+
+docker_df() {
+  timeout 4 docker system df --format '{"type":{{json .Type}},"size":{{json .Size}},"reclaimable":{{json .Reclaimable}}}' 2>/dev/null
+}
+
+ollama_get() {
+  curl -fsS --max-time 0.6 --max-filesize 1000000 "http://127.0.0.1:11434/api/$1" 2>/dev/null
+}
+
+status() {
+  local tmp
+  tmp=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/fathom-deck.XXXXXX")
+  trap 'rm -rf "$tmp"' RETURN
+
+  # Docker and Ollama are slow next to everything else, so ask them first
+  # and read the rest of the machine while they answer.
+  local docker_state=missing
+  if command -v docker >/dev/null; then
+    if docker_containers >"$tmp/containers" 2>/dev/null; then
+      docker_state=ok
+      docker_stats >"$tmp/stats" &
+      docker_df >"$tmp/df" &
+    else
+      docker_state=down
+    fi
+  fi
+  { ollama_get ps >"$tmp/ollama-ps" || rm -f "$tmp/ollama-ps"; } &
+  { ollama_get tags >"$tmp/ollama-tags" || rm -f "$tmp/ollama-tags"; } &
+
+  # Two readings, SAMPLE seconds apart, for CPU and GPU use.
+  local -a dn ag
+  mapfile -t dn < <(dotnet_pids | head -n "$MAX_ITEMS")
+  mapfile -t ag < <(agent_pids | head -n "$MAX_ITEMS")
+  local -A t0
+  local p
+  for p in "${dn[@]}" "${ag[@]}"; do t0[$p]=$(proc_ticks "$p"); done
+  local c0 g0 c1 g1
+  c0=$(cpu_ticks)
+  g0=$(gpu_idle_ms)
+  sleep "$SAMPLE"
+  c1=$(cpu_ticks)
+  g1=$(gpu_idle_ms)
+
+  local hz
+  hz=$(getconf CLK_TCK)
+  pct() { # ticks used over the sample, as percent of one core
+    awk -v d="$1" -v hz="$hz" -v s="$SAMPLE" 'BEGIN { v = d / hz / s * 100; printf "%.1f", (v < 0 ? 0 : v) }'
+  }
+
+  local cpu=null gpu=null
+  read -r ct0 ci0 <<<"$c0"
+  read -r ct1 ci1 <<<"$c1"
+  if ((ct1 > ct0)); then
+    cpu=$(awk -v t=$((ct1 - ct0)) -v i=$((ci1 - ci0)) 'BEGIN { printf "%.1f", (t - i) * 100 / t }')
+  fi
+  if [[ -n $g0 && -n $g1 ]]; then
+    gpu=$(awk -v d=$((g1 - g0)) -v s="$SAMPLE" 'BEGIN { v = 100 - d / (s * 10); printf "%.0f", (v < 0 ? 0 : (v > 100 ? 100 : v)) }')
+  else
+    local busy
+    busy=$(gpu_busy_pct)
+    [[ $busy =~ ^[0-9]+$ ]] && gpu=$busy
+  fi
+
+  # .NET and agent processes, as tab-separated rows for jq.
+  : >"$tmp/dotnet"
+  for p in "${dn[@]}"; do
+    [[ -d /proc/$p ]] || continue
+    local name args kind
+    name=$(dotnet_name "$p")
+    args=$(proc_args "$p")
+    kind=app
+    dotnet_is_tooling "$name" "$args" && kind=tooling
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$name" "$kind" "$(proc_folder "$p")" \
+      "$(pct $(($(proc_ticks "$p") - ${t0[$p]:-0})))" "$(proc_rss_kb "$p")" >>"$tmp/dotnet"
+  done
+  : >"$tmp/agents"
+  for p in "${ag[@]}"; do
+    [[ -d /proc/$p ]] || continue
+    local where=terminal
+    [[ $(readlink "/proc/$p/exe" 2>/dev/null) == *"/.vscode"* ]] && where=editor
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(agent_label "$(cat "/proc/$p/comm")")" "$where" \
+      "$(proc_folder "$p")" "$(pct $(($(proc_ticks "$p") - ${t0[$p]:-0})))" "$(proc_rss_kb "$p")" >>"$tmp/agents"
+  done
+
+  local sdks
+  sdks=$( (command -v dotnet >/dev/null && dotnet --list-sdks 2>/dev/null) | awk '{ print $1 }' | tail -n 5 || true)
+
+  # One row per filesystem: / and /home are often the same one.
+  df -B1 --output=source,target,size,used,avail -x tmpfs -x devtmpfs -x efivarfs -x overlay 2>/dev/null |
+    awk 'NR > 1 && ($2 == "/" || $2 == "/home" || $2 ~ /^\/(mnt|media|run\/media)\//) && !seen[$1]++' |
+    head -n 8 >"$tmp/disks"
+
+  wait
+
+  local mem_total mem_avail
+  mem_total=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+  mem_avail=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
+
+  # Assemble. Every string is cut to a sane length and every list capped.
+  jq -n \
+    --argjson max "$MAX_ITEMS" \
+    --argjson cpu "$cpu" --argjson gpu "$gpu" \
+    --argjson memTotal "$((mem_total * 1024))" --argjson memAvail "$((mem_avail * 1024))" \
+    --argjson cores "$(nproc)" \
+    --arg uptime "$(cut -d' ' -f1 /proc/uptime)" \
+    --arg dockerState "$docker_state" \
+    --rawfile disks "$tmp/disks" \
+    --rawfile dotnet "$tmp/dotnet" \
+    --rawfile agents "$tmp/agents" \
+    --arg sdks "$sdks" \
+    --slurpfile containers <(cat "$tmp/containers" 2>/dev/null || true) \
+    --slurpfile stats <(cat "$tmp/stats" 2>/dev/null || true) \
+    --slurpfile dockerDf <(cat "$tmp/df" 2>/dev/null || true) \
+    --slurpfile ollamaPs <(cat "$tmp/ollama-ps" 2>/dev/null || true) \
+    --slurpfile ollamaTags <(cat "$tmp/ollama-tags" 2>/dev/null || true) \
+    '
+    def s($n): tostring | .[0:$n];
+    def rows: split("\n") | map(select(length > 0) | split("\t"));
+    def num: tonumber? // 0;
+    ($stats | map({key: (.name | s(128)), value: .}) | from_entries) as $st
+    | {
+      time: now | floor,
+      system: {
+        cpu: $cpu, gpu: $gpu, cores: $cores,
+        memTotal: $memTotal, memUsed: ($memTotal - $memAvail),
+        uptime: ($uptime | num | floor),
+        disks: ($disks | split("\n") | map(select(length > 0) | split(" ") | map(select(length > 0)))
+                | map({mount: (.[1] | s(64)), size: (.[2] | num), used: (.[3] | num), free: (.[4] | num)}))
+      },
+      docker: {
+        state: $dockerState,
+        containers: ($containers | .[0:$max] | map({
+          name: (.name | s(128)), state: (.state | s(16)), status: (.status | s(64)),
+          image: (.image | s(96)), ports: (.ports | s(160)), project: (.project // "" | s(64)),
+          cpu: ($st[.name].cpu // "" | s(12)), mem: ($st[.name].mem // "" | s(32))
+        }) | sort_by(.project, .name)),
+        disk: ($dockerDf | map({type: (.type | s(24)), size: (.size | s(16)), reclaimable: (.reclaimable | s(24))}))
+      },
+      dotnet: {
+        sdks: ($sdks | split("\n") | map(select(length > 0) | s(24))),
+        processes: ($dotnet | rows | map({
+          pid: (.[0] | num), name: (.[1] | s(64)), kind: .[2], folder: (.[3] // "" | s(64)),
+          cpu: (.[4] | num), rss: ((.[5] | num) * 1024)
+        }))
+      },
+      ai: {
+        agents: ($agents | rows | map({
+          pid: (.[0] | num), name: (.[1] | s(32)), where: .[2], folder: (.[3] // "" | s(64)),
+          cpu: (.[4] | num), rss: ((.[5] | num) * 1024)
+        })),
+        ollama: (if ($ollamaTags | length) == 0 then null else {
+          models: ($ollamaTags[0].models // [] | .[0:$max] | map({name: (.name | s(96)), size: (.size // 0)})),
+          loaded: ($ollamaPs[0].models // [] | .[0:$max] | map({name: (.name | s(96)), vram: (.size_vram // 0)}))
+        } end)
+      }
+    }'
+}
+
+# ---------------------------------------------------------------- actions
+
+# A container name as docker allows it, and one that exists.
+container_name() {
+  local name=${1:-}
+  if [[ ! $name =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]; then
+    echo "fathom-deck: '$name' is not a container name" >&2
+    exit 2
+  fi
+  if ! docker container inspect --format '{{.Name}}' -- "$name" >/dev/null 2>&1; then
+    echo "fathom-deck: no container called '$name'" >&2
+    exit 1
+  fi
+  echo "$name"
+}
+
+container() {
+  local action=${1:-} name
+  case $action in
+    start | stop | restart) ;;
+    *)
+      echo "fathom-deck: container takes start, stop or restart" >&2
+      exit 2
+      ;;
+  esac
+  name=$(container_name "${2:-}")
+  local out
+  if ! out=$(docker "$action" -- "$name" 2>&1 >/dev/null); then
+    notify "Couldn't $action $name" "${out:0:200}"
+    exit 1
+  fi
+}
+
+logs() {
+  local name
+  name=$(container_name "${1:-}")
+  omarchy-launch-tui --app-id=fathom.deck.logs docker logs --follow --tail 200 -- "$name"
+}
+
+case ${1:-} in
+  "" | toggle) exec omarchy-shell shell toggle fathom.deck ;;
+  status) status ;;
+  container) container "${2:-}" "${3:-}" ;;
+  logs) logs "${2:-}" ;;
+  docker) exec omarchy-launch-tui lazydocker ;;
+  -h | --help | help) usage ;;
+  *)
+    echo "fathom-deck: unknown command '$1'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -11,7 +11,7 @@ windows framed in a cyan-to-violet gradient.
 ```bash
 git clone <this repo> ~/Work/fathom
 cd ~/Work/fathom
-./install.sh            # the desktop theme and the mini-player
+./install.sh            # the desktop theme, the mini-player and the Command Deck
 ./install.sh --signin   # adds the sign-in screen (asks for your password)
 ```
 
@@ -19,13 +19,14 @@ cd ~/Work/fathom
 |---|---|
 | `--skin` | The desktop theme |
 | `--player` | The mini-player, its keys and its bar widget |
+| `--deck` | The Command Deck and its key |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part |
-| `--link` | Link the theme, `fathom-player` and its Hyprland file to this repo instead of copying, for working on them |
+| `--link` | Link the theme, the commands and their Hyprland files to this repo instead of copying, for working on them |
 | `--no-apply` | Install the desktop theme without switching to it |
 
-With no part named, it installs the parts that need no password: `--skin` and
-`--player`.
+With no part named, it installs the parts that need no password: `--skin`,
+`--player` and `--deck`.
 
 `./uninstall.sh` switches back to the theme that was on before, removes
 what the installer added, and puts Omarchy's sign-in screen back. It leaves
@@ -45,6 +46,12 @@ player/bin/fathom-player
 player/hypr/    Its window rules and keys
 player/plugin/fathom.player/
                 Its bar widget
+deck/bin/fathom-deck
+                The Command Deck's command: reads the machine as JSON and
+                starts, stops and restarts containers
+deck/hypr/      Its key and blur
+deck/plugin/fathom.deck/
+                The deck itself, an Omarchy shell panel
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/
 install.sh      Installer
@@ -77,6 +84,42 @@ all on Omarchy already.
 Installing adds `~/.local/bin/fathom-player`, `~/.config/hypr/fathom-player.lua`,
 three marked lines at the end of `~/.config/hypr/hyprland.lua` (after a
 backup), and the `fathom.player` bar widget.
+
+## Command Deck
+
+![Fathom Command Deck](deck/preview.jpg)
+
+Press **Super+Alt+D** for a glass overlay showing your dev machine at a glance.
+Press it again, or Esc, or click outside the cards, to close it.
+
+- **System:** CPU, GPU, memory and each disk. A disk over 85% full turns amber,
+  over 95% red. It also shows how much space Docker's images, build cache and
+  volumes take, since that's usually where a disk goes.
+- **Containers:** every Docker container, grouped by Compose project, with its
+  ports, CPU and memory. Red means unhealthy or crashed. Hover a row to start,
+  stop or restart it, or to follow its logs in a terminal. The lazydocker
+  button opens lazydocker.
+- **.NET:** the installed SDK and the .NET apps running now (`dotnet run`,
+  `dotnet watch`, AppHosts and other apps), with CPU and memory. Language
+  servers and build nodes are counted in one line rather than listed.
+- **AI:** the coding agents running (Claude Code, Codex, Gemini CLI, opencode,
+  Aider and others), which project each is in, and whether it's working or
+  idle. If Ollama is running, its loaded models and their VRAM.
+
+Above the cards, a summary line puts whatever needs attention first.
+
+The deck reads the machine only while it's open, every few seconds, and only
+locally; the one network call is to Ollama on `127.0.0.1`. From a terminal:
+
+```bash
+fathom-deck status | jq .                # what the deck shows, as JSON
+fathom-deck container restart <name>     # also start, stop
+fathom-deck logs <name>
+```
+
+Installing adds `~/.local/bin/fathom-deck`, `~/.config/hypr/fathom-deck.lua`
+(loaded from the same marked block in `hyprland.lua` as the mini-player) and
+the `fathom.deck` shell plugin.
 
 ## Sign-in screen
 
@@ -129,8 +172,8 @@ already.
 | 1 | Skin: Omarchy theme | done |
 | 2 | Sign-in screen: SDDM theme in QML | first version |
 | 3 | Face login: Howdy with the IR camera (lock screen, sudo) | later |
-| 4 | Mini-player: mpv + yt-dlp | **first version** |
-| 5 | Command Deck widgets: Docker, .NET, AI, disk | planned |
+| 4 | Mini-player: mpv + yt-dlp | first version |
+| 5 | Command Deck: system, Docker, .NET, AI | **first version** |
 | 6 | Notifications: mail with AI summaries | planned |
 | 7 | Care: disk, warnings, one-click updates | planned |
 | 8 | Start menu and Ask bar | planned |

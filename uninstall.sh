@@ -30,17 +30,36 @@ fi
 
 rm -rf "$STATE_DIR"
 
+HYPR="$HOME/.config/hypr"
+PLUGINS="$HOME/.config/omarchy/plugins"
+hypr_changed=false
+
 # Mini-player: stop it, then remove the bar widget, keys, rules and command.
-if [[ -e $HOME/.local/bin/fathom-player || -d $HOME/.config/omarchy/plugins/fathom.player ]]; then
+if [[ -e $HOME/.local/bin/fathom-player || -d $PLUGINS/fathom.player ]]; then
   "$HOME/.local/bin/fathom-player" stop >/dev/null 2>&1 || true
   omarchy plugin disable fathom.player >/dev/null 2>&1 || true
-  rm -rf "$HOME/.config/omarchy/plugins/fathom.player"
-  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-  main="$HOME/.config/hypr/hyprland.lua"
-  [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
-  rm -f "$HOME/.config/hypr/fathom-player.lua" "$HOME/.local/bin/fathom-player"
-  hyprctl reload >/dev/null 2>&1 || true
+  rm -rf "$PLUGINS/fathom.player"
+  rm -f "$HYPR/fathom-player.lua" "$HOME/.local/bin/fathom-player"
+  hypr_changed=true
   echo "Removed the mini-player."
+fi
+
+# Command Deck: close it, then remove the plugin, key and command.
+if [[ -e $HOME/.local/bin/fathom-deck || -d $PLUGINS/fathom.deck ]]; then
+  omarchy-shell shell hide fathom.deck >/dev/null 2>&1 || true
+  omarchy plugin disable fathom.deck >/dev/null 2>&1 || true
+  rm -rf "$PLUGINS/fathom.deck"
+  rm -f "$HYPR/fathom-deck.lua" "$HOME/.local/bin/fathom-deck"
+  hypr_changed=true
+  echo "Removed the Command Deck."
+fi
+
+# The block in hyprland.lua that loaded them.
+if $hypr_changed; then
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  main="$HYPR/hyprland.lua"
+  [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
+  hyprctl reload >/dev/null 2>&1 || true
 fi
 
 if [[ -d /usr/share/sddm/themes/fathom || -f /etc/sddm.conf.d/99-zz-fathom.conf ]]; then
