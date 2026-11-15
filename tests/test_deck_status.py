@@ -170,3 +170,64 @@ class CareTest(Stubbed):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BriefTest(Stubbed):
+    """fathom-deck brief: the bar pill's counts, from the same stand-ins."""
+
+    start_claude = ClaudeStatusTest.start_claude
+
+    def brief(self, env=None, timeout=30):
+        out = self.run_tool(DECK, "brief", env=env, timeout=timeout)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def no_agents(self):
+        stub(self.bin, "pgrep", "exit 1\n")
+
+    def test_counts_containers_as_the_deck_colours_them(self):
+        self.no_agents()
+        stub(self.bin, "docker", """[ "$1" = ps ] || exit 1
+echo '{"name":"web","state":"running","status":"Up 2 hours","image":"nginx","ports":"","project":""}'
+echo '{"name":"api","state":"running","status":"Up 1 hour (unhealthy)","image":"x","ports":"","project":""}'
+echo '{"name":"job","state":"exited","status":"Exited (0) 3 days ago","image":"x","ports":"","project":""}'
+echo '{"name":"old","state":"exited","status":"Exited (255) 4 days ago","image":"x","ports":"","project":""}'
+printf '{"name":"cut'
+""")
+        docker = self.brief()["docker"]
+        self.assertEqual(docker, {"state": "ok", "total": 4, "running": 2, "bad": 2})
+
+    def test_care_and_sentinel_say_what_they_know(self):
+        self.no_agents()
+        stub(self.bin, "docker", "exit 1\n")
+        stub(self.bin, "fathom-care", """echo '{"disk":{"pct":91.7},"warnings":[{"kind":"unit"},{"kind":"disk"},"junk"],
+"updates":{"packages":["a","b"],"aur":["c"],"firmware":1,"restart":true}}'
+""")
+        stub(self.bin, "fathom-sentinel", "echo '{\"attention\": 6}'\n")
+        b = self.brief()
+        self.assertEqual(b["docker"]["state"], "down")
+        self.assertEqual(b["care"], {"warnings": 1, "updates": 4, "diskPct": 91, "restart": True})
+        self.assertEqual(b["sentinel"], {"attention": 6})
+
+    def test_care_or_sentinel_missing_odd_or_stuck(self):
+        self.no_agents()
+        stub(self.bin, "docker", "exit 1\n")
+        stub(self.bin, "fathom-care", "echo 'not json'\n")
+        stub(self.bin, "fathom-sentinel", "exec sleep 60\n")
+        started = time.monotonic()
+        b = self.brief()
+        self.assertIsNone(b["care"])
+        self.assertIsNone(b["sentinel"])
+        self.assertLess(time.monotonic() - started, 10)
+
+    def test_claude_codes_own_word_on_working(self):
+        stub(self.bin, "docker", "exit 1\n")
+        pid, started = self.start_claude()
+        stub(self.bin, "pgrep", f'[ "$4" = claude ] && echo {pid}\nexit 0\n')
+        root = os.path.join(self.dir, "claude-config")
+        os.makedirs(os.path.join(root, "sessions"))
+        with open(os.path.join(root, "sessions", f"{pid}.json"), "w") as f:
+            json.dump({"pid": pid, "procStart": started, "status": "busy"}, f)
+        agents = self.brief(env={"CLAUDE_CONFIG_DIR": root})["agents"]
+        self.assertEqual((agents["total"], agents["working"]), (1, 1))
+        self.assertEqual(agents["list"][0]["name"], "Claude Code")

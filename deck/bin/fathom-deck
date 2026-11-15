@@ -4,6 +4,7 @@
 #
 #   fathom-deck                          open or close the deck
 #   fathom-deck status                   print system, Docker, .NET and AI state as JSON
+#   fathom-deck brief                    the few counts the bar's pill shows, as JSON
 #   fathom-deck container start <name>   start a container (also stop, restart)
 #   fathom-deck logs <name>              follow a container's logs in a terminal
 #   fathom-deck docker                   open lazydocker
@@ -21,7 +22,7 @@ DRM=${FATHOM_DECK_DRM:-/sys/class/drm}   # graphics cards (the tests point this 
 # whole deck.
 
 usage() {
-  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 notify() {
@@ -368,6 +369,102 @@ status() {
 # ---------------------------------------------------------------- actions
 
 # A container name as docker allows it, and one that exists.
+# ---------------------------------------------------------------- brief
+
+# The few counts the bar's pill shows, cheaply enough to ask every few
+# seconds: no CPU sample unless an agent other than Claude Code is running
+# (Claude Code says itself whether it's working), no docker stats, no df.
+# Care and Sentinel are asked for what they already know; neither checks
+# anything new.
+brief() {
+  local tmp
+  tmp=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/fathom-deck.XXXXXX")
+  trap 'rm -rf "$tmp"' RETURN
+
+  local docker_state=missing
+  if command -v docker >/dev/null; then
+    if docker_containers >"$tmp/containers" 2>/dev/null; then docker_state=ok; else docker_state=down; fi
+  fi
+  if command -v fathom-care >/dev/null; then
+    { timeout 4 fathom-care status >"$tmp/care" 2>/dev/null || rm -f "$tmp/care"; } &
+  fi
+  if command -v fathom-sentinel >/dev/null; then
+    { timeout 4 fathom-sentinel status >"$tmp/sentinel" 2>/dev/null || rm -f "$tmp/sentinel"; } &
+  fi
+
+  # Agents: Claude Code's own word, else CPU over a short sample.
+  local -a ag
+  mapfile -t ag < <(agent_pids | head -n "$MAX_ITEMS")
+  local -A said t0
+  local p unsure=false
+  for p in "${ag[@]}"; do
+    said[$p]=$(claude_status "$p")
+    if [[ -z ${said[$p]} ]]; then
+      t0[$p]=$(proc_ticks "$p")
+      unsure=true
+    fi
+  done
+  $unsure && sleep "$SAMPLE"
+  local hz
+  hz=$(getconf CLK_TCK)
+  : >"$tmp/agents"
+  for p in "${ag[@]}"; do
+    [[ -d /proc/$p ]] || continue
+    local status=${said[$p]}
+    if [[ -z $status ]]; then
+      status=$(awk -v d=$(($(proc_ticks "$p") - ${t0[$p]:-0})) -v hz="$hz" -v s="$SAMPLE" \
+        'BEGIN { print (d / hz / s * 100 >= 3 ? "busy" : "idle") }')
+    fi
+    printf '%s\t%s\t%s\n' "$(agent_label "$(cat "/proc/$p/comm" 2>/dev/null)")" "$(proc_folder "$p")" "$status" >>"$tmp/agents"
+  done
+
+  wait
+
+  jq -n \
+    --arg dockerState "$docker_state" \
+    --rawfile agents "$tmp/agents" \
+    --slurpfile containers <(json_lines "$tmp/containers") \
+    --slurpfile care <(json_doc "$tmp/care") \
+    --slurpfile sentinel <(json_doc "$tmp/sentinel") \
+    '
+    def s($n): tostring | .[0:$n];
+    def num: if type == "number" then . else (tonumber? // 0) end;
+    def arr: if type == "array" then . else [] end;
+    # As the deck colours a row (Format.js containerHealth).
+    def health: (.status // "" | tostring) as $st | (.state // "" | tostring) as $state
+      | if ($st | contains("(unhealthy)")) then "bad"
+        elif $state == "restarting" then "warn"
+        elif $state == "running" then (if ($st | contains("(health: starting)")) then "warn" else "ok" end)
+        elif $state == "exited" and ($st | test("^Exited \\(0\\)") | not) then "bad"
+        else "stopped" end;
+    ($containers | .[0:200] | map(health)) as $h
+    | ($agents | split("\n") | map(select(length > 0) | split("\t"))
+       | map({name: (.[0] // "" | s(40)), folder: (.[1] // "" | s(80)), working: (.[2] == "busy")})) as $ag
+    | ($care[0] // null) as $c
+    | ($sentinel[0] // null) as $sn
+    | {
+      time: now | floor,
+      docker: {
+        state: $dockerState,
+        total: ($h | length),
+        running: ($containers | .[0:200] | map(select(.state == "running")) | length),
+        bad: ($h | map(select(. == "bad")) | length)
+      },
+      agents: {
+        total: ($ag | length),
+        working: ($ag | map(select(.working)) | length),
+        list: ($ag | .[0:12])
+      },
+      care: (if ($c | type) == "object" then {
+        warnings: ($c.warnings | arr | map(select(type == "object" and .kind != "disk")) | length),
+        updates: (($c.updates.packages | arr | length) + ($c.updates.aur | arr | length) + ($c.updates.firmware // 0 | num)),
+        diskPct: (if ($c.disk.pct | type) == "number" then ($c.disk.pct | floor) else null end),
+        restart: ($c.updates.restart == true)
+      } else null end),
+      sentinel: (if ($sn | type) == "object" then {attention: ($sn.attention // 0 | num)} else null end)
+    }'
+}
+
 container_name() {
   local name=${1:-}
   if [[ ! $name =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]; then
@@ -408,6 +505,7 @@ case ${1:-} in
   # Pressed again while the deck shows, it closes.
   "" | toggle) exec omarchy-shell shell summon fathom.deck '{"page":"deck"}' ;;
   status) status ;;
+  brief) brief ;;
   container) container "${2:-}" "${3:-}" ;;
   logs) logs "${2:-}" ;;
   docker) exec omarchy-launch-tui lazydocker ;;

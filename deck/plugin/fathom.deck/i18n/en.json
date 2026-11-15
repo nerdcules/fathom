@@ -431,5 +431,31 @@
   "pulse.agents.untitled": "Untitled session",
   "pulse.agents.sessionWorking": "%1 working",
   "start.pulse": "Pulse",
-  "start.pulseDetail": "What calls what, from OpenTelemetry"
+  "start.pulseDetail": "What calls what, from OpenTelemetry",
+  "bar.containers": "%1 of %2 containers running",
+  "bar.containersBad": {
+    "one": "%1 container needs attention",
+    "other": "%1 containers need attention"
+  },
+  "bar.warnings": {
+    "one": "Care: %1 warning",
+    "other": "Care: %1 warnings"
+  },
+  "bar.disk": "Disk %1% full",
+  "bar.alerts": {
+    "one": "Sentinel: %1 alert in the last day",
+    "other": "Sentinel: %1 alerts in the last day"
+  },
+  "bar.agentsWorking": {
+    "one": "%1 agent working",
+    "other": "%1 agents working"
+  },
+  "bar.agentsIdle": {
+    "one": "%1 agent, idle",
+    "other": "%1 agents, all idle"
+  },
+  "bar.working": "working",
+  "bar.idle": "idle",
+  "bar.quiet": "Nothing needs you",
+  "bar.hint": "Click: the page with the news · Right-click: the deck · Middle-click: Start"
 }

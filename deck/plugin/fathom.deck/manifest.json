@@ -7,9 +7,18 @@
   "license": "MIT",
   "description": "Fathom's Command Deck: system, Docker, .NET and AI at a glance. Open with Super+Alt+D or: omarchy-shell shell toggle fathom.deck",
   "kinds": [
-    "panel"
+    "panel",
+    "bar-widget"
   ],
   "entryPoints": {
-    "panel": "Panel.qml"
+    "panel": "Panel.qml",
+    "barWidget": "DeckBar.qml"
+  },
+  "barWidget": {
+    "displayName": "Command Deck",
+    "description": "Containers that need attention, Care's warnings, Sentinel's alerts and the agents at work; click for the deck",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false
   }
 }

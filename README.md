@@ -61,7 +61,8 @@ deck/bin/fathom-deck
 deck/hypr/      Its key and blur
 deck/plugin/fathom.deck/
                 The deck itself, an Omarchy shell panel: the Deck, Care,
-                Sentinel and Pulse pages and the Start menu
+                Sentinel and Pulse pages and the Start menu, and its pill
+                in the bar (DeckBar.qml)
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -189,17 +190,42 @@ Press it again, or Esc, or click outside the cards, to close it.
 Above the cards, a summary line puts whatever needs attention first.
 
 The deck reads the machine only while it's open, every few seconds, and only
-locally; the one network call is to Ollama on `127.0.0.1`. From a terminal:
+locally; the one network call is to Ollama on `127.0.0.1`.
+
+### In the bar
+
+A small pill after the workspaces shows what's worth a glance without opening
+the deck, each part only when it has something to say:
+
+- containers that need attention (red), or how many are running;
+- Care's warnings (red) and a disk over 85% full (amber; red over 95%);
+- Sentinel's alerts from the last day (amber);
+- coding agents working (cyan), or how many are idle.
+
+With nothing to say it shows the deck's mark alone. Click it for the deck
+page with the worst news, right-click for the deck, middle-click for Start;
+hover for the details.
+
+Unlike the deck, the pill reads in the background: `fathom-deck brief` every
+10 seconds (set `interval` on its entry in `~/.config/omarchy/shell.json`).
+That asks Docker for its container list, asks Care and Sentinel only what
+they already know, and samples CPU for 0.4 s only when an agent other than
+Claude Code is running. On this machine it took 849 to 927 ms per run, most
+of it that sample, with Codex running (three runs, 2026-11-15).
+
+From a terminal:
 
 ```bash
 fathom-deck status | jq .                # what the deck shows, as JSON
+fathom-deck brief | jq .                 # what the bar's pill shows
 fathom-deck container restart <name>     # also start, stop
 fathom-deck logs <name>
 ```
 
 Installing adds `~/.local/bin/fathom-deck`, `~/.config/hypr/fathom-deck.lua`
 (loaded from the same marked block in `hyprland.lua` as the mini-player) and
-the `fathom.deck` shell plugin.
+the `fathom.deck` shell plugin, which also puts the pill in the bar's left
+section.
 
 ## Care
 

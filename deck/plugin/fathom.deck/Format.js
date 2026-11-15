@@ -478,3 +478,47 @@ function agentsDuration(seconds) {
   if (h === 0) return { unit: "m", h: 0, m: m }
   return m === 0 ? { unit: "h", h: h, m: 0 } : { unit: "hm", h: h, m: m }
 }
+
+// ---------------------------------------------------------------- Bar pill
+
+// What the bar's pill shows, from `fathom-deck brief`: one segment per thing
+// worth a glance, in the order they matter. Each is { key, glyph, n, tone },
+// tone one of "bad", "warn", "busy" or "quiet". Nothing worth a glance gives
+// no segments; the pill then shows only its own mark.
+function barSegments(b) {
+  var out = []
+  if (!b || typeof b !== "object") return out
+  var num = function(v) { var n = Number(v); return isFinite(n) && n > 0 ? Math.floor(n) : 0 }
+  var d = b.docker || {}
+  if (d.state === "ok") {
+    if (num(d.bad) > 0) out.push({ key: "docker", glyph: "", n: num(d.bad), tone: "bad" })
+    else if (num(d.running) > 0) out.push({ key: "docker", glyph: "", n: num(d.running), tone: "quiet" })
+  }
+  var c = b.care
+  if (c && typeof c === "object") {
+    if (num(c.warnings) > 0) out.push({ key: "care", glyph: "", n: num(c.warnings), tone: "bad" })
+    var pct = Number(c.diskPct)
+    if (c.diskPct !== null && isFinite(pct) && pct >= 85)
+      out.push({ key: "disk", glyph: "", n: Math.floor(pct), tone: pct >= 95 ? "bad" : "warn" })
+  }
+  var s = b.sentinel
+  if (s && typeof s === "object" && num(s.attention) > 0)
+    out.push({ key: "sentinel", glyph: "", n: num(s.attention), tone: "warn" })
+  var a = b.agents || {}
+  if (num(a.working) > 0) out.push({ key: "agents", glyph: "", n: num(a.working), tone: "busy" })
+  else if (num(a.total) > 0) out.push({ key: "agents", glyph: "", n: num(a.total), tone: "quiet" })
+  return out
+}
+
+// The deck page a click on the pill opens: wherever the worst news is.
+function barPage(segments) {
+  var order = ["bad", "warn"]
+  for (var t = 0; t < order.length; t++) {
+    for (var i = 0; i < segments.length; i++) {
+      if (segments[i].tone !== order[t]) continue
+      var k = segments[i].key
+      return k === "care" || k === "disk" ? "care" : (k === "sentinel" ? "sentinel" : "deck")
+    }
+  }
+  return "deck"
+}

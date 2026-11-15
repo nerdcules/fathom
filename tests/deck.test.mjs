@@ -24,7 +24,8 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.pulseLayout = pulseLayout; this.pulsePositions = pulsePositions; this.pulseRate = pulseRate;
   this.pulseMs = pulseMs; this.pulseHealth = pulseHealth; this.pulseAskText = pulseAskText;
   this.pulseProblems = pulseProblems;
-  this.agentsAxis = agentsAxis; this.agentsSegments = agentsSegments; this.agentsDuration = agentsDuration;`, F);
+  this.agentsAxis = agentsAxis; this.agentsSegments = agentsSegments; this.agentsDuration = agentsDuration;
+  this.barSegments = barSegments; this.barPage = barPage;`, F);
 const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
@@ -339,4 +340,44 @@ test("Pulse's Ask prompt keeps telemetry to short, quoted lines", () => {
   assert.ok(lines.includes("- called by web: 3 calls, 0 errors"));
   assert.ok(lines.some((l) => l === '- recent error in "GET /x": "boom more"'));
   assert.equal(F.pulseAskText(null), "");
+});
+
+test("the bar pill shows only what's worth a glance, worst first", () => {
+  // Arrays made inside the vm context: compare plain copies.
+  const plain = (v) => JSON.parse(JSON.stringify(v));
+  assert.deepEqual(plain(F.barSegments(null)), []);
+  assert.deepEqual(plain(F.barSegments({})), []);
+  const quiet = F.barSegments({
+    docker: { state: "ok", total: 0, running: 0, bad: 0 },
+    agents: { total: 0, working: 0 },
+    care: { warnings: 0, updates: 4, diskPct: 40 },
+    sentinel: { attention: 0 },
+  });
+  assert.deepEqual(plain(quiet), []);
+  const busy = F.barSegments({
+    docker: { state: "ok", total: 5, running: 3, bad: 1 },
+    agents: { total: 3, working: 2 },
+    care: { warnings: 2, diskPct: 91.6 },
+    sentinel: { attention: 6 },
+  });
+  assert.deepEqual(plain(busy.map((s) => [s.key, s.n, s.tone])), [
+    ["docker", 1, "bad"], ["care", 2, "bad"], ["disk", 91, "warn"],
+    ["sentinel", 6, "warn"], ["agents", 2, "busy"],
+  ]);
+  // Healthy containers and idle agents show as quiet counts.
+  const calm = F.barSegments({ docker: { state: "ok", running: 2, bad: 0 }, agents: { total: 1, working: 0 } });
+  assert.deepEqual(plain(calm.map((s) => [s.key, s.n, s.tone])), [["docker", 2, "quiet"], ["agents", 1, "quiet"]]);
+  // A disk past 95% is bad; Docker that's down or missing says nothing here.
+  assert.equal(F.barSegments({ care: { diskPct: 96 } })[0].tone, "bad");
+  assert.deepEqual(plain(F.barSegments({ docker: { state: "down", bad: 3 } })), []);
+  // Nonsense counts are no counts.
+  assert.deepEqual(plain(F.barSegments({ docker: { state: "ok", bad: "x", running: -2 }, sentinel: { attention: "lots" }, care: { diskPct: null } })), []);
+});
+
+test("a click on the pill opens the page with the worst news", () => {
+  assert.equal(F.barPage([]), "deck");
+  assert.equal(F.barPage(F.barSegments({ sentinel: { attention: 1 }, agents: { working: 1 } })), "sentinel");
+  assert.equal(F.barPage(F.barSegments({ care: { warnings: 1 }, sentinel: { attention: 1 } })), "care");
+  assert.equal(F.barPage(F.barSegments({ docker: { state: "ok", bad: 1 }, care: { warnings: 1 } })), "deck");
+  assert.equal(F.barPage(F.barSegments({ care: { diskPct: 88 }, agents: { working: 2 } })), "care");
 });

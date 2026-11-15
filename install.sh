@@ -299,7 +299,7 @@ install_deck() {
   place "$REPO/start/bin/fathom-start" "$BIN_DIR/fathom-start"
   chmod +x "$REPO/deck/bin/fathom-deck" "$REPO/care/bin/fathom-care" "$REPO/start/bin/fathom-start"
   hypr_load fathom-deck "$REPO/deck/hypr/fathom-deck.lua" || return 1
-  install_plugin fathom.deck
+  install_plugin fathom.deck --section left
 
   # Care's check, every 3 hours. Copied, not linked: systemd wants real files.
   local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" unit
