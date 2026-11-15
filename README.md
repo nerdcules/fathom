@@ -353,7 +353,10 @@ check's results every minute. It runs as you. What it watches:
 - **Firewall blocks** (ufw). Ordinary blocked chatter is counted, and the 4
   addresses blocked most today are listed, ones from the internet first. 12 or
   more different ports blocked from one address within 5 minutes is reported
-  as a port scan, at most once an hour per address.
+  as a port scan, at most once an hour per address. UDP from a high port to
+  one of this machine's own reply ports (32768 to 60999 by default) doesn't
+  count towards that: it's an answer the firewall couldn't match, such as a
+  TV or broadband hub replying to a discovery broadcast, not a probe.
 - **Sign-ins and sudo.** A failed SSH sign-in is reported at once. A single
   wrong password is listed; 3 within 10 minutes is a warning. Each sudo
   command is listed.

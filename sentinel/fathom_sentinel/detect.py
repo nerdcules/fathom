@@ -29,7 +29,7 @@ _KV = re.compile(r"\b(IN|OUT|SRC|DST|PROTO|SPT|DPT)=(\S*)")
 
 
 def parse_ufw(message):
-    """A '[UFW BLOCK]' kernel line as {src, dst, proto, dport, iface}, or None."""
+    """A '[UFW BLOCK]' kernel line as {src, dst, proto, sport, dport, iface}, or None."""
     text = str(message or "")
     if "[UFW BLOCK]" not in text:
         return None
@@ -40,7 +40,7 @@ def parse_ufw(message):
     except ValueError:
         return None
     return {"src": src, "dst": fields.get("DST", ""), "proto": fields.get("PROTO", ""),
-            "dport": fields.get("DPT", ""), "iface": fields.get("IN", ""), "inbound": bool(fields.get("IN"))}
+            "sport": fields.get("SPT", ""), "dport": fields.get("DPT", ""), "iface": fields.get("IN", ""), "inbound": bool(fields.get("IN"))}
 
 
 def is_public(ip):
@@ -51,17 +51,51 @@ def is_public(ip):
     return addr.is_global
 
 
+# Linux's default range for the ports this machine's own connections use
+# (/proc/sys/net/ipv4/ip_local_port_range).
+EPHEMERAL = (32768, 60999)
+
+
+def local_port_range(path="/proc/sys/net/ipv4/ip_local_port_range"):
+    try:
+        with open(path) as f:
+            lo, hi = (int(x) for x in f.read().split()[:2])
+        return (lo, hi) if 0 < lo <= hi <= 65535 else EPHEMERAL
+    except (OSError, ValueError):
+        return EPHEMERAL
+
+
+def is_late_reply(block, ephemeral=EPHEMERAL):
+    """A UDP packet from a high port to one of this machine's own reply
+    ports: an answer the firewall couldn't match to the question, such as a
+    TV or hub answering a discovery broadcast, not a probe. Probes go to
+    ports where services listen."""
+    if not block or block.get("proto") != "UDP":
+        return False
+    try:
+        sport, dport = int(block.get("sport", "")), int(block.get("dport", ""))
+    except ValueError:
+        return False
+    return sport >= 1024 and ephemeral[0] <= dport <= ephemeral[1]
+
+
 class ScanDetector:
     """Many different ports blocked from one address in a short time is a port
-    scan; ordinary blocked chatter (a printer, a TV) hits the same few ports."""
+    scan; ordinary blocked chatter (a printer, a TV) hits the same few ports.
+    Late replies to this machine's own UDP (see is_late_reply) don't count:
+    a device answering discovery from a new port each time looked like a
+    scan."""
 
-    def __init__(self, ports=12, window=300, quiet=3600):
+    def __init__(self, ports=12, window=300, quiet=3600, ephemeral=EPHEMERAL):
         self.ports, self.window, self.quiet = ports, window, quiet
+        self.ephemeral = ephemeral
         self.seen = {}      # src -> [(time, port)]
         self.alerted = {}   # src -> time
 
     def feed(self, block, when):
         if not block or not block.get("dport"):
+            return None
+        if is_late_reply(block, self.ephemeral):
             return None
         src = block["src"]
         hits = [h for h in self.seen.get(src, []) if when - h[0] <= self.window]

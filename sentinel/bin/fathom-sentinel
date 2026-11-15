@@ -234,7 +234,7 @@ def watch():
     usb_seen = set(usb_storage())
     snitch_seen = set(state.get("snitchRules", []))
     integrity_seen = state.get("integrity") if isinstance(state.get("integrity"), dict) else None
-    scans, fails = detect.ScanDetector(), detect.FailureDetector()
+    scans, fails = detect.ScanDetector(ephemeral=detect.local_port_range()), detect.FailureDetector()
 
     try:
         with open(OUI, encoding="utf-8", errors="replace") as f:

@@ -63,6 +63,49 @@ class Firewall(unittest.TestCase):
         self.assertFalse(any(hits))
 
 
+    # The shape of the hub's and TV's answers on 2026-11-15: UDP from a new
+    # high port each time, to this machine's own reply ports.
+    UDP = ("[UFW BLOCK] IN=wlp0s20f3 OUT= MAC=02:00:00:00:00:01:02:00:00:00:00:02:08:00 SRC={src} "
+           "DST=192.168.1.176 LEN=654 TOS=0x00 PROTO=UDP SPT={sport} DPT={port} LEN=634")
+
+    def test_answers_to_our_own_discovery_are_not_a_scan(self):
+        d = detect.ScanDetector()
+        hits = [d.feed(detect.parse_ufw(self.UDP.format(src="192.168.1.246", sport=50000 + i, port=33000 + 97 * i)), 1000 + i)
+                for i in range(40)]
+        self.assertFalse(any(hits))
+        self.assertEqual(detect.parse_ufw(self.UDP.format(src="192.168.1.246", sport=50069, port=41624))["sport"], "50069")
+
+    def test_udp_probes_to_service_ports_are_still_a_scan(self):
+        d = detect.ScanDetector()
+        hits = [d.feed(detect.parse_ufw(self.UDP.format(src="192.168.1.50", sport=41000, port=port)), 1000 + i)
+                for i, port in enumerate([53, 67, 69, 123, 137, 161, 500, 514, 1900, 5353, 11211, 27015, 30000])]
+        self.assertEqual(len([h for h in hits if h]), 1)
+
+    def test_tcp_to_high_ports_still_counts(self):
+        d = detect.ScanDetector()
+        hits = [d.feed(detect.parse_ufw(UFW.format(src="8.8.8.8", port=40000 + i)), 1000 + i) for i in range(20)]
+        self.assertEqual(len([h for h in hits if h]), 1)
+
+    def test_a_low_source_port_is_not_a_reply(self):
+        # Something sending from a privileged port to our high ports isn't
+        # answering one of our own sockets.
+        b = detect.parse_ufw(self.UDP.format(src="192.168.1.50", sport=53, port=41624))
+        self.assertFalse(detect.is_late_reply(b))
+
+    def test_the_local_port_range(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", delete=False) as f:
+            f.write("40000\t50000\n")
+        self.addCleanup(os.unlink, f.name)
+        self.assertEqual(detect.local_port_range(f.name), (40000, 50000))
+        self.assertEqual(detect.local_port_range("/nonexistent"), detect.EPHEMERAL)
+        with open(f.name, "w") as g:
+            g.write("junk")
+        self.assertEqual(detect.local_port_range(f.name), detect.EPHEMERAL)
+        d = detect.ScanDetector(ephemeral=(40000, 50000))
+        self.assertFalse(detect.is_late_reply(detect.parse_ufw(self.UDP.format(src="1.1.1.1", sport=5000, port=35000)), d.ephemeral))
+
+
 class SignIns(unittest.TestCase):
     def test_sudo_commands(self):
         a = detect.parse_auth("sudo", "alex : TTY=pts/1 ; PWD=/home/s ; USER=root ; COMMAND=/usr/bin/pacman -Syu")
