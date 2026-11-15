@@ -83,13 +83,19 @@ play() {
   local launcher=(setsid -f)
   command -v uwsm-app >/dev/null && launcher=(uwsm-app --)
 
+  # Decode on the GPU where it can (mpv decodes on the CPU by default), and
+  # prefer other codecs over AV1: yt-dlp picks AV1 first for YouTube, and a
+  # GPU without AV1 decoding (the Surface Laptop 3's Iris Plus G7 is one)
+  # leaves it to the CPU, where it stuttered under load. That GPU decodes
+  # the VP9 alternative.
   "${launcher[@]}" mpv \
     --no-terminal \
     --force-window=immediate \
     --wayland-app-id="$APP_ID" \
     --title='${media-title}' \
     --input-ipc-server="$SOCK" \
-    --ytdl-format="bestvideo[height<=?$MAX_HEIGHT]+bestaudio/best[height<=?$MAX_HEIGHT]/best" \
+    --hwdec=auto-safe \
+    --ytdl-format="bestvideo[height<=?$MAX_HEIGHT][vcodec!^=av01]+bestaudio/bestvideo[height<=?$MAX_HEIGHT]+bestaudio/best[height<=?$MAX_HEIGHT]/best" \
     --auto-window-resize=no \
     --keep-open=no \
     --idle=no \

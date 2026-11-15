@@ -112,8 +112,10 @@ fathom-player toggle | back 10 | forward 10 | mute | stop | status
 ```
 
 Video is capped at 720p to spare the battery; set `FATHOM_PLAYER_MAX_HEIGHT`
-to change that. It needs `mpv`, `yt-dlp`, `socat`, `jq` and `wl-clipboard`,
-all on Omarchy already.
+to change that. It decodes on the GPU where it can, and picks another codec
+over AV1 when one is offered, since GPUs without AV1 decoding (such as the
+Surface Laptop 3's) leave AV1 to the CPU. It needs `mpv`, `yt-dlp`, `socat`,
+`jq` and `wl-clipboard`, all on Omarchy already.
 
 Installing adds `~/.local/bin/fathom-player`, `~/.config/hypr/fathom-player.lua`,
 three marked lines at the end of `~/.config/hypr/hyprland.lua` (after a
