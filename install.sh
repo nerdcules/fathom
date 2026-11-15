@@ -24,6 +24,7 @@ sentinel=false
 opensnitch=false
 link=false
 apply=true
+restart_shell=false
 
 usage() {
   cat <<EOF
@@ -235,6 +236,10 @@ install_plugin() {
   local id=$1
   shift
   local plugin="$PLUGINS_DIR/$id"
+  # Updating a plugin the shell already loaded: the running shell can keep
+  # parts of the old version (seen with fathom.deck's Skin.qml), so restart
+  # it once at the end.
+  [[ -d $plugin ]] && restart_shell=true
   rm -rf "$plugin"
   mkdir -p "$PLUGINS_DIR"
   cp -r "$REPO/${id#fathom.}/plugin/$id" "$plugin"
@@ -391,4 +396,7 @@ $deck && install_deck
 $mail && install_mail
 $sentinel && install_sentinel
 $signin && install_signin
+if $restart_shell; then
+  omarchy-restart-shell >/dev/null 2>&1 || echo "install.sh: restart the shell to load the update: omarchy-restart-shell" >&2
+fi
 exit 0

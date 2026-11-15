@@ -31,6 +31,10 @@ cd ~/Work/fathom
 With no part named, it installs the parts that need no password: `--skin`,
 `--player`, `--deck` and `--mail`.
 
+Running it again updates what's installed. If that replaces a shell plugin
+(the mini-player's bar widget or the deck), it restarts the Omarchy shell at
+the end so the new version loads; the bar blinks once.
+
 `./uninstall.sh` switches back to the theme that was on before, removes
 what the installer added (OpenSnitch only if Fathom installed it), and puts
 Omarchy's sign-in screen back. It leaves
