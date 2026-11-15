@@ -25,6 +25,17 @@ class Firewall(unittest.TestCase):
         self.assertIsNone(detect.parse_ufw("[UFW BLOCK] SRC=<script> DPT=1"))
         self.assertIsNone(detect.parse_ufw(None))
 
+    def test_top_sources_put_the_internet_first(self):
+        sources = {"192.168.8.90": 191, "192.168.8.39": 113, "192.168.1.246": 44,
+                   "192.168.1.125": 32, "192.168.1.254": 12, "2a06:98c1:3109::6812:2929": 10}
+        top = detect.top_sources(sources)
+        self.assertEqual([t["src"] for t in top],
+                         ["2a06:98c1:3109::6812:2929", "192.168.8.90", "192.168.8.39", "192.168.1.246"])
+        self.assertEqual(top[0], {"src": "2a06:98c1:3109::6812:2929", "count": 10, "public": True})
+        self.assertEqual(detect.top_sources({}), [])
+        self.assertEqual(detect.top_sources({"2a06:98c1:3109:0000:0000:0000:6812:2929": 1})[0]["src"],
+                         "2a06:98c1:3109::6812:2929")
+
     def test_public_or_local(self):
         self.assertTrue(detect.is_public("203.0.113.47") is False)  # documentation range isn't global
         self.assertTrue(detect.is_public("8.8.8.8"))

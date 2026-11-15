@@ -78,6 +78,21 @@ class ScanDetector:
         return None
 
 
+def top_sources(sources, n=4):
+    """The addresses blocked most today, as status shows them: ones from the
+    internet first, then the rest, each by count. Local chatter (a TV, the
+    router) easily outnumbers a probe from outside."""
+    ranked = sorted(sources.items(), key=lambda kv: (not is_public(kv[0]), -kv[1], kv[0]))
+    return [{"src": short_ip(src), "count": count, "public": is_public(src)} for src, count in ranked[:n]]
+
+
+def short_ip(ip):
+    """ufw logs IPv6 in full (2a06:98c1:0000:...); show the usual short form."""
+    try:
+        return str(ipaddress.ip_address(ip))
+    except ValueError:
+        return ip
+
 # ---------------------------------------------------------------- sign-ins
 
 _SUDO_CMD = re.compile(r"^\s*(\S+) : .*COMMAND=(.*)$")

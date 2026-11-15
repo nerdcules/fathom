@@ -365,7 +365,6 @@ def status():
                         "last": d.get("last", 0), "gateway": d.get("ip") == net.get("gateway")})
     devices.sort(key=lambda d: (d["trusted"], -d["last"]))
     day = (state.get("blocks") or {}).get(today, {"total": 0, "sources": {}})
-    sources = sorted(day.get("sources", {}).items(), key=lambda kv: -kv[1])[:6]
     integrity = read_json(INTEGRITY, {})
     watching = bool(state.get("updatedAt")) and int(time.time()) - state.get("updatedAt", 0) < 600
     print(json.dumps({
@@ -378,7 +377,7 @@ def status():
         if integrity else None,
         "rootParts": os.path.exists(ADMIN),
         "network": {"ssid": net.get("ssid", ""), "gateway": net.get("gateway", ""), "devices": devices[:40]},
-        "blocksToday": {"total": day.get("total", 0), "top": [{"src": s, "count": n, "public": detect.is_public(s)} for s, n in sources]},
+        "blocksToday": {"total": day.get("total", 0), "top": detect.top_sources(day.get("sources", {}))},
         "events": sorted(recent, key=lambda e: -e.get("time", 0))[:40],
         "attention": sum(1 for e in recent if e.get("level") in ("warn", "bad")
                          and not (e.get("kind") == "device" and (e.get("data") or {}).get("mac") in trusted)),

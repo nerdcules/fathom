@@ -135,6 +135,35 @@ GridLayout {
       }
     }
 
+    // Beside the firewall it belongs to. In Today, under the events, it was
+    // out of view on a 1000 px tall screen.
+    SectionTitle {
+      visible: !!page.blocks && page.blocks.top.length > 0
+      text: Skin.t("sentinel.blockedFrom")
+      Layout.topMargin: 6 * Skin.u
+    }
+    Repeater {
+      model: page.blocks ? page.blocks.top : []
+      delegate: ListRow {
+        id: brow
+        required property var modelData
+        tone: modelData.public ? Skin.warn : Skin.dim
+        name: modelData.src
+        detail: modelData.public ? Skin.t("sentinel.fromInternet") : Skin.t("sentinel.fromNetwork")
+        right1: Skin.tn("sentinel.times", modelData.count).arg(Skin.n(modelData.count))
+        Pill {
+          visible: !!page.sentinel && page.sentinel.rootParts
+          text: Skin.t("sentinel.block")
+          onClicked: page.blockRequested(brow.modelData.src)
+        }
+        Pill {
+          glyph: ""
+          tip: Skin.t("sentinel.showLog")
+          onClicked: page.logRequested("firewall")
+        }
+      }
+    }
+
     SectionTitle { text: Skin.t("sentinel.watchingTitle"); Layout.topMargin: 6 * Skin.u }
     Label {
       text: Skin.t("sentinel.watchingList") + (page.snitch && page.snitch.installed ? ", OpenSnitch" : "")
@@ -182,33 +211,6 @@ GridLayout {
           glyph: ""
           tip: Skin.t("sentinel.showLog")
           onClicked: page.logRequested(erow.modelData.kind === "files" ? "files" : (erow.modelData.kind === "scan" ? "firewall" : "signins"))
-        }
-      }
-    }
-
-    SectionTitle {
-      visible: !!page.blocks && page.blocks.top.length > 0
-      text: Skin.t("sentinel.blockedFrom")
-      Layout.topMargin: 6 * Skin.u
-    }
-    Repeater {
-      model: page.blocks ? page.blocks.top : []
-      delegate: ListRow {
-        id: brow
-        required property var modelData
-        tone: modelData.public ? Skin.warn : Skin.dim
-        name: modelData.src
-        detail: modelData.public ? Skin.t("sentinel.fromInternet") : Skin.t("sentinel.fromNetwork")
-        right1: Skin.tn("sentinel.times", modelData.count).arg(Skin.n(modelData.count))
-        Pill {
-          visible: !!page.sentinel && page.sentinel.rootParts
-          text: Skin.t("sentinel.block")
-          onClicked: page.blockRequested(brow.modelData.src)
-        }
-        Pill {
-          glyph: ""
-          tip: Skin.t("sentinel.showLog")
-          onClicked: page.logRequested("firewall")
         }
       }
     }
