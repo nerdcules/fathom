@@ -75,6 +75,29 @@ proc_ticks() {
   echo $((f[11] + f[12]))
 }
 
+# When a process started (field 22 of /proc/<pid>/stat), to tell it from a
+# later process that got the same pid.
+proc_start() {
+  local stat
+  stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 0
+  stat=${stat##*) }
+  local -a f
+  read -ra f <<<"$stat"
+  echo "${f[19]:-}"
+}
+
+# Claude Code's own word on a session: "busy" or "idle", from the file it
+# keeps for each running process. Empty for other agents, or when the file
+# belongs to an earlier process with the same pid.
+claude_status() {
+  local file="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/sessions/$1.json" started
+  [[ -r $file ]] || return 0
+  started=$(proc_start "$1")
+  [[ -n $started ]] || return 0
+  jq -r --arg s "$started" 'select(type == "object" and .procStart == $s and (.status == "busy" or .status == "idle")) | .status' \
+    "$file" 2>/dev/null || true
+}
+
 proc_rss_kb() {
   awk '/^VmRSS:/ { print $2; exit }' "/proc/$1/status" 2>/dev/null || echo 0
 }
@@ -251,8 +274,9 @@ status() {
     [[ -d /proc/$p ]] || continue
     local where=terminal
     [[ $(readlink "/proc/$p/exe" 2>/dev/null) == *"/.vscode"* ]] && where=editor
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(agent_label "$(cat "/proc/$p/comm")")" "$where" \
-      "$(proc_folder "$p")" "$(pct $(($(proc_ticks "$p") - ${t0[$p]:-0})))" "$(proc_rss_kb "$p")" >>"$tmp/agents"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$p" "$(agent_label "$(cat "/proc/$p/comm")")" "$where" \
+      "$(proc_folder "$p")" "$(pct $(($(proc_ticks "$p") - ${t0[$p]:-0})))" "$(proc_rss_kb "$p")" \
+      "$(claude_status "$p")" >>"$tmp/agents"
   done
 
   local sdks
@@ -330,7 +354,8 @@ status() {
       ai: {
         agents: ($agents | rows | map({
           pid: (.[0] | num), name: (.[1] | s(32)), where: .[2], folder: (.[3] // "" | s(64)),
-          cpu: (.[4] | num), rss: ((.[5] | num) * 1024)
+          cpu: (.[4] | num), rss: ((.[5] | num) * 1024),
+          status: (if .[6] == "busy" or .[6] == "idle" then .[6] else null end)
         })),
         ollama: (if ($ollamaTags | length) == 0 then null else {
           models: ([$ollamaTags[0].models[]? | objects] | .[0:$max] | map({name: (.name | s(96)), size: (.size // 0)})),

@@ -85,6 +85,10 @@ test("counts and sums tolerate missing data", () => {
   assert.equal(F.sum([{ rss: 1 }, { rss: "2" }, {}], "rss"), 3);
   assert.equal(F.agentBusy({ cpu: 2.9 }), false);
   assert.equal(F.agentBusy({ cpu: 3 }), true);
+  // Claude Code's own status wins over CPU use.
+  assert.equal(F.agentBusy({ cpu: 0, status: "busy" }), true);
+  assert.equal(F.agentBusy({ cpu: 40, status: "idle" }), false);
+  assert.equal(F.agentBusy({ cpu: 40, status: null }), true);
   assert.deepEqual({ ...F.uptime(386832) }, { days: 4, hours: 11, minutes: 27 });
 });
 

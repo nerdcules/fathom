@@ -182,7 +182,9 @@ Press it again, or Esc, or click outside the cards, to close it.
   servers and build nodes are counted in one line rather than listed.
 - **AI:** the coding agents running (Claude Code, Codex, Gemini CLI, opencode,
   Aider and others), which project each is in, and whether it's working or
-  idle. If Ollama is running, its loaded models and their VRAM.
+  idle. Claude Code says which itself (the status it keeps in
+  `~/.claude/sessions/`); the others count as working while they use 3% or
+  more of a CPU core. If Ollama is running, its loaded models and their VRAM.
 
 Above the cards, a summary line puts whatever needs attention first.
 

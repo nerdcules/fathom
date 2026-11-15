@@ -97,8 +97,12 @@ function sum(list, field) {
 }
 
 // An agent is "working" while it uses noticeable CPU.
+// Claude Code says whether it's busy; other agents are judged by CPU use.
 function agentBusy(a) {
-  return !!a && Number(a.cpu) >= 3
+  if (!a) return false
+  if (a.status === "busy") return true
+  if (a.status === "idle") return false
+  return Number(a.cpu) >= 3
 }
 
 function uptime(seconds) {

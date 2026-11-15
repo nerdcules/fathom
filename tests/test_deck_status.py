@@ -88,6 +88,53 @@ esac
         self.assertLess(time.monotonic() - started, 15)
 
 
+class ClaudeStatusTest(Stubbed):
+    """The AI card takes Claude Code's own busy/idle over a CPU guess."""
+
+    def start_claude(self):
+        # A process the deck finds by name, like the real one.
+        fake = os.path.join(self.bin, "claude")
+        with open("/usr/bin/sleep", "rb") as src, open(fake, "wb") as dst:
+            dst.write(src.read())
+        os.chmod(fake, 0o755)
+        proc = subprocess.Popen([fake, "60"])
+        self.addCleanup(proc.wait)
+        self.addCleanup(proc.kill)
+        for _ in range(50):
+            try:
+                with open(f"/proc/{proc.pid}/comm") as f:
+                    if f.read().strip() == "claude":
+                        break
+            except OSError:
+                pass
+            time.sleep(0.02)
+        with open(f"/proc/{proc.pid}/stat") as f:
+            stat = f.read()
+        return proc.pid, stat[stat.rindex(")") + 2:].split()[19]
+
+    def status_of(self, pid, session):
+        root = os.path.join(self.dir, "claude-config")
+        os.makedirs(os.path.join(root, "sessions"), exist_ok=True)
+        with open(os.path.join(root, "sessions", f"{pid}.json"), "w") as f:
+            json.dump(session, f)
+        agents = self.deck(env={"CLAUDE_CONFIG_DIR": root})["ai"]["agents"]
+        return [a["status"] for a in agents if a["pid"] == pid]
+
+    def test_its_own_status(self):
+        pid, started = self.start_claude()
+        self.assertEqual(self.status_of(pid, {"pid": pid, "procStart": started, "status": "busy"}), ["busy"])
+        self.assertEqual(self.status_of(pid, {"pid": pid, "procStart": started, "status": "idle"}), ["idle"])
+
+    def test_a_file_from_an_earlier_process_with_the_same_pid(self):
+        pid, _ = self.start_claude()
+        self.assertEqual(self.status_of(pid, {"pid": pid, "procStart": "1", "status": "busy"}), [None])
+
+    def test_a_status_it_doesnt_know_or_a_broken_file(self):
+        pid, started = self.start_claude()
+        self.assertEqual(self.status_of(pid, {"pid": pid, "procStart": started, "status": "pondering"}), [None])
+        self.assertEqual(self.status_of(pid, ["not", "an", "object"]), [None])
+
+
 class CareTest(Stubbed):
     def setUp(self):
         super().setUp()
