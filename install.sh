@@ -21,6 +21,7 @@ player=false
 deck=false
 mail=false
 sentinel=false
+pulse=false
 opensnitch=false
 link=false
 apply=true
@@ -46,6 +47,11 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                devices on your network and system files (Super+Alt+X).
                Needs your password for its daily file check and firewall
                buttons
+  --pulse      Pulse: a small OpenTelemetry collector that maps what calls
+               what in your stack, on the deck's fourth page (Super+Alt+P).
+               Needs python-opentelemetry-proto, python-grpcio and
+               python-protobuf. Asks for your password once if the firewall
+               is on and Docker is installed, to let containers reach it
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part (OpenSnitch only if asked for)
@@ -73,6 +79,7 @@ while (($#)); do
     --deck) deck=true ;;
     --mail) mail=true ;;
     --sentinel) sentinel=true ;;
+    --pulse) pulse=true ;;
     --opensnitch) opensnitch=true ;;
     --all)
       skin=true
@@ -81,6 +88,7 @@ while (($#)); do
       deck=true
       mail=true
       sentinel=true
+      pulse=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -103,7 +111,7 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $mail && ! $sentinel; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $mail && ! $sentinel && ! $pulse; then
   skin=true
   player=true
   deck=true
@@ -390,11 +398,55 @@ install_sentinel() {
   echo "Sentinel is watching. Press Super+Alt+X to see it."
 }
 
+install_pulse() {
+  if ! python3 -I -c 'import grpc, google.protobuf, opentelemetry.proto' 2>/dev/null; then
+    echo "install.sh: Pulse needs python-opentelemetry-proto, python-grpcio and python-protobuf." >&2
+    echo "  Install them with: omarchy pkg add python-opentelemetry-proto python-grpcio python-protobuf" >&2
+    return 1
+  fi
+
+  if $link; then
+    rm -rf "$SHARE_DIR/pulse"
+    place "$REPO/pulse/bin/fathom-pulse" "$BIN_DIR/fathom-pulse"
+  else
+    rm -rf "$SHARE_DIR/pulse"
+    mkdir -p "$SHARE_DIR/pulse"
+    cp -r "$REPO/pulse/bin" "$REPO/pulse/fathom_pulse" "$SHARE_DIR/pulse/"
+    find "$SHARE_DIR/pulse" -name __pycache__ -prune -exec rm -rf {} +
+    mkdir -p "$BIN_DIR"
+    ln -sfn "$SHARE_DIR/pulse/bin/fathom-pulse" "$BIN_DIR/fathom-pulse"
+  fi
+  chmod +x "$REPO/pulse/bin/fathom-pulse"
+  hypr_load fathom-pulse "$REPO/pulse/hypr/fathom-pulse.lua" || return 1
+
+  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  mkdir -p "$units"
+  cp "$REPO/pulse/systemd/fathom-pulse.service" "$units/fathom-pulse.service"
+  systemctl --user daemon-reload
+  systemctl --user enable fathom-pulse.service >/dev/null 2>&1 || true
+  systemctl --user restart fathom-pulse.service
+
+  # Containers reach Pulse on Docker's bridge address, and a firewall that
+  # denies incoming connections (Omarchy's ufw) blocks them there. Allow
+  # only Docker's private ranges, only to that address, only these ports.
+  local bridge
+  bridge=$(ip -j -4 addr show docker0 2>/dev/null | jq -r '.[0].addr_info[0].local // empty' 2>/dev/null || true)
+  if [[ -n $bridge ]] && command -v ufw >/dev/null; then
+    mkdir -p "$STATE_DIR"
+    printf '%s\n' "$bridge" >"$STATE_DIR/pulse-bridge"
+    as_root ufw allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318 comment fathom-pulse >/dev/null ||
+      echo "install.sh: couldn't let containers through the firewall; they can't reach Pulse until you do (see the README)." >&2
+  fi
+
+  echo "Pulse is listening. Point an app's OpenTelemetry exporter at it (see the README), then press Super+Alt+P."
+}
+
 $skin && install_skin
 $player && install_player
 $deck && install_deck
 $mail && install_mail
 $sentinel && install_sentinel
+$pulse && install_pulse
 $signin && install_signin
 if $restart_shell; then
   omarchy-restart-shell >/dev/null 2>&1 || echo "install.sh: restart the shell to load the update: omarchy-restart-shell" >&2

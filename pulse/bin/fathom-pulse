@@ -1,0 +1,220 @@
+#!/usr/bin/python3 -I
+"""Fathom Pulse: a small OpenTelemetry collector that maps what calls what.
+
+  fathom-pulse                    open Pulse in the Command Deck
+  fathom-pulse serve              collect (what the fathom-pulse service runs)
+  fathom-pulse status [15m|1h|24h]
+                                  the map over that time (default 15m), as JSON
+
+Apps send OTLP traces to localhost:4317 (gRPC, .NET's default) or
+localhost:4318 (HTTP). Containers reach the same ports on Docker's bridge
+address. Metrics and logs are accepted and dropped. Spans stay in memory
+for an hour; per-minute summaries for a day are kept in
+~/.local/state/fathom/pulse.json. Nothing leaves the machine.
+"""
+
+import json
+import os
+import signal
+import socket
+import socketserver
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+
+HOME = os.path.expanduser("~")
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+SOCKET = os.environ.get("FATHOM_PULSE_SOCKET") or os.path.join(RUNTIME, "fathom-pulse.sock")
+STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "fathom")
+STATE = os.environ.get("FATHOM_PULSE_STATE") or os.path.join(STATE_DIR, "pulse.json")
+WINDOWS = {"15m": 900, "1h": 3600, "24h": 86400}
+
+ROLL_EVERY = 30       # seconds: fold old spans into the day's summaries
+RETRY_EVERY = 60      # seconds: try addresses that couldn't be bound, look for Docker
+SAVE_EVERY = 300      # seconds: write the day's summaries
+
+
+def say(text):
+    print(text, flush=True)
+
+
+def fail(text, code=1):
+    print(f"fathom-pulse: {text}", file=sys.stderr, flush=True)
+    sys.exit(code)
+
+
+def ports():
+    raw = os.environ.get("FATHOM_PULSE_PORTS", "4317,4318")
+    try:
+        grpc_port, http_port = (int(p) for p in raw.split(","))
+        return grpc_port, http_port
+    except ValueError:
+        fail(f"FATHOM_PULSE_PORTS should be '<grpc>,<http>', not {raw!r}", 2)
+
+
+def docker_bridge():
+    """docker0's IPv4 address, if Docker's bridge is up."""
+    try:
+        out = subprocess.run(["ip", "-j", "-4", "addr", "show", "docker0"],
+                             capture_output=True, text=True, timeout=5)
+        for link in json.loads(out.stdout or "[]"):
+            for a in link.get("addr_info", []):
+                if a.get("family") == "inet" and a.get("local"):
+                    return a["local"]
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def addresses():
+    raw = os.environ.get("FATHOM_PULSE_ADDRESSES")
+    if raw:
+        return [a.strip() for a in raw.split(",") if a.strip()], False
+    return ["127.0.0.1", "::1"], True
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".pulse.")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, separators=(",", ":"))
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+# ---------------------------------------------------------------- serve
+
+def serve():
+    from fathom_pulse import otlp, store as store_mod
+
+    st = store_mod.Store()
+    try:
+        with open(STATE, encoding="utf-8") as f:
+            st.load_minutes(json.load(f).get("minutes"))
+    except (OSError, ValueError, AttributeError):
+        pass
+
+    grpc_port, http_port = ports()
+    wanted, look_for_docker = addresses()
+    rx = otlp.Receivers(st.add, wanted, grpc_port, http_port, log=say)
+    if look_for_docker and docker_bridge():
+        rx.want(docker_bridge())
+    rx.retry()
+
+    class Ask(socketserver.StreamRequestHandler):
+        def handle(self):
+            try:
+                ask = json.loads(self.rfile.readline(4096) or b"{}")
+                window = int(ask.get("window", 900))
+            except (ValueError, TypeError, AttributeError):
+                window = 900
+            window = max(60, min(window, 86400))
+            snap = st.snapshot(window)
+            snap.update(running=True, time=int(time.time()),
+                        listening=rx.listening(), problems=rx.problems,
+                        ports={"grpc": grpc_port, "http": http_port})
+            self.wfile.write(json.dumps(snap).encode() + b"\n")
+
+    class AskServer(socketserver.ThreadingUnixStreamServer):
+        daemon_threads = True
+
+    try:
+        os.unlink(SOCKET)
+    except FileNotFoundError:
+        pass
+    old = os.umask(0o177)               # the socket is yours alone
+    try:
+        asker = AskServer(SOCKET, Ask)
+    finally:
+        os.umask(old)
+    threading.Thread(target=asker.serve_forever, name="status", daemon=True).start()
+
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    signal.signal(signal.SIGINT, lambda *_: stop.set())
+
+    def save():
+        try:
+            write_json(STATE, {"minutes": st.save_minutes(), "savedAt": int(time.time())})
+        except OSError as e:
+            say(f"fathom-pulse: couldn't save {STATE}: {e}")
+
+    last_roll = last_retry = last_save = time.monotonic()
+    while not stop.wait(5):
+        now = time.monotonic()
+        if now - last_roll >= ROLL_EVERY:
+            last_roll = now
+            st.roll()
+        if now - last_retry >= RETRY_EVERY:
+            last_retry = now
+            if look_for_docker:
+                bridge = docker_bridge()
+                if bridge:
+                    rx.want(bridge)
+            rx.retry()
+        if now - last_save >= SAVE_EVERY:
+            last_save = now
+            save()
+
+    st.roll()
+    save()
+    asker.shutdown()
+    rx.stop()
+    try:
+        os.unlink(SOCKET)
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------- status
+
+def status(args):
+    name = args[0] if args else "15m"
+    if name not in WINDOWS:
+        fail("status takes 15m, 1h or 24h", 2)
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.settimeout(10)
+            s.connect(SOCKET)
+            s.sendall(json.dumps({"window": WINDOWS[name]}).encode() + b"\n")
+            chunks = []
+            while True:
+                chunk = s.recv(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+        data = json.loads(b"".join(chunks))
+    except (OSError, ValueError) as e:
+        data = {"running": False, "reason": "The Pulse service isn't running.",
+                "detail": str(e)[:200], "time": int(time.time())}
+    data["range"] = name
+    print(json.dumps(data))
+
+
+def main():
+    args = sys.argv[1:]
+    cmd = args[0] if args else ""
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+    elif cmd == "":
+        os.execvp("omarchy-shell", ["omarchy-shell", "shell", "summon", "fathom.deck", '{"page":"pulse"}'])
+    elif cmd == "serve":
+        serve()
+    elif cmd == "status":
+        status(args[1:])
+    else:
+        fail(f"unknown command '{cmd}' (try --help)", 2)
+
+
+if __name__ == "__main__":
+    main()

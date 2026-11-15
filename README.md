@@ -22,6 +22,7 @@ cd ~/Work/fathom
 | `--deck` | The Start menu, the Command Deck and its Care page, their keys, and Care's check every 3 hours |
 | `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
+| `--pulse` | Pulse, its key and its collector service. Asks for your password once if the firewall is on and Docker's bridge is up, so containers can reach it |
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part (OpenSnitch only with `--opensnitch`) |
@@ -59,8 +60,8 @@ deck/bin/fathom-deck
                 starts, stops and restarts containers
 deck/hypr/      Its key and blur
 deck/plugin/fathom.deck/
-                The deck itself, an Omarchy shell panel: the Deck, Care and
-                Sentinel pages and the Start menu
+                The deck itself, an Omarchy shell panel: the Deck, Care,
+                Sentinel and Pulse pages and the Start menu
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -86,6 +87,13 @@ sentinel/systemd/
                 and timer (system)
 sentinel/install-root.sh
                 Installs and removes the root parts
+pulse/bin/fathom-pulse
+                Pulse's command and collector
+pulse/fathom_pulse/
+                otlp.py: the OTLP receivers and decoding; store.py: the last
+                hour of spans, the day's summaries and the map built from them
+pulse/systemd/  The collector (a user service)
+pulse/hypr/     Its key
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/ && python3 -m unittest discover -s tests
 install.sh      Installer
@@ -278,6 +286,102 @@ and starts its window, which asks the first time each app connects somewhere
 new. `uninstall.sh` removes the firewall rules Sentinel's buttons added, and
 removes OpenSnitch only if Fathom installed it.
 
+## Pulse
+
+Pulse is the deck's fourth page: **Super+Alt+P**, or Ctrl+Tab from Sentinel.
+It draws your stack as a map of what calls what, from the traces your apps
+send with OpenTelemetry. Install it with `./install.sh --pulse`; it needs
+`python-opentelemetry-proto`, `python-grpcio` and `python-protobuf`
+(`omarchy pkg add python-opentelemetry-proto python-grpcio python-protobuf`).
+
+A user service, `fathom-pulse.service`, listens where OpenTelemetry exporters
+send by default: **4317** (OTLP over gRPC) and **4318** (OTLP over HTTP,
+protobuf or JSON), on `127.0.0.1`, `::1` and Docker's bridge address. It keeps
+traces and drops metrics and logs, so an app that exports all three doesn't
+log errors.
+
+- **The map.** Each service that sends traces is a box, with its requests per
+  second or minute and its p95. A call from one service to another is a line.
+  When a service calls something that sends no traces of its own, such as a
+  database, a cache, a message queue, Ollama or an outside API, Pulse adds a
+  box for it from what the calling span says (`db.system`, `server.address`,
+  `gen_ai.system`, `peer.service` and so on), marked *seen from its callers*.
+  A box and its line turn amber when there are errors and red at 5% or more.
+- **The inspector.** Click a box for its requests, p95 and errors, its 3
+  busiest operations, what calls it and what it calls (click those to move
+  along), and its most recent errors (up to 4). **Ask Claude about this** opens
+  Claude Code in a terminal with those figures and asks what could be wrong.
+  The figures go in as data, quoted and cut to one short line each, since any
+  app that can reach the ports can name its services anything.
+- **15 min, 1 hour, 24 hours.** The last hour comes from the spans themselves,
+  up to 100,000 of them in memory (the oldest go first). The day comes from
+  per-minute summaries, saved to `~/.local/state/fathom/pulse.json` every 5
+  minutes and when the service stops, so a restart keeps them. A p95 over 24
+  hours is read from those summaries and can be up to 25% high; the page says
+  so.
+
+Nothing leaves the machine, and nothing is sent to Claude unless you click
+**Ask Claude about this**. Pulse doesn't edit your projects: point them at it
+as below.
+
+### Pointing a .NET app at Pulse
+
+Add the OTLP exporter to the app's tracing:
+
+```bash
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Instrumentation.AspNetCore
+dotnet add package OpenTelemetry.Instrumentation.Http
+```
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("orders-api"))
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
+```
+
+With no endpoint set, .NET's exporter sends over gRPC to `localhost:4317`,
+which is Pulse. (Checked with a console app using the same `AddOtlpExporter()`
+call and no endpoint; the web setup above follows Microsoft's
+[OTLP example](https://learn.microsoft.com/dotnet/core/diagnostics/observability-otlp-example).)
+An app that already reads the endpoint from configuration, such as one using
+Aspire's ServiceDefaults, takes it from `OTEL_EXPORTER_OTLP_ENDPOINT`:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 OTEL_SERVICE_NAME=orders-api dotnet run
+```
+
+**In a container**, `localhost` is the container itself. Use Docker's bridge
+address (`172.17.0.1` unless you've changed it) or give the container
+`host.docker.internal`:
+
+```yaml
+services:
+  api:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4317
+    extra_hosts:
+      - host.docker.internal:host-gateway
+```
+
+Omarchy's firewall blocks containers from the host, so `--pulse` adds one ufw
+rule: TCP 4317 and 4318, from Docker's `172.16.0.0/12` range, to the bridge
+address only. A Docker network outside `172.16.0.0/12` isn't
+covered. `uninstall.sh` removes the rule.
+
+```bash
+fathom-pulse                     # open the page
+fathom-pulse status 1h | jq .    # the map over 15m, 1h or 24h, as JSON
+journalctl --user -u fathom-pulse    # where it's listening, or why it can't
+```
+
+If something else already has 4317 or 4318 (the standalone Aspire dashboard,
+say), Pulse says so on its page and in its log, and tries again every minute.
+
 ## Mail
 
 Once an account is added (see below), new mail in your Outlook.com inbox
@@ -388,7 +492,7 @@ already.
 | 7 | Care: disk, warnings, one-click updates | first version |
 | 8 | Start menu and Ask bar (asks Claude Code) | first version |
 | 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
-| 10 | Pulse: stack map from OpenTelemetry | planned |
+| 10 | Pulse: stack map from OpenTelemetry | first version |
 
 Parts that change system files (sign-in screen, face login, Sentinel) are
 opt-in flags on `install.sh`, back up what they replace, and are undone by

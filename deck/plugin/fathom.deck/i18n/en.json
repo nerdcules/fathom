@@ -1,6 +1,6 @@
 {
   "loading": "Reading…",
-  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care · Super+Alt+X Sentinel · tap Super for Start",
+  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care · Super+Alt+X Sentinel · Super+Alt+P Pulse · tap Super for Start",
   "updated": "Updated %1",
   "readFailed": "Couldn't read the machine's state: %1",
   "summary.containers": "%1 of %2 containers running",
@@ -326,5 +326,65 @@
   "sentinel.router": "router",
   "sentinel.unknownMaker": "Unknown maker",
   "sentinel.new": "new",
-  "sentinel.blockedList": "Blocked addresses"
+  "sentinel.blockedList": "Blocked addresses",
+  "tab.pulse": "Pulse",
+  "pulse.title": "Stack map",
+  "pulse.inspector": "Inspector",
+  "pulse.range.15m": "15 min",
+  "pulse.range.1h": "1 hour",
+  "pulse.range.24h": "24 hours",
+  "pulse.rate.s": "%1/s",
+  "pulse.rate.min": "%1/min",
+  "pulse.ms.ms": "%1 ms",
+  "pulse.ms.s": "%1 s",
+  "pulse.ms.lt-ms": "<%1 ms",
+  "pulse.none": "–",
+  "pulse.p95": "p95 %1",
+  "pulse.notRunning": "Pulse isn't running",
+  "pulse.notRunningDetail": "The Pulse service isn't running. Install it with ./install.sh --pulse from Fathom's folder, or start it with: systemctl --user start fathom-pulse",
+  "pulse.waiting": "Waiting for telemetry",
+  "pulse.waitingDetail": "Nothing has sent traces yet. Point an app's OpenTelemetry exporter at localhost:%1 (gRPC, .NET's default) or localhost:%2 (HTTP); the README shows how.",
+  "pulse.listening": "Listening on %1 (gRPC) and %2 (HTTP)",
+  "pulse.noRequests": "no requests",
+  "pulse.problem": "Can't listen on %1 (%2). Pulse tries again every minute; something else may have the port.",
+  "pulse.dayApprox": "Over 24 hours, p95 comes from per-minute summaries and can read up to 25% high.",
+  "pulse.pickOne": "Pick something on the map.",
+  "pulse.inferred": "seen from its callers",
+  "pulse.kind.service": "Service",
+  "pulse.kind.database": "Database",
+  "pulse.kind.ai": "AI model",
+  "pulse.kind.messaging": "Messaging",
+  "pulse.kind.external": "Outside service",
+  "pulse.fig.rate": "Requests",
+  "pulse.fig.p95": "p95",
+  "pulse.fig.errors": "Errors",
+  "pulse.operations": "Busiest operations",
+  "pulse.calledBy": "Called by",
+  "pulse.calls": "Calls",
+  "pulse.recentErrors": "Recent errors",
+  "pulse.ask": "Ask Claude about this",
+  "pulse.askTip": "Opens Claude Code with these figures (as data) and asks what could be wrong",
+  "pulse.summary.services": {
+    "one": "%1 service sending traces",
+    "other": "%1 services sending traces"
+  },
+  "pulse.summary.errors": {
+    "one": "%1 error in the last %2",
+    "other": "%1 errors in the last %2"
+  },
+  "pulse.summary.noErrors": "No errors in the last %1",
+  "pulse.dropped": {
+    "one": "%1 span dropped (too many)",
+    "other": "%1 spans dropped (too many)"
+  },
+  "pulse.more": {
+    "one": "+%1 more",
+    "other": "+%1 more"
+  },
+  "pulse.errorsShort": {
+    "one": "%1 error",
+    "other": "%1 errors"
+  },
+  "start.pulse": "Pulse",
+  "start.pulseDetail": "What calls what, from OpenTelemetry"
 }

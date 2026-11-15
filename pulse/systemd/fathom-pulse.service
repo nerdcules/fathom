@@ -1,0 +1,14 @@
+[Unit]
+Description=Fathom Pulse: a small OpenTelemetry collector that maps what calls what
+Documentation=https://github.com/nerdcules/fathom
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/fathom-pulse serve
+Restart=on-failure
+RestartSec=30s
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target

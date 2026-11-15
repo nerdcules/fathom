@@ -24,6 +24,8 @@ Item {
   property var info: null
   property var care: null
   property var sentinel: null
+  property var pulse: null
+  property string pulseRange: "15m"
   property var startMenu: null
   property var apps: []
   property string error: ""
@@ -36,6 +38,7 @@ Item {
   readonly property string startTool: home + "/.local/bin/fathom-start"
   readonly property string playerTool: home + "/.local/bin/fathom-player"
   readonly property string sentinelTool: home + "/.local/bin/fathom-sentinel"
+  readonly property string pulseTool: home + "/.local/bin/fathom-pulse"
   readonly property string pluginId: (manifest && manifest.id) || "fathom.deck"
   // Care runs its own check when it's this stale (the timer may be off).
   readonly property int staleSeconds: 3 * 3600
@@ -60,7 +63,7 @@ Item {
     var wanted = "deck"
     try {
       var payload = JSON.parse(payloadJson || "{}")
-      if (payload && ["care", "start", "sentinel"].indexOf(payload.page) !== -1) wanted = payload.page
+      if (payload && ["care", "start", "sentinel", "pulse"].indexOf(payload.page) !== -1) wanted = payload.page
     } catch (e) {}
     if (opened && page === wanted) {
       dismiss()
@@ -94,6 +97,8 @@ Item {
       if (!deckProc.running) deckProc.running = true
     } else if (page === "sentinel") {
       if (!sentinelProc.running) sentinelProc.running = true
+    } else if (page === "pulse") {
+      if (!pulseProc.running) pulseProc.running = true
     } else if (!careProc.running) {
       careProc.running = true
     }
@@ -299,6 +304,21 @@ Item {
   }
 
   Process {
+    id: pulseProc
+    command: [root.pulseTool, "status", root.pulseRange]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var parsed = root.parse(text)
+        if (parsed && parsed.running !== undefined) { root.pulse = parsed; root.error = "" }
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0 && root.error === "") root.error = catalog.t("readFailed").arg("exit " + exitCode)
+      if (root.opened) pause.restart()
+    }
+  }
+
+  Process {
     id: startProc
     command: [root.startTool, "menu"]
     stdout: StdioCollector {
@@ -375,6 +395,14 @@ Item {
         onCheckFilesRequested: root.handOff([root.sentinelTool, "check-files"])
         onSentinelLogRequested: function(what) { root.handOff([root.sentinelTool, "log", what]) }
         onSnitchRequested: root.handOff(["uwsm-app", "--", "opensnitch-ui"])
+        pulse: root.pulse
+        pulseRange: root.pulseRange
+        onPulseRangeRequested: function(range) {
+          root.pulseRange = range
+          if (!pulseProc.running) pulseProc.running = true
+        }
+        // Claude Code opens in a terminal, so the deck steps aside.
+        onAskRequested: function(text) { root.handOff([root.startTool, "ask", text]) }
       }
 
       StartView {

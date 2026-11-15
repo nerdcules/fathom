@@ -95,6 +95,28 @@ if [[ -e $HOME/.local/bin/fathom-sentinel || -f $UNITS/fathom-sentinel.service |
   echo "Removed Sentinel."
 fi
 
+# Pulse: stop collecting, remove the command, its key and service, and the
+# firewall rule that let containers reach it (asks for your password).
+if [[ -e $HOME/.local/bin/fathom-pulse || -f $UNITS/fathom-pulse.service ]]; then
+  systemctl --user disable --now fathom-pulse.service >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-pulse.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  rm -f "$HOME/.local/bin/fathom-pulse" "$HYPR/fathom-pulse.lua"
+  rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/fathom/pulse"
+  rmdir "${XDG_DATA_HOME:-$HOME/.local/share}/fathom" 2>/dev/null || true
+  if [[ -s $STATE_DIR/pulse-bridge ]] && command -v ufw >/dev/null; then
+    bridge=$(<"$STATE_DIR/pulse-bridge")
+    rule=(delete allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318)
+    if [[ -t 0 ]]; then
+      sudo ufw "${rule[@]}" >/dev/null || true
+    else
+      pkexec ufw "${rule[@]}" >/dev/null || true
+    fi
+  fi
+  hypr_changed=true
+  echo "Removed Pulse."
+fi
+
 # The block in hyprland.lua that loaded them.
 if $hypr_changed; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true

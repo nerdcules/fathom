@@ -9,12 +9,14 @@ import "."
 Item {
   id: deck
 
-  // "deck", "care" or "sentinel".
+  // "deck", "care", "sentinel" or "pulse".
   property string page: "deck"
   // Status JSON from `fathom-deck status` and `fathom-care status`.
   property var info: null
   property var care: null
   property var sentinel: null
+  property var pulse: null
+  property string pulseRange: "15m"
   property string error: ""
   // Container names and Care items with an action in flight.
   property var busy: ({})
@@ -39,8 +41,10 @@ Item {
   signal checkFilesRequested()
   signal sentinelLogRequested(string what)
   signal snitchRequested()
+  signal pulseRangeRequested(string range)
+  signal askRequested(string text)
 
-  readonly property var pages: ["deck", "care", "sentinel"]
+  readonly property var pages: ["deck", "care", "sentinel", "pulse"]
   function switchPage(step) {
     var i = pages.indexOf(page)
     pageRequested(pages[(i + (step || 1) + pages.length) % pages.length])
@@ -130,6 +134,12 @@ Item {
               selected: deck.page === "sentinel"
               onClicked: deck.pageRequested("sentinel")
             }
+            Pill {
+              text: Skin.t("tab.pulse")
+              glyph: "\uf0e7"
+              selected: deck.page === "pulse"
+              onClicked: deck.pageRequested("pulse")
+            }
           }
         }
 
@@ -140,7 +150,8 @@ Item {
           spacing: 8 * Skin.u
           Repeater {
             model: deck.page === "care" ? carePage.summary()
-              : (deck.page === "sentinel" ? sentinelPage.summary() : deckPage.summary())
+              : (deck.page === "sentinel" ? sentinelPage.summary()
+              : (deck.page === "pulse" ? pulsePage.summary() : deckPage.summary()))
             delegate: RowLayout {
               required property var modelData
               spacing: 10 * Skin.u
@@ -206,6 +217,20 @@ Item {
         onSnitchRequested: deck.snitchRequested()
       }
 
+      PulsePage {
+        id: pulsePage
+        visible: deck.page === "pulse"
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: implicitHeight
+        Layout.maximumHeight: column.pageRoom
+        columns: stage.contentWidth >= 1100 * Skin.u ? 2 : 1
+        pulse: deck.pulse
+        range: deck.pulseRange
+        onRangeRequested: function(range) { deck.pulseRangeRequested(range) }
+        onAskRequested: function(text) { deck.askRequested(text) }
+      }
+
       Item { Layout.fillHeight: true }
 
       // Footer.
@@ -219,7 +244,8 @@ Item {
           Layout.fillWidth: true
         }
         Label {
-          readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel : deck.info)
+          readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel
+            : (deck.page === "pulse" ? deck.pulse : deck.info))
           visible: !!source
           text: source ? Skin.t("updated").arg(new Date(source.time * 1000).toLocaleTimeString(Skin.locale, "HH:mm:ss")) : ""
           color: Skin.dim

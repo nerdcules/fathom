@@ -90,4 +90,16 @@ Rectangle {
       visible: children.length > 0
     }
   }
+
+  // A thin bar beside the body when it holds more than fits, so nothing
+  // sits hidden below the card's edge without a hint.
+  Rectangle {
+    visible: flick.interactive
+    x: card.width - 11 * Skin.u
+    y: inner.y + flick.y + flick.visibleArea.yPosition * flick.height
+    width: 3 * Skin.u
+    height: flick.visibleArea.heightRatio * flick.height
+    radius: width / 2
+    color: Skin.tint(Skin.accent, 0.5)
+  }
 }
