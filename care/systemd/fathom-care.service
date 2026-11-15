@@ -1,0 +1,9 @@
+[Unit]
+Description=Fathom Care: check the disk, failed services and updates
+Documentation=https://github.com/nerdcules/fathom
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/fathom-care check --notify
+Nice=19
+IOSchedulingClass=idle

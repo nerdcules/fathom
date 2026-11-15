@@ -3,7 +3,7 @@
 // (container names, process names and the like come from the machine).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import vm from "node:vm";
 
 const dir = new URL("../deck/plugin/fathom.deck/", import.meta.url);
@@ -16,7 +16,11 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.groupContainers = groupContainers; this.countRunning = countRunning;
   this.byKind = byKind; this.sum = sum; this.agentBusy = agentBusy;
   this.uptime = uptime; this.dockerSpace = dockerSpace;
-  this.validContainerName = validContainerName;`, F);
+  this.validContainerName = validContainerName;
+  this.SEGMENTS = SEGMENTS; this.diskSegments = diskSegments; this.totalBytes = totalBytes;
+  this.ids = ids; this.anyRoot = anyRoot; this.ago = ago; this.forecast = forecast;
+  this.updateCount = updateCount;`, F);
+const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
   assert.equal(F.bytes(0), "0 B");
@@ -100,25 +104,93 @@ test("the deck only acts on names docker could have made", () => {
 });
 
 test("every piece of text in the deck is plain text", () => {
-  const view = read("DeckView.qml");
-  // All text goes through the Label component, which sets PlainText.
-  const textItems = view.match(/^\s*Text \{/gm) || [];
-  assert.equal(textItems.length, 0, "use Label, not Text");
-  assert.match(view, /component Label: Text \{\s*textFormat: Text\.PlainText/);
-  assert.doesNotMatch(view, /textFormat: Text\.(RichText|StyledText|AutoText|MarkdownText)/);
+  // All text goes through Label, which sets PlainText.
+  assert.match(read("Label.qml"), /^Text \{\s*textFormat: Text\.PlainText/m);
+  for (const file of qmlFiles) {
+    const src = read(file);
+    if (file !== "Label.qml") assert.equal((src.match(/^\s*Text \{/gm) || []).length, 0, `${file}: use Label, not Text`);
+    assert.doesNotMatch(src, /textFormat: Text\.(RichText|StyledText|AutoText|MarkdownText)/, file);
+  }
+});
+
+test("every type the deck uses is listed in qmldir", () => {
+  const listed = read("qmldir").split("\n").filter(Boolean).map((l) => l.trim().split(/\s+/).at(-1));
+  for (const file of qmlFiles) assert.ok(listed.includes(file), `${file} missing from qmldir`);
 });
 
 test("every string the deck asks for is in en.json", () => {
   const en = JSON.parse(read("i18n/en.json"));
   const used = new Set();
-  for (const file of ["DeckView.qml", "Panel.qml"]) {
+  for (const file of qmlFiles) {
     for (const m of read(file).matchAll(/\b(?:t|tn)\("([a-zA-Z.]+)"/g)) used.add(m[1]);
   }
-  // Keys chosen at runtime.
+  // Keys built at runtime.
   used.add("ai.inEditor").add("ai.inTerminal");
-  assert.ok(used.size > 30, `found only ${used.size} keys`);
-  for (const key of used) assert.ok(key in en, `missing ${key}`);
+  for (const id of ["trash", "docker-cache", "docker-images", "nuget", "npm", "uv", "pip", "yay", "pacman", "journal"]) {
+    used.add(`care.reclaim.${id}`).add(`care.reclaimDetail.${id}`);
+  }
+  for (const key of F.SEGMENTS) used.add(`care.part.${key}`);
+  for (const unit of ["days", "weeks", "months"]) used.add(`care.forecast.${unit}`);
+  for (const unit of ["minutes", "hours", "days"]) used.add(`care.ago.${unit}`);
+  assert.ok(used.size > 100, `found only ${used.size} keys`);
+  for (const key of used) {
+    if (key.endsWith(".")) continue; // a prefix completed at runtime, covered above
+    assert.ok(key in en, `missing ${key}`);
+  }
   for (const [key, value] of Object.entries(en)) {
     if (typeof value === "object") assert.ok(value.one && value.other, `${key} needs one and other`);
   }
+});
+
+test("Care's cleanable items match the script's", () => {
+  const script = readFileSync(new URL("../care/bin/fathom-care", import.meta.url), "utf8");
+  const items = script.match(/^CLEAN_ITEMS=\(([^)]*)\)/m)[1].trim().split(/\s+/);
+  const en = JSON.parse(read("i18n/en.json"));
+  for (const id of items) {
+    assert.ok(`care.reclaim.${id}` in en, `no label for ${id}`);
+    assert.ok(`care.reclaimDetail.${id}` in en, `no detail for ${id}`);
+  }
+});
+
+test("disk parts add up to no more than what's used", () => {
+  const disk = { size: 1000, used: 500, breakdown: { docker: 300, models: 0, caches: 100, projects: 50, home: 150 } };
+  const parts = F.diskSegments(disk);
+  // Docker double-counts shared layers: 600 known > 500 used, so no
+  // "system" part and everything scaled to fit.
+  assert.deepEqual([...parts.map((p) => p.key)], ["docker", "caches", "projects", "home"]);
+  const share = parts.reduce((t, p) => t + p.share, 0);
+  assert.ok(Math.abs(share - 0.5) < 1e-9, String(share));
+
+  const roomy = F.diskSegments({ size: 1000, used: 800, breakdown: { docker: 100, models: 50, caches: 50, projects: 100, home: 200 } });
+  assert.equal(roomy[0].key, "system");
+  assert.equal(roomy[0].bytes, 300);
+  assert.equal(F.diskSegments({ size: 1, used: 1 }).length, 0);
+  assert.equal(F.diskSegments(null).length, 0);
+});
+
+test("reclaim helpers", () => {
+  const items = [{ id: "trash", bytes: 10, root: false }, { id: "journal", bytes: 5, root: true }];
+  assert.equal(F.totalBytes(items), 15);
+  assert.deepEqual([...F.ids(items)], ["trash", "journal"]);
+  assert.equal(F.anyRoot(items), true);
+  assert.equal(F.anyRoot(items.slice(0, 1)), false);
+  assert.equal(F.anyRoot(undefined), false);
+});
+
+test("times read in the largest whole unit", () => {
+  assert.deepEqual({ ...F.ago(0, 30) }, { unit: "minutes", n: 1 });
+  assert.deepEqual({ ...F.ago(0, 600) }, { unit: "minutes", n: 10 });
+  assert.deepEqual({ ...F.ago(0, 7200) }, { unit: "hours", n: 2 });
+  assert.deepEqual({ ...F.ago(0, 3 * 86400) }, { unit: "days", n: 3 });
+  assert.equal(F.forecast(null), null);
+  assert.equal(F.forecast(400), null);
+  assert.deepEqual({ ...F.forecast(5) }, { unit: "days", n: 5 });
+  assert.deepEqual({ ...F.forecast(23) }, { unit: "weeks", n: 3 });
+  assert.deepEqual({ ...F.forecast(100) }, { unit: "months", n: 3 });
+});
+
+test("updates are counted across packages, AUR and firmware", () => {
+  assert.equal(F.updateCount(null), 0);
+  assert.equal(F.updateCount({ packages: [1, 2], aur: [3], firmware: 2 }), 5);
+  assert.equal(F.updateCount({ packages: [], aur: [] }), 0);
 });

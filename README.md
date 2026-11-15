@@ -19,7 +19,7 @@ cd ~/Work/fathom
 |---|---|
 | `--skin` | The desktop theme |
 | `--player` | The mini-player, its keys and its bar widget |
-| `--deck` | The Command Deck and its key |
+| `--deck` | The Command Deck and its Care page, their keys, and Care's check every 3 hours |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part |
 | `--link` | Link the theme, the commands and their Hyprland files to this repo instead of copying, for working on them |
@@ -51,7 +51,12 @@ deck/bin/fathom-deck
                 starts, stops and restarts containers
 deck/hypr/      Its key and blur
 deck/plugin/fathom.deck/
-                The deck itself, an Omarchy shell panel
+                The deck itself, an Omarchy shell panel, with its Deck and
+                Care pages
+care/bin/fathom-care
+                Care's command: measures the disk, finds failed services
+                and updates, and cleans up
+care/systemd/   The timer that runs Care's check every 3 hours
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/
 install.sh      Installer
@@ -121,6 +126,42 @@ Installing adds `~/.local/bin/fathom-deck`, `~/.config/hypr/fathom-deck.lua`
 (loaded from the same marked block in `hyprland.lua` as the mini-player) and
 the `fathom.deck` shell plugin.
 
+## Care
+
+![Fathom Care](care/preview.jpg)
+
+Care is the deck's second page: **Super+Alt+C**, or Ctrl+Tab while the deck
+is open. It looks after the machine so you don't have to.
+
+- **Disk:** what fills it (system, Docker, AI models, caches, projects, the
+  rest of your home folder), how long until it's full at the current rate
+  (once it has a few days of history), and what's **safe to free**: the trash,
+  Docker's build cache and images no container uses, the NuGet, npm, uv and
+  pip caches, AUR build files, old package downloads and old system logs. Each
+  says what happens if you free it, and Care asks before deleting anything.
+  Old package downloads and system logs need your password, so the deck
+  closes for those and a notification says how much was freed.
+- **Warnings:** failed services (yours and the system's), with buttons to
+  restart one or read its log, a disk over 85% full, and a kernel update
+  waiting for a restart. Below them: battery health, CPU temperature, when you
+  last updated and whether snapshots are on.
+- **Updates:** system packages (flagging a new kernel), AUR packages, firmware
+  and Omarchy itself, with the download size. **Update everything** runs
+  Omarchy's own updater in a terminal, which checks free space, takes a
+  snapshot, updates, and verifies the system still boots.
+
+A systemd user timer runs Care's check every 3 hours, and you get a
+notification when something new needs you: a service fails or the disk passes
+85% or 95%. The check asks the package mirrors, the AUR and fwupd what's new,
+as Omarchy's own update check does; nothing else leaves the machine. To turn
+the timer off: `systemctl --user disable --now fathom-care.timer`.
+
+```bash
+fathom-care status | jq .     # what Care shows, as JSON
+fathom-care check             # check now
+fathom-care clean trash npm   # free those (names from `status`)
+```
+
 ## Sign-in screen
 
 ![Fathom sign-in screen](signin/preview.jpg)
@@ -173,9 +214,9 @@ already.
 | 2 | Sign-in screen: SDDM theme in QML | first version |
 | 3 | Face login: Howdy with the IR camera (lock screen, sudo) | later |
 | 4 | Mini-player: mpv + yt-dlp | first version |
-| 5 | Command Deck: system, Docker, .NET, AI | **first version** |
+| 5 | Command Deck: system, Docker, .NET, AI | first version |
 | 6 | Notifications: mail with AI summaries | planned |
-| 7 | Care: disk, warnings, one-click updates | planned |
+| 7 | Care: disk, warnings, one-click updates | **first version** |
 | 8 | Start menu and Ask bar | planned |
 | 9 | Security monitor: OpenSnitch, CrowdSec, daemon, UI | planned |
 | 10 | Pulse: stack map from OpenTelemetry | planned |

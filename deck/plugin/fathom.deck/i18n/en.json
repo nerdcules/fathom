@@ -1,15 +1,22 @@
 {
   "loading": "Reading…",
-  "hint": "Esc closes · Super+Alt+D opens",
+  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care",
   "updated": "Updated %1",
   "readFailed": "Couldn't read the machine's state: %1",
-
   "summary.containers": "%1 of %2 containers running",
-  "summary.containersBad": { "one": "%1 container needs attention", "other": "%1 containers need attention" },
-  "summary.dotnet": { "one": "%1 .NET app running", "other": "%1 .NET apps running" },
-  "summary.agents": { "one": "%1 agent, %2 working", "other": "%1 agents, %2 working" },
+  "summary.containersBad": {
+    "one": "%1 container needs attention",
+    "other": "%1 containers need attention"
+  },
+  "summary.dotnet": {
+    "one": "%1 .NET app running",
+    "other": "%1 .NET apps running"
+  },
+  "summary.agents": {
+    "one": "%1 agent, %2 working",
+    "other": "%1 agents, %2 working"
+  },
   "summary.disk": "Disk %1% full",
-
   "system.title": "System",
   "system.cpu": "CPU",
   "system.gpu": "GPU",
@@ -21,10 +28,12 @@
   "system.diskFull": "Nearly full. Free some space soon or apps will start failing.",
   "system.dockerSpace": "Docker's disk use",
   "system.dockerSpaceLine": "Images %1 · build cache %2 · volumes %3",
-  "system.upDays": { "one": "Up %1 day, %2 h", "other": "Up %1 days, %2 h" },
+  "system.upDays": {
+    "one": "Up %1 day, %2 h",
+    "other": "Up %1 days, %2 h"
+  },
   "system.upHours": "Up %1 h %2 min",
   "system.upMinutes": "Up %1 min",
-
   "docker.title": "Containers",
   "docker.running": "%1 of %2 running",
   "docker.missing": "Docker isn't installed.",
@@ -40,23 +49,157 @@
   "docker.logs": "Follow logs",
   "docker.lazydocker": "lazydocker",
   "docker.failed": "Couldn't %1 %2",
-
   "dotnet.sdk": "SDK %1",
   "dotnet.noSdk": "No SDK",
   "dotnet.running": "Running",
   "dotnet.none": "No .NET apps running.",
   "dotnet.tooling": "Editor and build tooling",
-  "dotnet.toolingLine": { "one": "%1 process · %2", "other": "%1 processes · %2" },
-
+  "dotnet.toolingLine": {
+    "one": "%1 process · %2",
+    "other": "%1 processes · %2"
+  },
   "ai.title": "AI",
   "ai.agents": "Coding agents",
   "ai.noAgents": "No coding agents running.",
-  "ai.working": { "one": "%1 working", "other": "%1 working" },
+  "ai.working": {
+    "one": "%1 working",
+    "other": "%1 working"
+  },
   "ai.inEditor": "%1 · in the editor",
   "ai.inTerminal": "%1 · in a terminal",
   "ai.busy": "working",
   "ai.idle": "idle",
   "ai.noOllama": "Ollama isn't running.",
   "ai.loaded": "loaded",
-  "ai.models": { "one": "%1 model installed", "other": "%1 models installed" }
+  "ai.models": {
+    "one": "%1 model installed",
+    "other": "%1 models installed"
+  },
+  "cancel": "Cancel",
+  "tab.deck": "Deck",
+  "tab.care": "Care",
+  "tab.careCount": "Care · %1",
+  "care.summary.warnings": {
+    "one": "%1 warning needs you",
+    "other": "%1 warnings need you"
+  },
+  "care.summary.updates": {
+    "one": "%1 update ready",
+    "other": "%1 updates ready"
+  },
+  "care.summary.upToDate": "Up to date",
+  "care.summary.clear": "Nothing needs you",
+  "care.disk": "Disk",
+  "care.diskUsed": "%1 of %2 used · %3 free",
+  "care.part.system": "System",
+  "care.part.docker": "Docker",
+  "care.part.models": "AI models",
+  "care.part.caches": "Caches",
+  "care.part.projects": "Projects",
+  "care.part.home": "Home",
+  "care.forecast.days": {
+    "one": "At this rate the disk is full in about %1 day.",
+    "other": "At this rate the disk is full in about %1 days."
+  },
+  "care.forecast.weeks": {
+    "one": "At this rate the disk is full in about %1 week.",
+    "other": "At this rate the disk is full in about %1 weeks."
+  },
+  "care.forecast.months": {
+    "one": "At this rate the disk is full in about %1 month.",
+    "other": "At this rate the disk is full in about %1 months."
+  },
+  "care.reclaimTitle": "Safe to free · %1",
+  "care.reclaimNone": "Safe to free",
+  "care.measuring": "Measuring…",
+  "care.cleaning": "Cleaning…",
+  "care.clean": "Free",
+  "care.needsPassword": "needs your password",
+  "care.freeAll": "Free %1",
+  "care.free": "Free it",
+  "care.checkNow": "Check now",
+  "care.checking": "Checking…",
+  "care.confirmTitle": "Free %1?",
+  "care.confirmBody": "This deletes: %1. Caches and downloads come back when something needs them, which can make the next build or install slower. You can't undo this.",
+  "care.confirmRoot": "Some of this needs your password. The deck closes and you'll get a notification when it's done.",
+  "care.reclaim.trash": "Trash",
+  "care.reclaim.docker-cache": "Docker build cache",
+  "care.reclaim.docker-images": "Docker images no container uses",
+  "care.reclaim.nuget": "NuGet package cache",
+  "care.reclaim.npm": "npm cache",
+  "care.reclaim.uv": "uv cache",
+  "care.reclaim.pip": "pip cache",
+  "care.reclaim.yay": "AUR build files",
+  "care.reclaim.pacman": "Old package downloads",
+  "care.reclaim.journal": "Old system logs",
+  "care.reclaimDetail.trash": "Files you deleted",
+  "care.reclaimDetail.docker-cache": "Rebuilt on the next docker build",
+  "care.reclaimDetail.docker-images": "Pulled again when you run them",
+  "care.reclaimDetail.nuget": "Downloaded again on the next restore",
+  "care.reclaimDetail.npm": "Downloaded again on the next install",
+  "care.reclaimDetail.uv": "Downloaded again when needed",
+  "care.reclaimDetail.pip": "Downloaded again when needed",
+  "care.reclaimDetail.yay": "Left over from building AUR packages",
+  "care.reclaimDetail.pacman": "Keeps the latest version of each package",
+  "care.reclaimDetail.journal": "Keeps the newest 200 MB",
+  "care.warnings": "Warnings",
+  "care.needYou": {
+    "one": "%1 needs you",
+    "other": "%1 need you"
+  },
+  "care.allClear": "Nothing needs you.",
+  "care.unitFailed": "%1 failed",
+  "care.unitSystem": "System service %1",
+  "care.unitUser": "Your service %1",
+  "care.restart": "Restart it",
+  "care.showLog": "Show its log",
+  "care.diskFull": "Disk %1% full",
+  "care.diskFullDetail": "See what's safe to free on the left.",
+  "care.reboot": "Restart to finish the update",
+  "care.rebootDetail": "The kernel was updated and takes effect when you restart.",
+  "care.fyi": "For your info",
+  "care.battery": "Battery health %1%",
+  "care.cycles": {
+    "one": "%1 charge cycle",
+    "other": "%1 charge cycles"
+  },
+  "care.batteryWorn": "holds noticeably less than new",
+  "care.cpuTemp": "CPU %1°C",
+  "care.cpuTempNow": "right now",
+  "care.lastUpdate": "Last updated %1",
+  "care.ago.minutes": {
+    "one": "%1 minute ago",
+    "other": "%1 minutes ago"
+  },
+  "care.ago.hours": {
+    "one": "%1 hour ago",
+    "other": "%1 hours ago"
+  },
+  "care.ago.days": {
+    "one": "%1 day ago",
+    "other": "%1 days ago"
+  },
+  "care.snapshotsOn": "Snapshots are on",
+  "care.snapshotsOnDetail": "One is taken before every update",
+  "care.snapshotsOff": "Snapshots are off",
+  "care.snapshotsOffDetail": "Updates can't be rolled back",
+  "care.updates": "Updates",
+  "care.restartAfter": "restart after",
+  "care.lookingForUpdates": "Looking for updates…",
+  "care.upToDate": "Everything is up to date.",
+  "care.systemPackages": "System packages",
+  "care.includesKernel": "Includes a new kernel",
+  "care.aur": "AUR packages",
+  "care.firmware": "Firmware",
+  "care.firmwareCurrent": "up to date",
+  "care.version": "%1 → %2",
+  "care.whatsNew": "What's new",
+  "care.more": {
+    "one": "and %1 more",
+    "other": "and %1 more"
+  },
+  "care.updateSafety": "Omarchy's updater takes a snapshot first. If anything breaks, pick the snapshot from before the update in the boot menu.",
+  "care.updateSafetyNoSnapshot": "Omarchy's updater runs in a terminal and asks for your password.",
+  "care.updateAll": "Update everything",
+  "care.checked": "Checked %1"
 }

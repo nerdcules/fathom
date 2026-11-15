@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Fathom Care's check every few hours
+Documentation=https://github.com/nerdcules/fathom
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=3h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

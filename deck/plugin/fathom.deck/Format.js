@@ -133,3 +133,75 @@ function dockerSpace(rows) {
 function validContainerName(name) {
   return /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(String(name || ""))
 }
+
+// ---------------------------------------------------------------- Care
+
+var SEGMENTS = ["system", "docker", "models", "caches", "projects", "home"]
+
+// What fills the disk, as parts with their share of the whole disk. "system"
+// is whatever the rest doesn't account for. Docker counts layers shared
+// between images more than once, so if the parts add up to more than is
+// used they are scaled down to fit.
+function diskSegments(disk) {
+  if (!disk || !disk.breakdown) return []
+  var b = disk.breakdown
+  var used = Number(disk.used) || 0
+  var size = Number(disk.size) || 0
+  var parts = []
+  var known = 0
+  for (var i = 1; i < SEGMENTS.length; i++) {
+    var v = Math.max(0, Number(b[SEGMENTS[i]]) || 0)
+    known += v
+    parts.push({ key: SEGMENTS[i], bytes: v })
+  }
+  parts.unshift({ key: "system", bytes: Math.max(0, used - known) })
+  var sum = known + parts[0].bytes
+  var scale = sum > used && sum > 0 ? used / sum : 1
+  var out = []
+  for (var j = 0; j < parts.length; j++) {
+    if (parts[j].bytes <= 0) continue
+    out.push({ key: parts[j].key, bytes: parts[j].bytes, share: size > 0 ? parts[j].bytes * scale / size : 0 })
+  }
+  return out
+}
+
+function totalBytes(items) {
+  return sum(items, "bytes")
+}
+
+function ids(items) {
+  var out = []
+  var list = Array.isArray(items) ? items : []
+  for (var i = 0; i < list.length; i++) out.push(String(list[i].id))
+  return out
+}
+
+function anyRoot(items) {
+  var list = Array.isArray(items) ? items : []
+  for (var i = 0; i < list.length; i++) if (list[i].root === true) return true
+  return false
+}
+
+// How long ago, in the largest whole unit: {unit, n}.
+function ago(then, now) {
+  var s = Math.max(0, Math.floor((Number(now) || 0) - (Number(then) || 0)))
+  if (s < 3600) return { unit: "minutes", n: Math.max(1, Math.floor(s / 60)) }
+  if (s < 86400 * 2) return { unit: "hours", n: Math.floor(s / 3600) }
+  return { unit: "days", n: Math.floor(s / 86400) }
+}
+
+// "Full in about ..." for a number of days, or null when it's far off.
+function forecast(days) {
+  var d = Number(days)
+  if (days === null || days === undefined || !isFinite(d) || d < 0 || d > 365) return null
+  if (d < 14) return { unit: "days", n: Math.max(1, Math.round(d)) }
+  if (d < 70) return { unit: "weeks", n: Math.round(d / 7) }
+  return { unit: "months", n: Math.round(d / 30) }
+}
+
+function updateCount(u) {
+  if (!u) return 0
+  return (Array.isArray(u.packages) ? u.packages.length : 0)
+    + (Array.isArray(u.aur) ? u.aur.length : 0)
+    + (Number(u.firmware) || 0)
+}

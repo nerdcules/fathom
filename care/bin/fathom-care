@@ -1,0 +1,436 @@
+#!/usr/bin/env bash
+# Fathom Care: keeps an eye on the disk, failed services and updates, and
+# cleans up what is safe to clean. The Command Deck's Care page shows it.
+#
+#   fathom-care                 open Care in the Command Deck
+#   fathom-care status          print what Care shows, as JSON
+#   fathom-care check [--notify]
+#                               the slow part: look for updates, measure what
+#                               uses the disk and what can be freed. Runs
+#                               hourly from a systemd user timer; --notify
+#                               sends a notification for each new warning
+#   fathom-care clean [--notify] <item>...
+#                               free these (see `status` for the list); the
+#                               system journal and package cache ask for
+#                               your password
+#   fathom-care restart <system|user> <unit>
+#                               restart a failed service
+#   fathom-care log <system|user> <unit>
+#                               show a service's log in a terminal
+#   fathom-care update          run Omarchy's update in a terminal
+#
+# Everything is measured on this machine. The update check asks the package
+# mirrors, the AUR and fwupd what's new, as Omarchy's own update check does.
+set -euo pipefail
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/fathom"
+CACHE="$STATE/care.json"
+HISTORY="$STATE/care-history.tsv"
+NOTIFIED="$STATE/care-notified"
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/fathom-care.lock"
+WARN_PCT=85
+BAD_PCT=95
+JOURNAL_KEEP=200M
+
+usage() {
+  sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+notify() {
+  if command -v notify-send >/dev/null; then
+    notify-send -a "Care" "$@"
+  else
+    echo "fathom-care: $*" >&2
+  fi
+}
+
+as_root() {
+  if [[ -t 0 ]]; then sudo "$@"; else pkexec "$@"; fi
+}
+
+# ---------------------------------------------------------------- measuring
+
+# Bytes under each path that exists, as "path<TAB>bytes". du counts a file
+# only once, so a path inside one listed earlier comes out as what's left.
+sizes() {
+  local existing=() p
+  for p in "$@"; do [[ -e $p ]] && existing+=("$p"); done
+  ((${#existing[@]})) || return 0
+  nice -n 19 ionice -c 3 du -sx -B1 -- "${existing[@]}" 2>/dev/null | awk -F'\t' '{ print $2 "\t" $1 }' || true
+}
+
+total() {
+  sizes "$@" | awk -F'\t' '{ s += $2 } END { print s + 0 }'
+}
+
+# Docker prints sizes like "20.57GB" or "4.096kB" (powers of 1000).
+docker_bytes() {
+  awk -v s="$1" 'BEGIN {
+    if (match(s, /^[0-9.]+/) == 0) { print 0; exit }
+    n = substr(s, 1, RLENGTH); u = substr(s, RLENGTH + 1)
+    m = 1
+    if (u ~ /^kB/) m = 1e3; else if (u ~ /^MB/) m = 1e6; else if (u ~ /^GB/) m = 1e9; else if (u ~ /^TB/) m = 1e12
+    printf "%.0f", n * m
+  }'
+}
+
+# paccache reports "disk space saved: 1.53 GiB".
+paccache_bytes() {
+  paccache -dk1 2>/dev/null | awk '/disk space saved/ {
+    match($0, /saved: [0-9.]+ [KMGT]?i?B/); split(substr($0, RSTART + 7, RLENGTH - 7), a, " ")
+    m = 1; if (a[2] ~ /^K/) m = 1024; else if (a[2] ~ /^M/) m = 1048576; else if (a[2] ~ /^G/) m = 1073741824; else if (a[2] ~ /^T/) m = 1099511627776
+    printf "%.0f", a[1] * m }'
+}
+
+HOME_MODELS=("$HOME/.ollama" "$HOME/.local/share/ollama" "$HOME/.cache/huggingface" "$HOME/.lmstudio" "$HOME/.cache/lm-studio")
+HOME_CACHES=("$HOME/.cache" "$HOME/.nuget/packages" "$HOME/.local/share/NuGet" "$HOME/.npm" "$HOME/.cargo/registry" "$HOME/.gradle/caches" "$HOME/.m2/repository" "$HOME/.local/share/pnpm")
+HOME_PROJECTS=("$HOME/Work" "$HOME/Projects" "$HOME/projects" "$HOME/src" "$HOME/code" "$HOME/repos" "$HOME/dev" "$HOME/source")
+
+# What uses the disk, by kind. One du pass over the home folder.
+breakdown() {
+  local rows models caches projects rest docker=0 line
+  rows=$(sizes "${HOME_MODELS[@]}" "${HOME_CACHES[@]}" "${HOME_PROJECTS[@]}" "$HOME")
+  sum_of() {
+    local want=("$@") total=0 path bytes w
+    while IFS=$'\t' read -r path bytes; do
+      for w in "${want[@]}"; do [[ $path == "$w" ]] && total=$((total + bytes)); done
+    done <<<"$rows"
+    echo "$total"
+  }
+  models=$(sum_of "${HOME_MODELS[@]}")
+  caches=$(sum_of "${HOME_CACHES[@]}")
+  projects=$(sum_of "${HOME_PROJECTS[@]}")
+  rest=$(sum_of "$HOME")
+  if command -v docker >/dev/null; then
+    while read -r line; do
+      docker=$((docker + $(docker_bytes "$line")))
+    done < <(timeout 10 docker system df --format '{{.Size}}' 2>/dev/null || true)
+  fi
+  jq -n --argjson models "$models" --argjson caches "$caches" --argjson projects "$projects" \
+    --argjson home "$rest" --argjson docker "$docker" \
+    '{docker: $docker, models: $models, caches: $caches, projects: $projects, home: $home}'
+}
+
+NUGET_DIRS=("$HOME/.nuget/packages" "$HOME/.local/share/NuGet/http-cache" "$HOME/.local/share/NuGet/v3-cache")
+
+# Empty a cache folder (for when its tool isn't on PATH).
+empty_dir() {
+  local d
+  for d in "$@"; do
+    [[ -d $d ]] && find "$d" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  done
+  return 0
+}
+
+# What can be freed, and how. Only items over 50 MB are listed.
+reclaim() {
+  local items=()
+  add() { (($2 >= 50000000)) && items+=("$(jq -cn --arg id "$1" --argjson b "$2" --argjson root "$3" '{id: $id, bytes: $b, root: $root}')"); return 0; }
+
+  add trash "$(total "$HOME/.local/share/Trash")" false
+  if command -v docker >/dev/null; then
+    local type rec
+    while IFS=$'\t' read -r type rec; do
+      case $type in
+        "Build Cache") add docker-cache "$(docker_bytes "$rec")" false ;;
+        Images) add docker-images "$(docker_bytes "$rec")" false ;;
+      esac
+    done < <(timeout 10 docker system df --format '{{.Type}}\t{{.Reclaimable}}' 2>/dev/null || true)
+  fi
+  # Measured by folder, so the timer (which runs without your shell's PATH)
+  # sees the same as you do.
+  add nuget "$(total "${NUGET_DIRS[@]}")" false
+  add npm "$(total "$HOME/.npm/_cacache")" false
+  add uv "$(total "$HOME/.cache/uv")" false
+  add pip "$(total "$HOME/.cache/pip")" false
+  add yay "$(total "$HOME/.cache/yay")" false
+  command -v paccache >/dev/null && add pacman "$(paccache_bytes || echo 0)" true
+  local journal
+  journal=$(du -sb /var/log/journal 2>/dev/null | cut -f1 || echo 0)
+  add journal "$((journal > 200000000 ? journal - 200000000 : 0))" true
+
+  printf '%s\n' "${items[@]}" | jq -sc 'sort_by(-.bytes)'
+}
+
+# Pending updates: repo packages (with download size), AUR, firmware.
+updates() {
+  local repo aur fw=0 sizes_json='{}' db
+  repo=$(timeout 60 checkupdates --nocolor 2>/dev/null || true)
+  db="${CHECKUPDATES_DB:-${TMPDIR:-/tmp}/checkup-db-${UID}}"
+  if [[ -n $repo && -d $db ]]; then
+    sizes_json=$(pacman -Sup --dbpath "$db" --logfile /dev/null --print-format '%n %s' 2>/dev/null |
+      jq -Rn '[inputs | split(" ") | select(length == 2) | {key: .[0], value: (.[1] | tonumber? // 0)}] | from_entries' || echo '{}')
+  fi
+  aur=""
+  command -v yay >/dev/null && aur=$(timeout 60 yay -Qua 2>/dev/null || true)
+  if command -v fwupdmgr >/dev/null; then
+    fw=$(timeout 30 fwupdmgr get-updates --json 2>/dev/null | jq '[.Devices[]?.Releases[]?] | length' 2>/dev/null || echo 0)
+  fi
+  jq -n --arg repo "$repo" --arg aur "$aur" --argjson sizes "$sizes_json" --argjson fw "${fw:-0}" '
+    def rows: split("\n") | map(select(length > 0) | split(" ") | select(length >= 4)
+      | {name: (.[0] | .[0:64]), from: (.[1] | .[0:40]), to: (.[3] | .[0:40])});
+    ($repo | rows | map(. + {bytes: ($sizes[.name] // 0)})) as $r
+    | {
+      packages: $r[0:300], aur: ($aur | rows)[0:100], firmware: $fw,
+      download: ($r | map(.bytes) | add // 0),
+      kernel: ($r | any(.name | test("^linux(-(lts|zen|hardened|rt|omarchy))?$"))),
+      restart: ($r | any(.name | test("^(linux(-[a-z]+)?|linux-firmware.*|systemd|glibc|mesa|nvidia.*|hyprland|intel-ucode|amd-ucode)$"))),
+      omarchy: ($r | map(select(.name == "omarchy" or .name == "omarchy-dev")) | first // null)
+    }'
+}
+
+# Disk use over time, one line a day, for the "full in about" estimate.
+record_history() {
+  local used=$1 size=$2 today line
+  today=$(date +%F)
+  mkdir -p "$STATE"
+  touch "$HISTORY"
+  grep -v "^$today	" "$HISTORY" | tail -n 89 >"$HISTORY.new" || true
+  printf '%s\t%s\t%s\t%s\n' "$today" "$(date +%s)" "$used" "$size" >>"$HISTORY.new"
+  mv "$HISTORY.new" "$HISTORY"
+}
+
+# Days until the disk is full at the last month's rate, or null.
+forecast() {
+  [[ -s $HISTORY ]] || { echo null; return; }
+  awk -F'\t' -v now="$(date +%s)" '
+    $2 >= now - 30 * 86400 { n++; x[n] = $2 / 86400; y[n] = $3; size = $4 }
+    END {
+      if (n < 3 || x[n] - x[1] < 2) { print "null"; exit }
+      for (i = 1; i <= n; i++) { sx += x[i]; sy += y[i] }
+      mx = sx / n; my = sy / n
+      for (i = 1; i <= n; i++) { num += (x[i] - mx) * (y[i] - my); den += (x[i] - mx) ^ 2 }
+      slope = den > 0 ? num / den : 0
+      if (slope <= 0) { print "null"; exit }
+      printf "%.0f", (size - y[n]) / slope
+    }' "$HISTORY"
+}
+
+check() {
+  local notify_new=false
+  [[ ${1:-} == --notify ]] && notify_new=true
+  mkdir -p "$STATE"
+  exec 9>"$LOCK"
+  flock -n 9 || { echo "fathom-care: a check is already running" >&2; return 0; }
+
+  local fs size used
+  read -r size used < <(df -B1 --output=size,used / | tail -1)
+  record_history "$used" "$size"
+
+  local b r u
+  b=$(breakdown)
+  r=$(reclaim)
+  u=$(updates)
+  jq -n --argjson b "$b" --argjson r "$r" --argjson u "$u" \
+    '{checkedAt: (now | floor), breakdown: $b, reclaim: $r, updates: $u}' >"$CACHE.new"
+  mv "$CACHE.new" "$CACHE"
+
+  $notify_new && notify_warnings
+  return 0
+}
+
+# ---------------------------------------------------------------- live state
+
+failed_units() {
+  local scope=$1 flag=()
+  [[ $scope == user ]] && flag=(--user)
+  systemctl "${flag[@]}" list-units --failed --no-legend --plain --output=json 2>/dev/null |
+    jq -c --arg scope "$scope" '.[]? | {scope: $scope, unit: (.unit | .[0:128]), description: (.description // "" | .[0:160])}' || true
+}
+
+status() {
+  local size used avail src model
+  read -r size used avail < <(df -B1 --output=size,used,avail / | tail -1)
+  src=$(findmnt -no SOURCE / 2>/dev/null | sed 's/\[.*//')
+  model=$(lsblk -sno TYPE,MODEL "$src" 2>/dev/null | awk '$1 == "disk" { $1 = ""; sub(/^ +/, ""); print; exit }' || true)
+
+  local bat_health=null cycles=null b
+  for b in /sys/class/power_supply/BAT*; do
+    [[ -d $b ]] || continue
+    local full design
+    full=$(cat "$b/energy_full" 2>/dev/null || cat "$b/charge_full" 2>/dev/null || echo 0)
+    design=$(cat "$b/energy_full_design" 2>/dev/null || cat "$b/charge_full_design" 2>/dev/null || echo 0)
+    ((design > 0)) && bat_health=$((full * 100 / design))
+    cycles=$(cat "$b/cycle_count" 2>/dev/null || echo null)
+    [[ $cycles =~ ^[0-9]+$ ]] || cycles=null
+    break
+  done
+
+  local temp=null h
+  for h in /sys/class/hwmon/hwmon*; do
+    if [[ $(cat "$h/name" 2>/dev/null) == coretemp || $(cat "$h/name" 2>/dev/null) == k10temp ]]; then
+      temp=$(cat "$h"/temp*_input 2>/dev/null | sort -n | tail -1)
+      temp=$(( ${temp:-0} / 1000 ))
+      break
+    fi
+  done
+
+  local last_update=null line
+  line=$(grep "starting full system upgrade" /var/log/pacman.log 2>/dev/null | tail -1 || true)
+  if [[ $line =~ ^\[([^]]+)\] ]]; then
+    last_update=$(date -d "${BASH_REMATCH[1]}" +%s 2>/dev/null || echo null)
+  fi
+
+  # A kernel update waits for a restart when the running kernel's modules
+  # are gone from disk.
+  local reboot=false
+  [[ -d /usr/lib/modules/$(uname -r) ]] || reboot=true
+
+  local snapshots=false
+  [[ -f /etc/snapper/configs/root ]] && command -v snapper >/dev/null && snapshots=true
+
+  local units cache='null'
+  units=$({ failed_units system; failed_units user; } | jq -sc '.[0:20]')
+  [[ -s $CACHE ]] && cache=$(cat "$CACHE")
+
+  jq -n \
+    --argjson size "$size" --argjson used "$used" --argjson free "$avail" \
+    --arg model "${model:0:64}" --argjson units "$units" --argjson cache "$cache" \
+    --argjson battery "$bat_health" --argjson cycles "$cycles" --argjson temp "$temp" \
+    --argjson lastUpdate "$last_update" --argjson reboot "$reboot" --argjson snapshots "$snapshots" \
+    --argjson forecast "$(forecast)" \
+    --argjson checking "$( (exec 9>"$LOCK"; flock -n 9) 2>/dev/null && echo false || echo true)" \
+    --argjson warnPct "$WARN_PCT" --argjson badPct "$BAD_PCT" '
+    ($used * 100 / $size) as $pct
+    | {
+      time: (now | floor),
+      checking: $checking,
+      checkedAt: ($cache.checkedAt // null),
+      disk: {model: $model, size: $size, used: $used, free: $free, pct: $pct,
+             breakdown: ($cache.breakdown // null), forecastDays: $forecast},
+      reclaim: ($cache.reclaim // []),
+      updates: ($cache.updates // null),
+      warnings: (
+        [$units[] | {kind: "unit"} + .]
+        + (if $pct >= $warnPct then [{kind: "disk", pct: $pct, level: (if $pct >= $badPct then "bad" else "warn" end)}] else [] end)
+        + (if $reboot then [{kind: "reboot"}] else [] end)
+      ),
+      info: {battery: $battery, cycles: $cycles, cpuTemp: $temp, lastUpdate: $lastUpdate, snapshots: $snapshots}
+    }'
+}
+
+# One notification per new warning; a warning that clears can notify again
+# if it comes back.
+notify_warnings() {
+  local keys now_keys
+  now_keys=$(status | jq -r '.warnings[] |
+    if .kind == "unit" then "unit:\(.scope):\(.unit)"
+    elif .kind == "disk" then "disk:\(.level)"
+    else .kind end')
+  touch "$NOTIFIED"
+  local key
+  while read -r key; do
+    [[ -z $key ]] && continue
+    grep -qxF -- "$key" "$NOTIFIED" && continue
+    case $key in
+      unit:*) notify -u critical "A service failed" "${key##*:} stopped working. Open Care (Super+Alt+C) to restart it or see its log." ;;
+      disk:bad) notify -u critical "The disk is nearly full" "Open Care (Super+Alt+C) to see what can be freed." ;;
+      disk:warn) notify "The disk is getting full" "Open Care (Super+Alt+C) to see what can be freed." ;;
+      reboot) notify "Restart to finish updating" "The kernel was updated; it takes effect when you restart." ;;
+    esac
+  done <<<"$now_keys"
+  printf '%s\n' "$now_keys" | sed '/^$/d' >"$NOTIFIED"
+}
+
+# ---------------------------------------------------------------- acting
+
+CLEAN_ITEMS=(trash docker-cache docker-images nuget npm uv pip yay pacman journal)
+
+clean_one() {
+  case $1 in
+    trash) gio trash --empty ;;
+    docker-cache) docker builder prune --force >/dev/null ;;
+    docker-images) docker image prune --all --force >/dev/null ;;
+    nuget) if command -v dotnet >/dev/null; then dotnet nuget locals all --clear >/dev/null; else empty_dir "${NUGET_DIRS[@]}"; fi ;;
+    npm) if command -v npm >/dev/null; then npm cache clean --force >/dev/null 2>&1; else empty_dir "$HOME/.npm/_cacache"; fi ;;
+    uv) if command -v uv >/dev/null; then uv cache clean >/dev/null 2>&1; else empty_dir "$HOME/.cache/uv"; fi ;;
+    pip) if command -v pip >/dev/null; then pip cache purge >/dev/null 2>&1; else empty_dir "$HOME/.cache/pip"; fi ;;
+    yay) empty_dir "$HOME/.cache/yay" ;;
+    pacman) as_root paccache -rk1 >/dev/null ;;
+    journal) as_root journalctl --vacuum-size="$JOURNAL_KEEP" >/dev/null 2>&1 ;;
+  esac
+}
+
+# clean [--notify] <item>...: every item is checked before anything is
+# deleted. --notify reports what was freed (the deck closes for items that
+# ask for a password, so it can't show it).
+clean() {
+  local tell=false item known failed=()
+  [[ ${1:-} == --notify ]] && { tell=true; shift; }
+  (($#)) || { echo "fathom-care: name something to clean: ${CLEAN_ITEMS[*]}" >&2; exit 2; }
+  for item in "$@"; do
+    known=false
+    for k in "${CLEAN_ITEMS[@]}"; do [[ $item == "$k" ]] && known=true; done
+    $known || { echo "fathom-care: nothing called '$item' to clean" >&2; exit 2; }
+  done
+
+  local before after
+  before=$(df -B1 --output=used / | tail -1)
+  for item in "$@"; do
+    clean_one "$item" || failed+=("$item")
+  done
+  after=$(df -B1 --output=used / | tail -1)
+
+  # Measure again so Care shows what's left.
+  if [[ -s $CACHE ]]; then
+    local r
+    r=$(reclaim)
+    jq --argjson r "$r" '.reclaim = $r' "$CACHE" >"$CACHE.new" && mv "$CACHE.new" "$CACHE"
+  fi
+
+  if ((${#failed[@]})); then
+    notify "Couldn't clean everything" "These didn't finish: ${failed[*]}"
+    exit 1
+  fi
+  if $tell; then
+    local freed=$((before - after))
+    ((freed < 0)) && freed=0
+    notify "Freed $(numfmt --to=si --suffix=B "$freed")" "Care cleaned up: $*"
+  fi
+}
+
+# A unit that is failed right now, named as systemd names units.
+failed_unit() {
+  local scope=$1 unit=$2
+  [[ $scope == system || $scope == user ]] || { echo "fathom-care: scope is system or user" >&2; exit 2; }
+  [[ $unit =~ ^[A-Za-z0-9@._:\\-]{1,128}\.(service|timer|socket|mount|path|swap|automount)$ ]] ||
+    { echo "fathom-care: '$unit' is not a unit name" >&2; exit 2; }
+  failed_units "$scope" | jq -e --arg u "$unit" 'select(.unit == $u)' >/dev/null ||
+    { echo "fathom-care: $unit has not failed" >&2; exit 1; }
+}
+
+restart_unit() {
+  local scope=${1:-} unit=${2:-} out
+  failed_unit "$scope" "$unit"
+  if [[ $scope == user ]]; then
+    out=$(systemctl --user restart -- "$unit" 2>&1) || { notify "Couldn't restart $unit" "${out:0:200}"; exit 1; }
+  else
+    out=$(as_root systemctl restart -- "$unit" 2>&1) || { notify "Couldn't restart $unit" "${out:0:200}"; exit 1; }
+  fi
+}
+
+unit_log() {
+  local scope=${1:-} unit=${2:-}
+  failed_unit "$scope" "$unit"
+  if [[ $scope == user ]]; then
+    omarchy-launch-tui --app-id=fathom.care.log journalctl --user --boot --pager-end --unit "$unit"
+  else
+    omarchy-launch-tui --app-id=fathom.care.log journalctl --boot --pager-end --unit "$unit"
+  fi
+}
+
+case ${1:-} in
+  "") exec omarchy-shell shell summon fathom.deck '{"page":"care"}' ;;
+  status) status ;;
+  check) check "${2:-}" ;;
+  clean) shift; clean "$@" ;;
+  restart) restart_unit "${2:-}" "${3:-}" ;;
+  log) unit_log "${2:-}" "${3:-}" ;;
+  update) exec omarchy-launch-floating-terminal-with-presentation omarchy-update ;;
+  -h | --help | help) usage ;;
+  *)
+    echo "fathom-care: unknown command '$1'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -348,7 +348,8 @@ logs() {
 }
 
 case ${1:-} in
-  "" | toggle) exec omarchy-shell shell toggle fathom.deck ;;
+  # Pressed again while the deck shows, it closes.
+  "" | toggle) exec omarchy-shell shell summon fathom.deck '{"page":"deck"}' ;;
   status) status ;;
   container) container "${2:-}" "${3:-}" ;;
   logs) logs "${2:-}" ;;

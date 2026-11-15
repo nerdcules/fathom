@@ -28,8 +28,6 @@ elif [[ -d $THEME_DIR ]]; then
   echo "Left $THEME_DIR alone: Fathom's installer did not make it."
 fi
 
-rm -rf "$STATE_DIR"
-
 HYPR="$HOME/.config/hypr"
 PLUGINS="$HOME/.config/omarchy/plugins"
 hypr_changed=false
@@ -44,12 +42,17 @@ if [[ -e $HOME/.local/bin/fathom-player || -d $PLUGINS/fathom.player ]]; then
   echo "Removed the mini-player."
 fi
 
-# Command Deck: close it, then remove the plugin, key and command.
-if [[ -e $HOME/.local/bin/fathom-deck || -d $PLUGINS/fathom.deck ]]; then
+# Command Deck and Care: close the deck, stop Care's timer, then remove the
+# plugin, keys, commands and units.
+UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+if [[ -e $HOME/.local/bin/fathom-deck || -d $PLUGINS/fathom.deck || -f $UNITS/fathom-care.timer ]]; then
   omarchy-shell shell hide fathom.deck >/dev/null 2>&1 || true
+  systemctl --user disable --now fathom-care.timer >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-care.timer" "$UNITS/fathom-care.service"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
   omarchy plugin disable fathom.deck >/dev/null 2>&1 || true
   rm -rf "$PLUGINS/fathom.deck"
-  rm -f "$HYPR/fathom-deck.lua" "$HOME/.local/bin/fathom-deck"
+  rm -f "$HYPR/fathom-deck.lua" "$HOME/.local/bin/fathom-deck" "$HOME/.local/bin/fathom-care"
   hypr_changed=true
   echo "Removed the Command Deck."
 fi
@@ -69,3 +72,6 @@ if [[ -d /usr/share/sddm/themes/fathom || -f /etc/sddm.conf.d/99-zz-fathom.conf 
     pkexec bash "$REPO/signin/install-root.sh" uninstall
   fi
 fi
+
+# Last, so nothing that was just stopped writes it again.
+rm -rf "$STATE_DIR"

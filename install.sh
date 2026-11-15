@@ -31,7 +31,9 @@ Parts (with none named, the ones that need no password: --skin --player --deck):
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
                and a bar widget showing what is playing
   --deck       The Command Deck: system, Docker, .NET and AI at a glance
-               (Super+Alt+D)
+               (Super+Alt+D), and its Care page: disk, warnings and
+               updates (Super+Alt+C), checked every 3 hours by a systemd
+               user timer
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part
@@ -256,11 +258,22 @@ install_deck() {
   command -v docker >/dev/null || echo "Docker isn't installed; the deck's Containers card will say so."
 
   place "$REPO/deck/bin/fathom-deck" "$BIN_DIR/fathom-deck"
-  chmod +x "$REPO/deck/bin/fathom-deck"
+  place "$REPO/care/bin/fathom-care" "$BIN_DIR/fathom-care"
+  chmod +x "$REPO/deck/bin/fathom-deck" "$REPO/care/bin/fathom-care"
   hypr_load fathom-deck "$REPO/deck/hypr/fathom-deck.lua" || return 1
   install_plugin fathom.deck
 
-  echo "Command Deck installed. Press Super+Alt+D to open it."
+  # Care's check, every 3 hours. Copied, not linked: systemd wants real files.
+  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" unit
+  mkdir -p "$units"
+  for unit in fathom-care.service fathom-care.timer; do
+    cp "$REPO/care/systemd/$unit" "$units/$unit"
+  done
+  systemctl --user daemon-reload
+  systemctl --user enable --now fathom-care.timer >/dev/null 2>&1 ||
+    echo "install.sh: couldn't start Care's timer; try: systemctl --user enable --now fathom-care.timer" >&2
+
+  echo "Command Deck installed. Press Super+Alt+D to open it, Super+Alt+C for Care."
 }
 
 $skin && install_skin
