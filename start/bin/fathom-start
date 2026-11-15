@@ -1,0 +1,239 @@
+#!/usr/bin/env bash
+# Fathom Start: the Start menu's command. The menu itself is a page of the
+# Command Deck plugin; this gathers what it shows and does what it asks.
+#
+#   fathom-start                       open or close the Start menu
+#   fathom-start menu                  everything the menu shows, as JSON
+#   fathom-start projects              recent projects, as JSON
+#   fathom-start status                Focus mode, Docker, you and this machine, as JSON
+#   fathom-start config                pinned apps and suggestions, as JSON
+#   fathom-start pin <id> | unpin <id> pin or unpin an app (its desktop id) or
+#                                      fathom:deck / fathom:care
+#   fathom-start open <editor|terminal|files|claude> <project folder>
+#   fathom-start ask <text> [folder]   ask Claude Code, in a terminal
+#   fathom-start focus                 turn Focus mode (do not disturb) on or off
+#   fathom-start power <lock|suspend|logout|reboot|shutdown>
+set -euo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/fathom/start.json"
+ROOTS=("$HOME/Work" "$HOME/Projects" "$HOME/projects" "$HOME/src" "$HOME/code" "$HOME/repos" "$HOME/dev" "$HOME/source")
+MAX_PROJECTS=8
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+die() {
+  echo "fathom-start: $1" >&2
+  exit "${2:-1}"
+}
+
+# ---------------------------------------------------------------- projects
+
+# Git repositories up to two folders deep under the usual project folders,
+# as "<last activity>\t<path>". Activity is the later of the last commit and
+# the last change to git's index (staging, switching branches, status).
+repos() {
+  local root g d commit index
+  for root in "${ROOTS[@]}"; do
+    [[ -d $root ]] || continue
+    find "$root" -mindepth 2 -maxdepth 3 -name .git -prune -print 2>/dev/null
+  done | head -n 200 | while read -r g; do
+    d=${g%/.git}
+    commit=$(git -C "$d" log -1 --format=%ct 2>/dev/null || echo 0)
+    index=$(stat -c %Y "$g/index" 2>/dev/null || echo 0)
+    printf '%s\t%s\n' "$((commit > index ? commit : index))" "$d"
+  done | sort -rn | head -n "$MAX_PROJECTS"
+}
+
+# What a project is made of, as short labels: from the files at its top, or
+# a few folders down when the top has none.
+tech() {
+  local found
+  found=$(tech_in "$1")
+  if [[ -z $found ]]; then
+    local f
+    while read -r f; do
+      found+=$'\n'$(tech_in "$(dirname -- "$f")")
+    done < <(find "$1" -mindepth 2 -maxdepth 3 \( -name node_modules -o -name .git -o -name bin -o -name obj -o -name .venv \) -prune -o \
+      \( -name '*.csproj' -o -name '*.sln' -o -name package.json -o -name Cargo.toml -o -name go.mod -o -name pyproject.toml -o -name CMakeLists.txt \) -print 2>/dev/null | head -n 6)
+    if [[ -z ${found//[[:space:]]/} ]] && compgen -G "$1/*/__init__.py" >/dev/null; then found=Python; fi
+  fi
+  printf '%s\n' "$found" | sed '/^$/d' | awk '!seen[$0]++'
+}
+
+tech_in() {
+  local d=$1 tf
+  shopt -s nullglob
+  local sln=("$d"/*.sln "$d"/*.slnx) csproj=("$d"/*.csproj "$d"/*/*.csproj "$d"/src/*/*.csproj)
+  if ((${#sln[@]} + ${#csproj[@]})); then
+    tf=$(grep -ho '<TargetFrameworks\?>net[0-9]\+' "${csproj[@]}" /dev/null 2>/dev/null | grep -o '[0-9]\+$' | sort -n | tail -1 || true)
+    echo ".NET${tf:+ $tf}"
+  fi
+  [[ -f $d/package.json ]] && echo "Node"
+  [[ -f $d/Cargo.toml ]] && echo "Rust"
+  [[ -f $d/go.mod ]] && echo "Go"
+  [[ -f $d/pyproject.toml || -f $d/requirements.txt ]] && echo "Python"
+  local pro=("$d"/*.pro)
+  [[ -f $d/CMakeLists.txt || ${#pro[@]} -gt 0 ]] && echo "C++"
+  [[ -f $d/PKGBUILD ]] && echo "PKGBUILD"
+  [[ -f $d/compose.yaml || -f $d/compose.yml || -f $d/docker-compose.yml || -f $d/docker-compose.yaml ]] && echo "Compose"
+  [[ -f $d/Dockerfile && ! -f $d/compose.yaml ]] && echo "Docker"
+  shopt -u nullglob
+  return 0
+}
+
+projects() {
+  local when d
+  while IFS=$'\t' read -r when d; do
+    [[ -n $d ]] || continue
+    jq -nc --arg name "$(basename -- "$d")" --arg path "$d" --argjson when "$when" \
+      --arg branch "$(git -C "$d" branch --show-current 2>/dev/null || true)" \
+      --argjson dirty "$([[ -n $(timeout 2 git -C "$d" status --porcelain --untracked-files=no 2>/dev/null | head -1) ]] && echo true || echo false)" \
+      --arg tech "$(tech "$d" | head -n 4)" \
+      '{name: ($name | .[0:64]), path: $path, when: $when, branch: ($branch | .[0:64]), dirty: $dirty,
+        tech: ($tech | split("\n") | map(select(length > 0)))}'
+  done < <(repos) | jq -sc .
+}
+
+# A folder Start may open: one of the projects it would list.
+project_dir() {
+  local d=${1:-} real root
+  [[ -n $d ]] || die "name a project folder" 2
+  real=$(realpath -e -- "$d" 2>/dev/null) || die "no folder '$d'" 2
+  [[ -d $real/.git ]] || die "'$d' is not a git project" 2
+  for root in "${ROOTS[@]}"; do
+    [[ $real == "$(realpath -m -- "$root")"/* ]] && { echo "$real"; return; }
+  done
+  die "'$d' is not under your project folders" 2
+}
+
+open_project() {
+  local how=${1:-} dir
+  dir=$(project_dir "${2:-}")
+  case $how in
+    editor) exec omarchy-launch-editor "$dir" ;;
+    terminal) exec setsid uwsm-app -- xdg-terminal-exec --dir="$dir" ;;
+    files) exec setsid uwsm-app -- nautilus --new-window -- "$dir" ;;
+    claude) exec setsid uwsm-app -- xdg-terminal-exec --dir="$dir" --app-id=fathom.ask claude ;;
+    *) die "open takes editor, terminal, files or claude" 2 ;;
+  esac
+}
+
+# ---------------------------------------------------------------- asking
+
+# Claude Code, in a terminal, with the question as its first prompt. The
+# question is one argument after "--", never shell text. A single word gets a
+# trailing space so it can't be taken for one of claude's own commands
+# (`claude -- update` would update it).
+ask() {
+  local text=${1:-} dir=${2:-$HOME}
+  text=$(printf '%s' "$text" | tr -d '\000-\010\013-\037\177' | head -c 4000)
+  [[ -n ${text//[[:space:]]/} ]] || die "ask what?" 2
+  [[ $text == *[[:space:]]* ]] || text="$text "
+  if [[ $dir != "$HOME" ]]; then dir=$(project_dir "$dir"); fi
+  command -v claude >/dev/null || die "Claude Code isn't installed (the claude command)"
+  exec setsid uwsm-app -- xdg-terminal-exec --dir="$dir" --app-id=fathom.ask claude -- "$text"
+}
+
+# ---------------------------------------------------------------- the rest
+
+status() {
+  local focus docker=missing
+  focus=$(omarchy-shell notifications isDnd 2>/dev/null || echo off)
+  if command -v docker >/dev/null; then
+    docker=$(systemctl is-active docker.service 2>/dev/null || true)
+    [[ $docker == active ]] || docker=inactive
+  fi
+  jq -nc --arg focus "$focus" --arg docker "$docker" --arg user "$(id -un)" \
+    --arg name "$(getent passwd "$(id -un)" | cut -d: -f5 | cut -d, -f1)" --arg host "$(hostname)" \
+    '{focus: ($focus == "on"), docker: $docker, user: $user, name: ($name | .[0:64]), host: ($host | .[0:64])}'
+}
+
+# The first of these that exists, as a desktop id (without .desktop).
+first_app() {
+  local id dir
+  for id in "$@"; do
+    for dir in "$HOME/.local/share/applications" /usr/share/applications /var/lib/flatpak/exports/share/applications; do
+      [[ -f $dir/$id.desktop ]] && { echo "$id"; return; }
+    done
+  done
+}
+
+default_pinned() {
+  local terminal browser
+  terminal=$(grep -v '^#' "${XDG_CONFIG_HOME:-$HOME/.config}/xdg-terminals.list" 2>/dev/null | head -1 | sed 's/\.desktop$//' || true)
+  browser=$(xdg-settings get default-web-browser 2>/dev/null | sed 's/\.desktop$//' || true)
+  {
+    first_app "$terminal" com.mitchellh.ghostty Alacritty kitty foot
+    first_app com.microsoft.VSCode code visual-studio-code code-oss dev.zed.Zed nvim
+    echo fathom:deck
+    echo fathom:care
+    first_app "$browser" chromium firefox
+    first_app org.gnome.Nautilus
+  } | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))'
+}
+
+config() {
+  local saved='{}'
+  [[ -s $CONFIG ]] && saved=$(jq -c 'if type == "object" then . else {} end' "$CONFIG" 2>/dev/null || echo '{}')
+  jq -nc --argjson saved "$saved" --argjson pinned "$(default_pinned)" '
+    {
+      pinned: ($saved.pinned // $pinned | map(select(type == "string") | .[0:200]) | .[0:18]),
+      suggestions: ($saved.suggestions // [
+        "Scaffold a minimal API with EF Core",
+        "Postgres with pgvector in Docker",
+        "Review what changed in this project today"
+      ] | map(select(type == "string") | .[0:120]) | .[0:4])
+    }'
+}
+
+valid_pin() {
+  [[ ${1:-} =~ ^(fathom:(deck|care)|[A-Za-z0-9][A-Za-z0-9._\ -]{0,199})$ ]] || die "'${1:-}' is not an app id" 2
+}
+
+pin() {
+  local id=${1:-} current
+  valid_pin "$id"
+  current=$(config)
+  mkdir -p "$(dirname "$CONFIG")"
+  jq --arg id "$id" '.pinned = ((.pinned - [$id]) + [$id])' <<<"$current" >"$CONFIG.new" && mv "$CONFIG.new" "$CONFIG"
+}
+
+unpin() {
+  local id=${1:-} current
+  valid_pin "$id"
+  current=$(config)
+  mkdir -p "$(dirname "$CONFIG")"
+  jq --arg id "$id" '.pinned -= [$id]' <<<"$current" >"$CONFIG.new" && mv "$CONFIG.new" "$CONFIG"
+}
+
+power() {
+  case ${1:-} in
+    lock) exec omarchy-system-lock ;;
+    suspend) exec systemctl suspend ;;
+    logout | reboot | shutdown) exec omarchy-system "$1" ;;
+    *) die "power takes lock, suspend, logout, reboot or shutdown" 2 ;;
+  esac
+}
+
+case ${1:-} in
+  # Pressed again while the Start menu shows, it closes.
+  "" | toggle) exec omarchy-shell shell summon fathom.deck '{"page":"start"}' ;;
+  projects) projects ;;
+  # Everything the menu shows, in one go.
+  menu) jq -nc --argjson projects "$(projects)" --argjson status "$(status)" --argjson config "$(config)" \
+    --arg home "$HOME" '{projects: $projects, status: $status, config: $config, home: $home}' ;;
+  status) status ;;
+  config) config ;;
+  pin) pin "${2:-}" ;;
+  unpin) unpin "${2:-}" ;;
+  open) open_project "${2:-}" "${3:-}" ;;
+  ask) ask "${2:-}" "${3:-$HOME}" ;;
+  focus) omarchy-toggle-notification-silencing >/dev/null 2>&1 || omarchy-shell notifications toggleDnd >/dev/null ;;
+  power) power "${2:-}" ;;
+  -h | --help | help) usage ;;
+  *)
+    die "unknown command '$1'" 2
+    ;;
+esac

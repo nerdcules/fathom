@@ -19,7 +19,7 @@ cd ~/Work/fathom
 |---|---|
 | `--skin` | The desktop theme |
 | `--player` | The mini-player, its keys and its bar widget |
-| `--deck` | The Command Deck and its Care page, their keys, and Care's check every 3 hours |
+| `--deck` | The Start menu, the Command Deck and its Care page, their keys, and Care's check every 3 hours |
 | `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part |
@@ -52,8 +52,11 @@ deck/bin/fathom-deck
                 starts, stops and restarts containers
 deck/hypr/      Its key and blur
 deck/plugin/fathom.deck/
-                The deck itself, an Omarchy shell panel, with its Deck and
-                Care pages
+                The deck itself, an Omarchy shell panel: the Deck and Care
+                pages and the Start menu
+start/bin/fathom-start
+                The Start menu's command: recent projects, pins, asking
+                Claude Code, Focus mode and power
 care/bin/fathom-care
                 Care's command: measures the disk, finds failed services
                 and updates, and cleans up
@@ -96,6 +99,39 @@ all on Omarchy already.
 Installing adds `~/.local/bin/fathom-player`, `~/.config/hypr/fathom-player.lua`,
 three marked lines at the end of `~/.config/hypr/hyprland.lua` (after a
 backup), and the `fathom.player` bar widget.
+
+## Start menu
+
+![Fathom Start menu](start/preview.jpg)
+
+**Tap Super** on its own for Start, as on Windows. Super with any other key
+works as before. Tap Super again or press Esc to close it.
+
+- **Search or ask.** Type to find apps, recent projects and actions (the
+  deck, Care, Focus mode, lock, sleep, restart and so on): ↑ ↓ and Enter, or
+  click. Initials work too: *vsc* finds Visual Studio Code. The last rows
+  always offer to **ask Claude Code** what you typed, in a terminal, either in
+  your home folder or in your most recent project. Nothing is sent anywhere
+  until you choose that; the suggestions under the search box ask the same
+  way.
+- **Pinned:** your terminal, editor, the Command Deck, Care, browser and
+  Files to start with. Right-click any app (here or under **All apps**) to pin
+  or unpin it.
+- **Recent work:** the git projects in `~/Work`, `~/Projects` and similar
+  folders you touched last, with what they're built with, the branch (`*`
+  for uncommitted changes) and when. Click one to open it in your editor, or
+  hover for a terminal there, Claude Code there, or Files.
+- **Along the bottom:** whether Docker is running (click for the deck),
+  **Focus** (Omarchy's do-not-disturb), and power: lock, sleep, sign out,
+  restart, shut down. The last three ask first.
+
+Pins and suggestions are kept in `~/.config/fathom/start.json`.
+
+```bash
+fathom-start                    # open or close it
+fathom-start menu | jq .        # what it shows, as JSON
+fathom-start pin obsidian       # pin an app by its desktop id
+```
 
 ## Command Deck
 
@@ -277,7 +313,7 @@ already.
 | 5 | Command Deck: system, Docker, .NET, AI | first version |
 | 6 | Mail notifications (Outlook.com); AI summaries later | built, parked: needs an app registration |
 | 7 | Care: disk, warnings, one-click updates | first version |
-| 8 | Start menu and Ask bar | planned |
+| 8 | Start menu and Ask bar (asks Claude Code) | **first version** |
 | 9 | Security monitor: OpenSnitch, CrowdSec, daemon, UI | planned |
 | 10 | Pulse: stack map from OpenTelemetry | planned |
 

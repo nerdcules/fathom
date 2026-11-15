@@ -8,12 +8,21 @@ Item {
   id: row
   property color tone: Skin.ok
   property bool showDot: true
+  // An icon in place of the dot: an image, a glyph, or a name's initial.
+  property string iconSource: ""
+  property string iconGlyph: ""
+  property string iconName: ""
+  readonly property bool hasIcon: iconSource !== "" || iconGlyph !== "" || iconName !== ""
   property string name: ""
   property string detail: ""
   property color detailColor: Skin.dim
   property string right1: ""
   property string right2: ""
   property bool alwaysShowActions: false
+  // Clickable rows highlight as they would under the keyboard cursor.
+  property bool clickable: false
+  property bool current: false
+  signal clicked()
   readonly property bool hovered: rowHover.hovered
   default property alias actions: actionsRow.data
   Layout.fillWidth: true
@@ -23,21 +32,33 @@ Item {
     anchors.fill: parent
     anchors.margins: -4 * Skin.u
     radius: 10 * Skin.u
-    color: rowHover.hovered || actionsRow.activeFocusInside ? Skin.faint : "transparent"
+    color: row.current ? Skin.tint(Skin.accent, 0.16)
+      : (rowHover.hovered || actionsRow.activeFocusInside ? Skin.faint : "transparent")
   }
-  HoverHandler { id: rowHover }
+  HoverHandler { id: rowHover; cursorShape: row.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor }
+  TapHandler { enabled: row.clickable; onTapped: row.clicked() }
 
+  AppIcon {
+    id: rowIcon
+    visible: row.hasIcon
+    size: 26 * Skin.u
+    source: row.iconSource
+    glyph: row.iconGlyph
+    name: row.iconName
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+  }
   Dot {
     id: rowDot
-    visible: row.showDot
+    visible: row.showDot && !row.hasIcon
     tone: row.tone
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
   }
   Column {
     id: texts
-    anchors.left: row.showDot ? rowDot.right : parent.left
-    anchors.leftMargin: row.showDot ? 10 * Skin.u : 0
+    anchors.left: row.hasIcon ? rowIcon.right : (row.showDot ? rowDot.right : parent.left)
+    anchors.leftMargin: row.hasIcon ? 12 * Skin.u : (row.showDot ? 10 * Skin.u : 0)
     anchors.right: rightSide.left
     anchors.rightMargin: 8 * Skin.u
     anchors.verticalCenter: parent.verticalCenter

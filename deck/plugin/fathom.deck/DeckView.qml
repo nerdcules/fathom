@@ -5,7 +5,7 @@ import "."
 // The Command Deck's content: a clock, page tabs, a summary line and the
 // current page (Deck or Care) on a translucent scrim. Plain QtQuick only, so
 // it can be rendered outside the shell for testing; Panel.qml supplies the
-// data and sets the theme on Skin.
+// data and sets the theme on Skin. Sits inside a Stage.
 Item {
   id: deck
 
@@ -31,19 +31,6 @@ Item {
   signal unitLogRequested(string scope, string unit)
   signal updateRequested()
   signal checkRequested()
-
-  readonly property real scaleFactor: Math.max(0.7, Math.min(1.25, Math.min(width / 1600, height / 1000)))
-  Binding { target: Skin; property: "u"; value: deck.scaleFactor }
-  Binding { target: Skin; property: "overlay"; value: deck }
-  Component.onCompleted: {
-    Skin.ask = function(title, body, confirmText, onConfirm) {
-      dialog.title = title
-      dialog.body = body
-      dialog.confirmText = confirmText
-      dialog.pending = onConfirm
-      dialog.open()
-    }
-  }
 
   function switchPage() { pageRequested(page === "deck" ? "care" : "deck") }
 
@@ -198,12 +185,6 @@ Item {
         }
       }
     }
-  }
-
-  Confirm {
-    id: dialog
-    property var pending: null
-    onAccepted: if (typeof pending === "function") pending()
   }
 
   QtObject {

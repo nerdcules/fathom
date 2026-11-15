@@ -52,7 +52,9 @@ if [[ -e $HOME/.local/bin/fathom-deck || -d $PLUGINS/fathom.deck || -f $UNITS/fa
   systemctl --user daemon-reload >/dev/null 2>&1 || true
   omarchy plugin disable fathom.deck >/dev/null 2>&1 || true
   rm -rf "$PLUGINS/fathom.deck"
-  rm -f "$HYPR/fathom-deck.lua" "$HOME/.local/bin/fathom-deck" "$HOME/.local/bin/fathom-care"
+  rm -f "$HYPR/fathom-deck.lua" "$HOME/.local/bin/fathom-deck" "$HOME/.local/bin/fathom-care" "$HOME/.local/bin/fathom-start"
+  rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/start.json"
+  rmdir "${XDG_CONFIG_HOME:-$HOME/.config}/fathom" 2>/dev/null || true
   hypr_changed=true
   echo "Removed the Command Deck."
 fi

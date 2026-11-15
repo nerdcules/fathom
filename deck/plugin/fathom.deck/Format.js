@@ -205,3 +205,75 @@ function updateCount(u) {
     + (Array.isArray(u.aur) ? u.aur.length : 0)
     + (Number(u.firmware) || 0)
 }
+
+// ---------------------------------------------------------------- Start
+
+// How well a query matches some text: 0 for no match, higher is better.
+// Whole-text prefix beats word prefix beats substring beats letters in order.
+function matchScore(query, text) {
+  var q = String(query || "").toLowerCase().trim()
+  var t = String(text || "").toLowerCase()
+  if (q === "" || t === "") return 0
+  if (t === q) return 1000
+  if (t.indexOf(q) === 0) return 800 - Math.min(t.length, 200)
+  var words = t.split(/[\s._\-\/]+/)
+  for (var i = 0; i < words.length; i++) if (words[i].indexOf(q) === 0) return 600 - i
+  var at = t.indexOf(q)
+  if (at >= 0) return 400 - Math.min(at, 200)
+  // Initials ("vsc" for "Visual Studio Code"), for short queries only.
+  if (q.length > 6 || /\s/.test(q)) return 0
+  var initials = ""
+  for (var k = 0; k < words.length; k++) if (words[k]) initials += words[k].charAt(0)
+  return initials.indexOf(q) === 0 && q.length > 1 ? 300 : 0
+}
+
+// The best match among several fields, the first (the name) counting most.
+function bestScore(query, fields) {
+  var best = 0
+  for (var i = 0; i < fields.length; i++) {
+    var s = matchScore(query, fields[i])
+    if (i > 0) s = Math.floor(s / 2)
+    if (s > best) best = s
+  }
+  return best
+}
+
+// Search results across apps, projects and actions, best first, at most
+// `limit` of them, as [{kind, score, item}]. Apps win ties: they're what
+// people look for most.
+function search(query, apps, projects, actions, limit) {
+  var out = []
+  var order = { app: 0, project: 1, action: 2 }
+  function rank(list, kind, fields) {
+    var items = Array.isArray(list) ? list : []
+    for (var i = 0; i < items.length; i++) {
+      var s = bestScore(query, fields(items[i]))
+      if (s > 0) out.push({ kind: kind, score: s, item: items[i] })
+    }
+  }
+  rank(apps, "app", function(a) { return [a.name, a.keywords, a.comment, a.id] })
+  rank(projects, "project", function(p) { return [p.name, (p.tech || []).join(" "), p.branch] })
+  rank(actions, "action", function(a) { return [a.name, a.keywords] })
+  out.sort(function(a, b) { return b.score - a.score || order[a.kind] - order[b.kind] })
+  return out.slice(0, limit || 7)
+}
+
+// "2 hours ago"-style age, as {unit, n}, or null for the future.
+function since(then, now) {
+  if (!then) return null
+  return ago(then, now)
+}
+
+// A path with the home folder as "~".
+function tildePath(path, home) {
+  var p = String(path || "")
+  var h = String(home || "")
+  if (h && (p === h || p.indexOf(h + "/") === 0)) return "~" + p.slice(h.length)
+  return p
+}
+
+function parentOf(path) {
+  var p = String(path || "")
+  var i = p.lastIndexOf("/")
+  return i > 0 ? p.slice(0, i) : p
+}

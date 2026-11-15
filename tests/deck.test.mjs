@@ -19,7 +19,8 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.validContainerName = validContainerName;
   this.SEGMENTS = SEGMENTS; this.diskSegments = diskSegments; this.totalBytes = totalBytes;
   this.ids = ids; this.anyRoot = anyRoot; this.ago = ago; this.forecast = forecast;
-  this.updateCount = updateCount;`, F);
+  this.updateCount = updateCount;
+  this.matchScore = matchScore; this.search = search; this.tildePath = tildePath; this.parentOf = parentOf;`, F);
 const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
@@ -132,6 +133,9 @@ test("every string the deck asks for is in en.json", () => {
   for (const key of F.SEGMENTS) used.add(`care.part.${key}`);
   for (const unit of ["days", "weeks", "months"]) used.add(`care.forecast.${unit}`);
   for (const unit of ["minutes", "hours", "days"]) used.add(`care.ago.${unit}`);
+  for (const kind of ["app", "project", "action", "ask"]) used.add(`start.kind.${kind}`);
+  for (const id of ["lock", "suspend", "logout", "reboot", "shutdown"]) used.add(`start.${id}`);
+  for (const id of ["logout", "reboot", "shutdown"]) used.add(`start.confirm.${id}`);
   assert.ok(used.size > 100, `found only ${used.size} keys`);
   for (const key of used) {
     if (key.endsWith(".")) continue; // a prefix completed at runtime, covered above
@@ -193,4 +197,34 @@ test("updates are counted across packages, AUR and firmware", () => {
   assert.equal(F.updateCount(null), 0);
   assert.equal(F.updateCount({ packages: [1, 2], aur: [3], firmware: 2 }), 5);
   assert.equal(F.updateCount({ packages: [], aur: [] }), 0);
+});
+
+test("search matches names first, then words, then initials", () => {
+  assert.equal(F.matchScore("code", "code"), 1000);
+  assert.ok(F.matchScore("vis", "Visual Studio Code") > F.matchScore("stu", "Visual Studio Code"));
+  assert.ok(F.matchScore("stu", "Visual Studio Code") > F.matchScore("udi", "Visual Studio Code"));
+  assert.ok(F.matchScore("vsc", "Visual Studio Code") > 0);
+  // Scattered letters don't count: "do" isn't in Discord's name as a word.
+  assert.equal(F.matchScore("do", "Discord"), 0);
+  assert.equal(F.matchScore("v", "Visual Studio Code") > 0, true);
+  assert.equal(F.matchScore("", "x"), 0);
+  assert.equal(F.matchScore("write me a function", "Writer"), 0);
+});
+
+test("search ranks every kind together and caps the list", () => {
+  const apps = [{ id: "a", name: "Docker Desktop" }, { id: "b", name: "Discord" }, { id: "c", name: "Ghostty", keywords: "terminal" }];
+  const projects = [{ name: "dotnet-api", tech: [".NET 10"], branch: "main" }];
+  const actions = [{ id: "shutdown", name: "Shut down", keywords: "power off" }];
+  const r = F.search("do", apps, projects, actions, 7);
+  // Both names start with "do"; the shorter, closer match comes first.
+  assert.deepEqual([...r.map((x) => x.item.name)], ["dotnet-api", "Docker Desktop", "Shut down"]);
+  assert.equal(F.search("term", apps, [], [], 7)[0].item.name, "Ghostty");
+  assert.equal(F.search("d", apps.concat(apps, apps, apps), [], [], 3).length, 3);
+  assert.equal(F.search("zzz", apps, projects, actions).length, 0);
+});
+
+test("paths read with ~ for home", () => {
+  assert.equal(F.tildePath("/home/me/Work/x", "/home/me"), "~/Work/x");
+  assert.equal(F.tildePath("/home/meg/x", "/home/me"), "/home/meg/x");
+  assert.equal(F.parentOf("/home/me/Work/x"), "/home/me/Work");
 });

@@ -33,9 +33,9 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
                and a bar widget showing what is playing
   --deck       The Command Deck: system, Docker, .NET and AI at a glance
-               (Super+Alt+D), and its Care page: disk, warnings and
-               updates (Super+Alt+C), checked every 3 hours by a systemd
-               user timer
+               (Super+Alt+D); its Care page: disk, warnings and updates
+               (Super+Alt+C), checked every 3 hours by a systemd user
+               timer; and the Start menu (tap Super)
   --mail       New-mail notifications (Outlook.com for now): 'fathom-mail'
                and its service. Then add your account with
                fathom-mail add outlook --client-id <id> (see the README)
@@ -267,7 +267,8 @@ install_deck() {
 
   place "$REPO/deck/bin/fathom-deck" "$BIN_DIR/fathom-deck"
   place "$REPO/care/bin/fathom-care" "$BIN_DIR/fathom-care"
-  chmod +x "$REPO/deck/bin/fathom-deck" "$REPO/care/bin/fathom-care"
+  place "$REPO/start/bin/fathom-start" "$BIN_DIR/fathom-start"
+  chmod +x "$REPO/deck/bin/fathom-deck" "$REPO/care/bin/fathom-care" "$REPO/start/bin/fathom-start"
   hypr_load fathom-deck "$REPO/deck/hypr/fathom-deck.lua" || return 1
   install_plugin fathom.deck
 
@@ -281,7 +282,7 @@ install_deck() {
   systemctl --user enable --now fathom-care.timer >/dev/null 2>&1 ||
     echo "install.sh: couldn't start Care's timer; try: systemctl --user enable --now fathom-care.timer" >&2
 
-  echo "Command Deck installed. Press Super+Alt+D to open it, Super+Alt+C for Care."
+  echo "Command Deck installed. Tap Super for Start, Super+Alt+D for the deck, Super+Alt+C for Care."
 }
 
 install_mail() {
