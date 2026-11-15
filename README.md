@@ -171,9 +171,9 @@ fathom-care clean trash npm   # free those (names from `status`)
 
 ## Mail
 
-New mail in your Outlook.com inbox shows up as a notification within a
-minute: the sender, the subject and the first line. Click it to open the
-message in Outlook on the web. Several at once become one notification. Only
+Once an account is added (see below), new mail in your Outlook.com inbox
+shows up as a notification within a minute: the sender, the subject and the
+first line. Click it to open the message in Outlook on the web. Several at once become one notification. Only
 your Focused inbox notifies, like Outlook's own app; set `"focusedOnly":
 false` for the account in `~/.config/fathom/mail.json` to include Other. The
 deck's summary line shows how many unread emails you have.
@@ -183,27 +183,32 @@ Gmail and IMAP accounts can come later: each mail service is one module in
 
 ### Adding your Outlook.com account
 
-Microsoft only lets apps read mail through an app registration of their own,
-so you make one (free, about five minutes, once):
+**Parked for now.** Microsoft only lets a program read Outlook.com mail
+through an *app registration*, and personal accounts (live.com, outlook.com,
+hotmail.com) can no longer create one: the Azure portal accepts only work or
+school accounts for that. Outlook.com has also turned off app passwords for
+IMAP, so there's no way around it with a password.
 
-1. Sign in at [entra.microsoft.com](https://entra.microsoft.com) with your
-   Microsoft account. If it says you need a directory, create the free
-   default one it offers.
-2. **App registrations › New registration.** Name it *Fathom Mail*. Under
-   *Supported account types* pick **Personal Microsoft accounts only**. Leave
-   *Redirect URI* empty and click **Register**.
-3. **Authentication › Advanced settings:** set **Allow public client flows**
-   to **Yes** and save.
-4. **API permissions › Add a permission › Microsoft Graph › Delegated:** add
-   **Mail.Read**. (User.Read is already there.)
-5. From **Overview**, copy the **Application (client) ID**, then:
+What still works:
 
-```bash
-fathom-mail add outlook --client-id <that id>
-```
+- **An app registration in an Entra directory**, made with a work or school
+  account that may register apps (or a free Azure account's own directory).
+  Under *Supported account types* choose one that includes **personal
+  Microsoft accounts**, set **Allow public client flows** to **Yes**, add the
+  delegated Microsoft Graph permission **Mail.Read**, and copy the
+  **Application (client) ID**. Your live.com account then signs in to it:
 
-It opens microsoft.com/link and prints a code to enter there. Once you've
-signed in, the watcher starts.
+  ```bash
+  fathom-mail add outlook --client-id <that id>
+  ```
+
+  It opens microsoft.com/link and prints a code to enter there.
+- **Without Fathom:** install Outlook on the web as an Omarchy web app and
+  allow its notifications; they arrive through Omarchy's notifications. The
+  deck can't show an unread count that way.
+
+Until an account is added, the `fathom-mail` service starts, finds nothing to
+watch and stops.
 
 Fathom only asks to **read** mail. The sign-in token is kept in your GNOME
 keyring, and the client ID and settings in `~/.config/fathom/mail.json`;
@@ -270,7 +275,7 @@ already.
 | 3 | Face login: Howdy with the IR camera (lock screen, sudo) | later |
 | 4 | Mini-player: mpv + yt-dlp | first version |
 | 5 | Command Deck: system, Docker, .NET, AI | first version |
-| 6 | Mail notifications (Outlook.com); AI summaries later | **first version** |
+| 6 | Mail notifications (Outlook.com); AI summaries later | built, parked: needs an app registration |
 | 7 | Care: disk, warnings, one-click updates | first version |
 | 8 | Start menu and Ask bar | planned |
 | 9 | Security monitor: OpenSnitch, CrowdSec, daemon, UI | planned |
