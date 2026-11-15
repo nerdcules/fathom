@@ -68,6 +68,7 @@ Item {
     }
     page = wanted
     opened = true
+    if (!blurProc.running) blurProc.running = true
     refresh()
   }
 
@@ -212,6 +213,21 @@ Item {
 
   function check() {
     if (!checkProc.running) checkProc.running = true
+  }
+
+  // Is blur on? Decides how see-through the deck is (Skin.glass).
+  Process {
+    id: blurProc
+    command: ["hyprctl", "getoption", "decoration:blur:enabled", "-j"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        // Unreadable: keep the last answer (solid by default), no banner.
+        try {
+          var o = JSON.parse(text)
+          Skin.glass = o.bool !== undefined ? !!o.bool : !!o.int
+        } catch (e) {}
+      }
+    }
   }
 
   Process {
