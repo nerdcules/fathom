@@ -5,6 +5,9 @@
   fathom-pulse serve              collect (what the fathom-pulse service runs)
   fathom-pulse status [15m|1h|24h]
                                   the map over that time (default 15m), as JSON
+  fathom-pulse agents             what Claude Code did today, by project, as
+                                  JSON (needs no service: it reads Claude
+                                  Code's session files)
 
 Apps send OTLP traces to localhost:4317 (gRPC, .NET's default) or
 localhost:4318 (HTTP). Containers reach the same ports on Docker's bridge
@@ -31,6 +34,7 @@ RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
 SOCKET = os.environ.get("FATHOM_PULSE_SOCKET") or os.path.join(RUNTIME, "fathom-pulse.sock")
 STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "fathom")
 STATE = os.environ.get("FATHOM_PULSE_STATE") or os.path.join(STATE_DIR, "pulse.json")
+AGENTS_INDEX = os.path.join(STATE_DIR, "agents.json")
 WINDOWS = {"15m": 900, "1h": 3600, "24h": 86400}
 
 ROLL_EVERY = 30       # seconds: fold old spans into the day's summaries
@@ -201,6 +205,25 @@ def status(args):
     print(json.dumps(data))
 
 
+# ---------------------------------------------------------------- agents
+
+def agents(args):
+    if args:
+        fail("agents takes no arguments", 2)
+    from fathom_pulse import agents as agents_mod
+
+    index, today = agents_mod.report(AGENTS_INDEX)
+    try:
+        old = os.umask(0o077)           # titles and file paths: yours alone
+        try:
+            write_json(AGENTS_INDEX, index.to_json())
+        finally:
+            os.umask(old)
+    except OSError as e:
+        today["saveError"] = str(e)[:200]
+    print(json.dumps(today))
+
+
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args else ""
@@ -212,6 +235,8 @@ def main():
         serve()
     elif cmd == "status":
         status(args[1:])
+    elif cmd == "agents":
+        agents(args[1:])
     else:
         fail(f"unknown command '{cmd}' (try --help)", 2)
 

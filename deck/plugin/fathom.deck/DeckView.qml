@@ -17,6 +17,8 @@ Item {
   property var sentinel: null
   property var pulse: null
   property string pulseRange: "15m"
+  // `fathom-pulse agents`: Claude Code's day, for the Pulse page.
+  property var agents: null
   property string error: ""
   // Container names and Care items with an action in flight.
   property var busy: ({})
@@ -224,8 +226,9 @@ Item {
         Layout.fillHeight: false
         Layout.preferredHeight: implicitHeight
         Layout.maximumHeight: column.pageRoom
-        columns: stage.contentWidth >= 1100 * Skin.u ? 2 : 1
+        wide: stage.contentWidth >= 1100 * Skin.u
         pulse: deck.pulse
+        agents: deck.agents
         range: deck.pulseRange
         onRangeRequested: function(range) { deck.pulseRangeRequested(range) }
         onAskRequested: function(text) { deck.askRequested(text) }

@@ -348,7 +348,7 @@
   "pulse.noRequests": "no requests",
   "pulse.problem": "Can't listen on %1 (%2). Pulse tries again every minute; something else may have the port.",
   "pulse.dayApprox": "Over 24 hours, p95 comes from per-minute summaries and can read up to 25% high.",
-  "pulse.pickOne": "Pick something on the map.",
+  "pulse.pickOne": "Pick something on the map, or a project under Agents today.",
   "pulse.inferred": "seen from its callers",
   "pulse.kind.service": "Service",
   "pulse.kind.database": "Database",
@@ -385,6 +385,51 @@
     "one": "%1 error",
     "other": "%1 errors"
   },
+  "pulse.agents.title": "Agents today",
+  "pulse.agents.working": "working",
+  "pulse.agents.waiting": "waiting for you",
+  "pulse.agents.now": "now",
+  "pulse.agents.idleNote": "Gaps are idle: nothing for over %1 minutes. Read from Claude Code's session files on this machine; your prompts aren't kept.",
+  "pulse.agents.none": "No Claude Code work today yet.",
+  "pulse.agents.notFound": "Claude Code's session files aren't on this machine (looked in ~/.claude/projects).",
+  "pulse.agents.more": {
+    "one": "+%1 more project",
+    "other": "+%1 more projects"
+  },
+  "pulse.agents.dur.lt": "<1 min",
+  "pulse.agents.dur.m": "%1 min",
+  "pulse.agents.dur.h": "%1 h",
+  "pulse.agents.dur.hm": "%1 h %2 min",
+  "pulse.agents.state.working": "working now",
+  "pulse.agents.state.waiting": "waiting for you now",
+  "pulse.agents.state.idle": "idle now",
+  "pulse.agents.waitingSince": "waiting for you since %1",
+  "pulse.agents.summaryWaiting": {
+    "one": "Claude is waiting for you in %1",
+    "other": "Claude is waiting for you in %1 projects"
+  },
+  "pulse.agents.summaryWorking": {
+    "one": "Claude is working in %1",
+    "other": "Claude is working in %1 projects"
+  },
+  "pulse.agents.fig.working": "Working",
+  "pulse.agents.fig.waiting": "Waiting",
+  "pulse.agents.fig.prompts": "Prompts",
+  "pulse.agents.did": "What Claude did today",
+  "pulse.agents.edits": "Edits",
+  "pulse.agents.editsFigure": {
+    "one": "%1 · %2 file",
+    "other": "%1 · %2 files"
+  },
+  "pulse.agents.commands": "Commands",
+  "pulse.agents.commandsFigure": {
+    "one": "%1 · %2 test run",
+    "other": "%1 · %2 test runs"
+  },
+  "pulse.agents.tokens": "Output tokens",
+  "pulse.agents.sessions": "Sessions",
+  "pulse.agents.untitled": "Untitled session",
+  "pulse.agents.sessionWorking": "%1 working",
   "start.pulse": "Pulse",
   "start.pulseDetail": "What calls what, from OpenTelemetry"
 }

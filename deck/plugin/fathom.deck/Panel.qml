@@ -26,6 +26,7 @@ Item {
   property var sentinel: null
   property var pulse: null
   property string pulseRange: "15m"
+  property var agents: null
   property var startMenu: null
   property var apps: []
   property string error: ""
@@ -99,6 +100,7 @@ Item {
       if (!sentinelProc.running) sentinelProc.running = true
     } else if (page === "pulse") {
       if (!pulseProc.running) pulseProc.running = true
+      if (!agentsProc.running) agentsProc.running = true
     } else if (!careProc.running) {
       careProc.running = true
     }
@@ -318,6 +320,21 @@ Item {
     }
   }
 
+  // Claude Code's day. It needs no service, and a failure here leaves the
+  // rest of the page alone: the card keeps what it last showed.
+  Process {
+    id: agentsProc
+    command: [root.pulseTool, "agents"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(text)
+          if (parsed && Array.isArray(parsed.projects)) root.agents = parsed
+        } catch (e) {}
+      }
+    }
+  }
+
   Process {
     id: startProc
     command: [root.startTool, "menu"]
@@ -396,6 +413,7 @@ Item {
         onSentinelLogRequested: function(what) { root.handOff([root.sentinelTool, "log", what]) }
         onSnitchRequested: root.handOff(["uwsm-app", "--", "opensnitch-ui"])
         pulse: root.pulse
+        agents: root.agents
         pulseRange: root.pulseRange
         onPulseRangeRequested: function(range) {
           root.pulseRange = range

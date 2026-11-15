@@ -23,7 +23,8 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.matchScore = matchScore; this.search = search; this.tildePath = tildePath; this.parentOf = parentOf;
   this.pulseLayout = pulseLayout; this.pulsePositions = pulsePositions; this.pulseRate = pulseRate;
   this.pulseMs = pulseMs; this.pulseHealth = pulseHealth; this.pulseAskText = pulseAskText;
-  this.pulseProblems = pulseProblems;`, F);
+  this.pulseProblems = pulseProblems;
+  this.agentsAxis = agentsAxis; this.agentsSegments = agentsSegments; this.agentsDuration = agentsDuration;`, F);
 const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
@@ -140,6 +141,8 @@ test("every string the deck asks for is in en.json", () => {
   for (const id of ["lock", "suspend", "logout", "reboot", "shutdown"]) used.add(`start.${id}`);
   for (const id of ["logout", "reboot", "shutdown"]) used.add(`start.confirm.${id}`);
   for (const r of ["15m", "1h", "24h"]) used.add(`pulse.range.${r}`);
+  for (const u of ["lt", "m", "h", "hm"]) used.add(`pulse.agents.dur.${u}`);
+  for (const st of ["working", "waiting", "idle"]) used.add(`pulse.agents.state.${st}`);
   for (const u of ["s", "min"]) used.add(`pulse.rate.${u}`);
   for (const u of ["ms", "s", "lt-ms"]) used.add(`pulse.ms.${u}`);
   for (const k of ["service", "database", "ai", "messaging", "external"]) used.add(`pulse.kind.${k}`);
@@ -278,6 +281,39 @@ test("Pulse's rates and latencies read like people say them", () => {
   assert.equal(F.pulseMs(null), null);
   assert.deepEqual([F.pulseHealth(0.1, 5), F.pulseHealth(0.01, 5), F.pulseHealth(0, 5), F.pulseHealth(0, 0)],
                    ["bad", "warn", "ok", "idle"]);
+});
+
+test("the agents timeline runs from the start of the first work's hour to now", () => {
+  const day = 1_794_700_800;            // midnight
+  const h = 3600;
+  // First work at 08:48, now 16:20: 08:00 to now, a tick every 2 hours,
+  // but not 16:00, 20 minutes from "now" on an 8-hour axis.
+  let axis = F.agentsAxis([{ first: day + 8.8 * h }, { first: day + 11 * h }, { first: null }], day, day + 16.33 * h);
+  assert.equal(axis.from, day + 8 * h);
+  assert.deepEqual(plain(axis.ticks.map((t) => (t - day) / h)), [8, 10, 12, 14]);
+  // At 17:00 it is far enough away.
+  axis = F.agentsAxis([{ first: day + 8.8 * h }], day, day + 17 * h);
+  assert.deepEqual(plain(axis.ticks.map((t) => (t - day) / h)), [8, 10, 12, 14, 16]);
+  // Nothing yet today: from the whole hour before the last hour.
+  axis = F.agentsAxis([], day, day + 9.5 * h);
+  assert.deepEqual(plain([(axis.from - day) / h, axis.ticks.map((t) => (t - day) / h)]), [8, [8, 9]]);
+  // Just after midnight: never before the day starts.
+  axis = F.agentsAxis([{ first: day + 60 }], day, day + 600);
+  assert.equal(axis.from, day);
+  // A long day: still at most 6 ticks.
+  axis = F.agentsAxis([{ first: day + 60 }], day, day + 23.9 * h);
+  assert.ok(axis.ticks.length <= 6, String(axis.ticks.length));
+});
+
+test("agents bars sit where their stretches are, clipped to the axis", () => {
+  assert.deepEqual(plain(F.agentsSegments([[0, 50, "working"], [50, 150, "waiting"], [-20, -10, "working"]], 0, 100)),
+                   [{ left: 0, width: 0.5, state: "working" }, { left: 0.5, width: 0.5, state: "waiting" }]);
+  assert.deepEqual(plain(F.agentsSegments([[0, 10, "working"]], 5, 5)), []);
+});
+
+test("agent durations read like people say them", () => {
+  assert.deepEqual([F.agentsDuration(30), F.agentsDuration(45 * 60), F.agentsDuration(7200), F.agentsDuration(4830)].map(plain),
+                   [{ unit: "lt", h: 0, m: 1 }, { unit: "m", h: 0, m: 45 }, { unit: "h", h: 2, m: 0 }, { unit: "hm", h: 1, m: 20 }]);
 });
 
 test("Pulse says where it couldn't listen", () => {

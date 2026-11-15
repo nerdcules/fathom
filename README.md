@@ -91,7 +91,8 @@ pulse/bin/fathom-pulse
                 Pulse's command and collector
 pulse/fathom_pulse/
                 otlp.py: the OTLP receivers and decoding; store.py: the last
-                hour of spans, the day's summaries and the map built from them
+                hour of spans, the day's summaries and the map built from them;
+                agents.py: Claude Code's day, from its session files
 pulse/systemd/  The collector (a user service)
 pulse/hypr/     Its key
 art/            make-art.py, which draws the wallpapers, preview and logo
@@ -324,6 +325,44 @@ Nothing leaves the machine, and nothing is sent to Claude unless you click
 **Ask Claude about this**. Pulse doesn't edit your projects: point them at it
 as below.
 
+### Agents today
+
+Under the map, one row per project shows when Claude Code worked on it
+today and when it waited for you:
+
+- **The bar** runs from the start of the hour of the day's first work to now. Blue is
+  working: from your prompt until Claude's turn ends, including the
+  commands it runs. Amber is waiting for you: from the end of its turn until
+  your next prompt. A gap is idle: nothing for over 10 minutes, whatever it
+  was doing.
+- **The dot** is the state now. While Claude Code runs, it notes in
+  `~/.claude/sessions/` whether each session is busy or idle; Pulse trusts
+  that note only when its process is still running with the same start
+  time. A busy session is working, and its bar runs to now even through a
+  long, silent command. An idle one is waiting for you: the header says so
+  ("Claude is waiting for you in shop") and the inspector says since when.
+  A closed session is idle.
+- **Click a row** for the project's day: time working and waiting, your
+  prompts, Claude's edits (and to how many files), its commands (and how
+  many ran tests), its output tokens, and its sessions with Claude Code's
+  title for each.
+
+A step counts toward the git repository it ran in; a step outside any
+repository counts toward the project its session started in. The 5 most
+recent projects are shown.
+
+It reads Claude Code's session files in `~/.claude/projects` (or
+`$CLAUDE_CONFIG_DIR`), only the lines added since the last read, and keeps
+an index in `~/.local/state/fathom/agents.json`, readable only by you. It
+reads timestamps, folders, git branch, model, token counts, tool names, the
+paths of edited files and the session titles. Commands are matched for test
+runners (`dotnet test`, `pytest`, `node --test` and the like) and then
+dropped, never kept. The text of Claude's replies isn't read; of your messages, only
+the first 40 characters are looked at, to tell your prompts from notes
+Claude Code adds itself (a slash command, a background task's notice), and
+none of it is kept. It needs no service: the card works whether or not the collector is running.
+Other agents (Codex, opencode) aren't read yet.
+
 ### Pointing a .NET app at Pulse
 
 Add the OTLP exporter to the app's tracing:
@@ -376,6 +415,7 @@ covered. `uninstall.sh` removes the rule.
 ```bash
 fathom-pulse                     # open the page
 fathom-pulse status 1h | jq .    # the map over 15m, 1h or 24h, as JSON
+fathom-pulse agents | jq .       # Claude Code's day, as JSON
 journalctl --user -u fathom-pulse    # where it's listening, or why it can't
 ```
 
@@ -492,7 +532,7 @@ already.
 | 7 | Care: disk, warnings, one-click updates | first version |
 | 8 | Start menu and Ask bar (asks Claude Code) | first version |
 | 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
-| 10 | Pulse: stack map from OpenTelemetry | first version |
+| 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
 
 Parts that change system files (sign-in screen, face login, Sentinel) are
 opt-in flags on `install.sh`, back up what they replace, and are undone by

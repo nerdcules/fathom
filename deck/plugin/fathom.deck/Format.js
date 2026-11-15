@@ -422,3 +422,55 @@ function pulseAskText(node, edges, errors, range) {
   out.push("What could be wrong, and where should I look?")
   return out.join("\n")
 }
+
+// ---------------------------------------------------------------- agents
+
+// The agents timeline's hours: from the start of the hour of the day's
+// first activity to now, at least an hour, with at most 6 ticks on whole hours
+// and none in the last 8% before "now".
+function agentsAxis(projects, dayStart, now) {
+  var first = Infinity
+  for (var i = 0; i < (projects || []).length; i++) {
+    var f = Number(projects[i].first)
+    if (isFinite(f) && f > 0) first = Math.min(first, f)
+  }
+  now = Number(now) || 0
+  if (!isFinite(first)) first = now - 3600
+  var from = Math.max(Number(dayStart) || 0, Math.floor(first / 3600) * 3600)
+  if (now - from < 3600) from = Math.max(Number(dayStart) || 0, now - 3600)
+  var hours = (now - from) / 3600
+  var steps = [1, 2, 3, 4, 6]
+  var step = steps[steps.length - 1]
+  for (var s = 0; s < steps.length; s++) {
+    if (hours / steps[s] <= 6) { step = steps[s]; break }
+  }
+  var ticks = []
+  // No tick so close to the end that its label would crowd "now".
+  var last = now - Math.max(60, (now - from) * 0.08)
+  for (var t = Math.ceil(from / 3600) * 3600; t <= last; t += 3600) {
+    // Whole hours that fall on the step, counted from local midnight.
+    if (Math.round((t - dayStart) / 3600) % step === 0) ticks.push(t)
+  }
+  return { from: from, to: now, ticks: ticks }
+}
+
+// Where each stretch sits on the bar, as fractions of its width.
+function agentsSegments(spans, from, to) {
+  var out = []
+  var len = Number(to) - Number(from)
+  if (!(len > 0)) return out
+  for (var i = 0; i < (spans || []).length; i++) {
+    var a = Math.max(Number(spans[i][0]), from), b = Math.min(Number(spans[i][1]), to)
+    if (b > a) out.push({ left: (a - from) / len, width: (b - a) / len, state: String(spans[i][2]) })
+  }
+  return out
+}
+
+// "1 h 20 min", "45 min", "<1 min".
+function agentsDuration(seconds) {
+  var s = Math.max(0, Math.round(Number(seconds) || 0))
+  if (s < 60) return { unit: "lt", h: 0, m: 1 }
+  var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
+  if (h === 0) return { unit: "m", h: 0, m: m }
+  return m === 0 ? { unit: "h", h: h, m: 0 } : { unit: "hm", h: h, m: m }
+}

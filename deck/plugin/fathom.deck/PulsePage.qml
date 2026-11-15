@@ -13,6 +13,12 @@ GridLayout {
   // "15m", "1h" or "24h".
   property string range: "15m"
 
+  // `fathom-pulse agents`: what Claude Code did today, by project.
+  property var agents: null
+  // Wide: the inspector to the right of the map and agents. Narrow: the
+  // map across the top, agents and the inspector side by side below it.
+  property bool wide: true
+
   signal rangeRequested(string range)
   signal askRequested(string text)
 
@@ -32,10 +38,22 @@ GridLayout {
     return n
   }
 
-  // The node the inspector shows: the one picked, while it's on the map,
-  // else the busiest service.
+  readonly property var agentProjects: agents && Array.isArray(agents.projects) ? agents.projects : []
+  readonly property var axis: agents ? F.agentsAxis(agentProjects, agents.start, agents.time) : null
+
+  // The inspector shows a project from the agents card when one is picked,
+  // else the node picked on the map while it's there, else the busiest
+  // service.
   property string picked: ""
+  property string pickedProject: ""
+  readonly property var project: {
+    for (var i = 0; i < agentProjects.length; i++) if (agentProjects[i].id === pickedProject) return agentProjects[i]
+    return null
+  }
+  function pickNode(id) { pickedProject = ""; picked = id }
+  function pickProject(id) { pickedProject = id }
   readonly property var selected: {
+    if (project) return null
     var first = null
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].id === picked) return nodes[i]
@@ -72,7 +90,7 @@ GridLayout {
     }
   }
 
-  columns: 2
+  columns: 2   // always; `wide` decides how the cards sit in them
   columnSpacing: 20 * Skin.u
   rowSpacing: 20 * Skin.u
 
@@ -99,19 +117,48 @@ GridLayout {
     return new Date(t * 1000).toLocaleTimeString(Skin.locale, "HH:mm")
   }
 
+  function durText(seconds) {
+    var d = F.agentsDuration(seconds)
+    var t = Skin.t("pulse.agents.dur." + d.unit)
+    return d.unit === "hm" ? t.arg(d.h).arg(d.m) : (d.unit === "h" ? t.arg(d.h) : (d.unit === "m" ? t.arg(d.m) : t))
+  }
+  function stateColor(state) {
+    return state === "working" ? Skin.accent : (state === "waiting" ? Skin.warn : Skin.faint)
+  }
+
+  // "Claude is waiting for you in fathom": waiting first, since it needs you.
+  function agentsSummary() {
+    var out = []
+    var states = ["waiting", "working"]
+    for (var s = 0; s < states.length; s++) {
+      var these = agentProjects.filter(function(p) { return p.state === states[s] })
+      if (!these.length) continue
+      var key = states[s] === "waiting" ? "pulse.agents.summaryWaiting" : "pulse.agents.summaryWorking"
+      out.push({ tone: states[s] === "waiting" ? "warn" : "ok",
+                 text: Skin.tn(key, these.length).arg(these.length === 1 ? these[0].name : Skin.n(these.length)) })
+    }
+    return out
+  }
+
   function summary() {
-    if (!pulse) return [{ tone: "stopped", text: Skin.t("loading") }]
-    if (!running) return [{ tone: "bad", text: Skin.t("pulse.notRunning") }]
-    if (nodes.length === 0) return [{ tone: "stopped", text: Skin.t("pulse.waiting") }]
+    var agentLines = agentsSummary()
+    if (!pulse) return [{ tone: "stopped", text: Skin.t("loading") }].concat(agentLines)
+    if (!running) return [{ tone: "bad", text: Skin.t("pulse.notRunning") }].concat(agentLines)
+    if (nodes.length === 0) return [{ tone: "stopped", text: Skin.t("pulse.waiting") }].concat(agentLines)
     var out = [{ tone: "ok", text: Skin.tn("pulse.summary.services", services).arg(Skin.n(services)) }]
     if (errorCount > 0) out.push({ tone: "warn", text: Skin.tn("pulse.summary.errors", errorCount).arg(Skin.n(errorCount)).arg(Skin.t("pulse.range." + range)) })
     else out.push({ tone: "ok", text: Skin.t("pulse.summary.noErrors").arg(Skin.t("pulse.range." + range)) })
-    return out
+    return agentLines.filter(function(l) { return l.tone === "warn" }).concat(out, agentLines.filter(function(l) { return l.tone !== "warn" }))
   }
 
   // ------------------------------------------------ the map
   Card {
+    Layout.row: 0
+    Layout.column: 0
+    Layout.columnSpan: page.wide ? 1 : 2
     Layout.preferredWidth: 2.2
+    // The map keeps its height; the agents card below takes what's left.
+    Layout.minimumHeight: implicitHeight
     title: Skin.t("pulse.title")
     glyph: ""
     subtitle: page.running && page.pulse.dropped > 0
@@ -272,8 +319,8 @@ GridLayout {
           activeFocusOnTab: true
           Accessible.role: Accessible.Button
           Accessible.name: modelData.name
-          Keys.onReturnPressed: page.picked = modelData.id
-          Keys.onSpacePressed: page.picked = modelData.id
+          Keys.onReturnPressed: page.pickNode(modelData.id)
+          Keys.onSpacePressed: page.pickNode(modelData.id)
 
           Column {
             anchors.fill: parent
@@ -306,7 +353,7 @@ GridLayout {
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: page.picked = box.modelData.id
+            onClicked: page.pickNode(box.modelData.id)
           }
         }
       }
@@ -341,16 +388,189 @@ GridLayout {
     }
   }
 
-  // ------------------------------------------------ the inspector
+  // ------------------------------------------------ agents today
   Card {
-    Layout.preferredWidth: 1
-    title: page.selected ? page.selected.name : Skin.t("pulse.inspector")
-    glyph: page.selected ? (page.glyphFor(page.selected.kind) || "") : ""
-    subtitle: page.selected ? Skin.t("pulse.kind." + page.selected.kind) + (page.selected.inferred ? " · " + Skin.t("pulse.inferred") : "") : ""
+    id: agentsCard
+    Layout.row: 1
+    Layout.column: 0
+    Layout.preferredWidth: page.wide ? 2.2 : 1
+    Layout.fillHeight: true
+    Layout.preferredHeight: implicitHeight
+    Layout.maximumHeight: implicitHeight
+    Layout.minimumHeight: Math.min(implicitHeight, 170 * Skin.u)
+    visible: !!page.agents
+    title: Skin.t("pulse.agents.title")
+    glyph: "\uf120"
+    readonly property real nameW: 150 * Skin.u
+    readonly property real totalW: 84 * Skin.u
+    readonly property int maxRows: 5
 
     Empty {
-      visible: !page.selected
+      visible: !!page.agents && page.agents.found === false
+      text: Skin.t("pulse.agents.notFound")
+    }
+    Empty {
+      visible: !!page.agents && page.agents.found !== false && page.agentProjects.length === 0
+      text: Skin.t("pulse.agents.none")
+    }
+
+    // One row per project, most recent first.
+    Repeater {
+      model: page.agentProjects.slice(0, agentsCard.maxRows)
+      delegate: Item {
+        id: agentRow
+        required property var modelData
+        readonly property bool isPicked: !!page.project && page.project.id === modelData.id
+        Layout.fillWidth: true
+        implicitHeight: 24 * Skin.u
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: modelData.name
+        Keys.onReturnPressed: page.pickProject(modelData.id)
+        Keys.onSpacePressed: page.pickProject(modelData.id)
+
+        Rectangle {
+          anchors.fill: parent
+          anchors.leftMargin: -6 * Skin.u
+          anchors.rightMargin: -6 * Skin.u
+          radius: 8 * Skin.u
+          color: agentRow.isPicked ? Skin.tint(Skin.accent, 0.14) : (rowHover.hovered ? Skin.faint : "transparent")
+        }
+        HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: page.pickProject(agentRow.modelData.id) }
+
+        RowLayout {
+          anchors.fill: parent
+          spacing: 0
+          RowLayout {
+            Layout.preferredWidth: agentsCard.nameW
+            Layout.maximumWidth: agentsCard.nameW
+            spacing: 8 * Skin.u
+            Dot { tone: page.stateColor(agentRow.modelData.state) }
+            Label {
+              text: agentRow.modelData.name
+              font.pixelSize: 13 * Skin.u
+              font.weight: agentRow.isPicked ? Font.DemiBold : Font.Normal
+              Layout.fillWidth: true
+            }
+          }
+          // The day so far.
+          Item {
+            id: bar
+            Layout.fillWidth: true
+            Layout.preferredHeight: 12 * Skin.u
+            Rectangle { anchors.fill: parent; radius: 3 * Skin.u; color: Skin.tint(Skin.fg, 0.05) }
+            Repeater {
+              model: page.axis ? F.agentsSegments(agentRow.modelData.spans, page.axis.from, page.axis.to) : []
+              delegate: Rectangle {
+                required property var modelData
+                x: modelData.left * bar.width
+                width: Math.max(2 * Skin.u, modelData.width * bar.width)
+                height: bar.height
+                radius: 2 * Skin.u
+                color: page.stateColor(modelData.state)
+              }
+            }
+          }
+          Label {
+            Layout.preferredWidth: agentsCard.totalW
+            horizontalAlignment: Text.AlignRight
+            text: agentRow.modelData.working > 0 ? page.durText(agentRow.modelData.working) : ""
+            color: Skin.dim
+            font.pixelSize: 12 * Skin.u
+          }
+        }
+      }
+    }
+
+    Label {
+      visible: page.agentProjects.length > agentsCard.maxRows
+      text: Skin.tn("pulse.agents.more", page.agentProjects.length - agentsCard.maxRows).arg(Skin.n(page.agentProjects.length - agentsCard.maxRows))
+      color: Skin.dim
+      font.pixelSize: 12 * Skin.u
+    }
+
+    // The hours along the bottom.
+    RowLayout {
+      visible: page.agentProjects.length > 0 && !!page.axis
+      Layout.fillWidth: true
+      spacing: 0
+      Item { Layout.preferredWidth: agentsCard.nameW }
+      Item {
+        id: hours
+        Layout.fillWidth: true
+        implicitHeight: 16 * Skin.u
+        Repeater {
+          model: page.axis ? page.axis.ticks : []
+          delegate: Label {
+            required property var modelData
+            x: (modelData - page.axis.from) / (page.axis.to - page.axis.from) * hours.width - width / 2
+            text: page.clock(modelData)
+            color: Skin.dim
+            font.pixelSize: 11 * Skin.u
+          }
+        }
+        Label {
+          anchors.right: parent.right
+          text: Skin.t("pulse.agents.now")
+          color: Skin.dim
+          font.pixelSize: 11 * Skin.u
+        }
+      }
+      Item { Layout.preferredWidth: agentsCard.totalW }
+    }
+
+    // The key, and what the gaps mean.
+    RowLayout {
+      visible: page.agentProjects.length > 0
+      Layout.fillWidth: true
+      spacing: 6 * Skin.u
+      Repeater {
+        model: ["working", "waiting"]
+        delegate: RowLayout {
+          required property string modelData
+          spacing: 6 * Skin.u
+          Layout.alignment: Qt.AlignTop
+          Rectangle { width: 10 * Skin.u; height: 10 * Skin.u; radius: 3 * Skin.u; color: page.stateColor(modelData) }
+          Label { text: Skin.t("pulse.agents." + modelData); color: Skin.dim; font.pixelSize: 11 * Skin.u; Layout.rightMargin: 8 * Skin.u }
+        }
+      }
+      Label {
+        text: Skin.t("pulse.agents.idleNote").arg(page.agents ? Math.round(page.agents.idleAfter / 60) : 10)
+        color: Skin.dim
+        font.pixelSize: 11 * Skin.u
+        wrapMode: Text.WordWrap
+        elide: Text.ElideNone
+        Layout.fillWidth: true
+      }
+    }
+  }
+
+  // ------------------------------------------------ the inspector
+  Card {
+    Layout.row: page.wide ? 0 : 1
+    Layout.column: 1
+    Layout.rowSpan: page.wide ? 2 : 1
+    Layout.preferredWidth: 1
+    title: page.project ? page.project.name : (page.selected ? page.selected.name : Skin.t("pulse.inspector"))
+    glyph: page.project ? "\uf120" : (page.selected ? (page.glyphFor(page.selected.kind) || "") : "")
+    subtitle: page.project ? (page.project.state === "waiting" && page.project.waitingSince
+        ? Skin.t("pulse.agents.waitingSince").arg(page.clock(page.project.waitingSince))
+        : Skin.t("pulse.agents.state." + page.project.state))
+      : (page.selected ? Skin.t("pulse.kind." + page.selected.kind) + (page.selected.inferred ? " · " + Skin.t("pulse.inferred") : "") : "")
+    subtitleColor: page.project && page.project.state !== "idle" ? page.stateColor(page.project.state) : Skin.dim
+
+    Empty {
+      visible: !page.selected && !page.project
       text: Skin.t("pulse.pickOne")
+    }
+
+    Label {
+      visible: !!page.project
+      text: page.project ? page.project.path : ""
+      color: Skin.dim
+      font.pixelSize: 12 * Skin.u
+      Layout.fillWidth: true
     }
 
     Label {
@@ -363,11 +583,15 @@ GridLayout {
 
     // Three figures side by side.
     RowLayout {
-      visible: !!page.selected
+      visible: !!page.selected || !!page.project
       Layout.fillWidth: true
       spacing: 10 * Skin.u
       Repeater {
-        model: page.selected ? [
+        model: page.project ? [
+          { label: Skin.t("pulse.agents.fig.working"), value: page.durText(page.project.working), tone: "ok" },
+          { label: Skin.t("pulse.agents.fig.waiting"), value: page.durText(page.project.waiting), tone: "ok" },
+          { label: Skin.t("pulse.agents.fig.prompts"), value: Skin.n(page.project.prompts || 0), tone: "ok" }
+        ] : page.selected ? [
           { label: Skin.t("pulse.fig.rate"), value: page.rateText(page.selected.rate), tone: "ok" },
           { label: Skin.t("pulse.fig.p95"), value: page.msText(page.selected.p95ms), tone: "ok" },
           { label: Skin.t("pulse.fig.errors"), value: Skin.n(page.selected.errors || 0),
@@ -391,6 +615,9 @@ GridLayout {
               width: parent.width
               text: modelData.value
               font.pixelSize: 20 * Skin.u
+              // "1 h 38 min" in a narrow tile: smaller rather than cut off.
+              fontSizeMode: Text.HorizontalFit
+              minimumPixelSize: 12 * Skin.u
               color: modelData.tone === "bad" || modelData.tone === "warn" ? Skin.levelColor(modelData.tone) : Skin.fg
             }
           }
@@ -426,7 +653,7 @@ GridLayout {
         figure: page.rateText(modelData.rate) + "  ·  " + (modelData.errors > 0
           ? Skin.tn("pulse.errorsShort", modelData.errors).arg(Skin.n(modelData.errors)) : page.msText(modelData.p95ms))
         clickable: true
-        onClicked: page.picked = modelData.from
+        onClicked: page.pickNode(modelData.from)
       }
     }
 
@@ -444,7 +671,43 @@ GridLayout {
         figure: page.rateText(modelData.rate) + "  ·  " + (modelData.errors > 0
           ? Skin.tn("pulse.errorsShort", modelData.errors).arg(Skin.n(modelData.errors)) : page.msText(modelData.p95ms))
         clickable: true
-        onClicked: page.picked = modelData.to
+        onClicked: page.pickNode(modelData.to)
+      }
+    }
+
+    SectionTitle {
+      visible: !!page.project
+      text: Skin.t("pulse.agents.did")
+    }
+    Repeater {
+      model: page.project ? [
+        { name: Skin.t("pulse.agents.edits"),
+          figure: Skin.tn("pulse.agents.editsFigure", page.project.files).arg(Skin.n(page.project.edits)).arg(Skin.n(page.project.files)) },
+        { name: Skin.t("pulse.agents.commands"),
+          figure: Skin.tn("pulse.agents.commandsFigure", page.project.tests).arg(Skin.n(page.project.commands)).arg(Skin.n(page.project.tests)) },
+        { name: Skin.t("pulse.agents.tokens"), figure: Skin.n(page.project.outputTokens || 0) }
+      ] : []
+      delegate: MiniRow {
+        required property var modelData
+        tone: Skin.accent
+        name: modelData.name
+        figure: modelData.figure
+      }
+    }
+
+    SectionTitle {
+      visible: !!page.project && page.project.sessions.length > 0
+      text: Skin.t("pulse.agents.sessions")
+    }
+    Repeater {
+      model: page.project ? page.project.sessions.slice(0, 4) : []
+      delegate: ListRow {
+        required property var modelData
+        tone: modelData.state === "idle" ? Skin.dim : page.stateColor(modelData.state)
+        name: modelData.title || Skin.t("pulse.agents.untitled")
+        detail: page.clock(modelData.start) + "–" + page.clock(modelData.end)
+          + (modelData.branch && modelData.branch !== "HEAD" ? "  ·  " + modelData.branch : "")
+          + "  ·  " + Skin.t("pulse.agents.sessionWorking").arg(page.durText(modelData.working))
       }
     }
 
