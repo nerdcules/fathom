@@ -19,7 +19,8 @@ cd ~/Work/fathom
 |---|---|
 | `--skin` | The desktop theme |
 | `--player` | The mini-player, its keys and its bar widget |
-| `--deck` | The Start menu, the Command Deck and its Care page, their keys, and Care's check every 3 hours |
+| `--deck` | The Start menu, the Command Deck and its Care page, their keys, Care's check every 3 hours, and the deck's pill in the bar |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
 | `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
 | `--pulse` | Pulse, its key and its collector service. Asks for your password once if the firewall is on and Docker's bridge is up, so containers can reach it |
@@ -30,10 +31,10 @@ cd ~/Work/fathom
 | `--no-apply` | Install the desktop theme without switching to it |
 
 With no part named, it installs the parts that need no password: `--skin`,
-`--player`, `--deck` and `--mail`.
+`--player`, `--deck`, `--desk` and `--mail`.
 
 Running it again updates what's installed. If that replaces a shell plugin
-(the mini-player's bar widget or the deck), it restarts the Omarchy shell at
+(the mini-player's bar widget, the deck or the desk), it restarts the Omarchy shell at
 the end so the new version loads; the bar blinks once.
 
 `./uninstall.sh` switches back to the theme that was on before, removes
@@ -63,6 +64,13 @@ deck/plugin/fathom.deck/
                 The deck itself, an Omarchy shell panel: the Deck, Care,
                 Sentinel and Pulse pages and the Start menu, and its pill
                 in the bar (DeckBar.qml)
+desk/bin/fathom-desk
+                The desk's command: opens its views, reads windows and
+                Quick settings' state as JSON, and changes settings
+desk/hypr/      Its keys, and Alt+Tab's handling of Tab and Alt
+desk/plugin/fathom.desk/
+                The desk itself, an Omarchy shell panel kept loaded:
+                Alt+Tab, Task view, Snap layouts and Quick settings
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -163,6 +171,75 @@ fathom-start                    # open or close it
 fathom-start menu | jq .        # what it shows, as JSON
 fathom-start pin obsidian       # pin an app by its desktop id
 ```
+
+## Desk
+
+Windows' ways of handling windows, on Hyprland. Install it with `--desk`
+(it's one of the parts installed by default).
+
+| Key | What it does |
+|---|---|
+| **Alt+Tab** | Switch windows |
+| **Super+Tab** | Task view: every window and workspace |
+| **Super+Z** | Snap layouts for the focused window |
+| **Super+Alt+A** | Quick settings |
+
+**Alt+Tab** shows every window as a card with a live picture of it, most
+recently used first, with the window you used before this one picked. Tab
+again (Alt still held) steps on, Shift+Tab or the arrow keys step back and
+around, and letting go of Alt brings the picked window forward, switching
+workspace if it's on another. Esc leaves things as they were. Windows
+minimized to Omarchy's dock are in the list too; picking one brings it back
+to the workspace it left. Scratchpads aren't. It replaces Omarchy's Alt+Tab,
+which moved to the next window without showing anything.
+
+**Task view** shows the windows of the workspace on screen as large live
+cards, and every workspace along the bottom. Hover a workspace to see its
+windows, click one to go there, or click New for an empty one. Click a
+window to bring it forward, drag it onto a workspace to move it there, or
+close it with its × (or a middle-click, or Delete). Page Up and Page Down
+look at the other workspaces; 1 to 9 go to one. Task view takes Super+Tab,
+which was Omarchy's "next workspace"; Super+Shift+Tab (previous) and
+Super+Ctrl+Tab (the one before) are unchanged.
+
+**Snap layouts** offers six layouts for the focused window: halves, two
+thirds and one third, thirds, one big and two stacked, quarters, and centre.
+Hover a zone to see where the window would go, at full size, and click to
+put it there; the arrow keys and Enter work too. Then, as on Windows, Snap
+assist offers the workspace's other windows for the zones left; Esc stops.
+A snapped window floats at the zone's size, with the same gaps tiling
+leaves, so this works on tiled workspaces as well as floating ones. **Back to
+tiling** puts it back in the tiling.
+
+**Quick settings** opens under the bar at the top right: Wi-Fi, Bluetooth,
+Focus (Omarchy's do-not-disturb), night light, stay awake and the power
+profile as tiles, volume and brightness as sliders, and the battery, Lock and
+Omarchy's menu along the bottom. The arrows on Wi-Fi and Bluetooth open
+Omarchy's own panels for choosing a network or a device.
+
+The desk's panel stays loaded in the shell so Alt+Tab opens without waiting.
+It reads the windows (`fathom-desk state`: 64 to 72 ms over five runs here)
+when a view opens and again as windows open, close and move while one shows;
+Quick settings reads its state (`fathom-desk settings`: 565 to 623 ms over
+three runs) on opening and every 4 seconds while it shows. Nothing is read
+while nothing shows.
+
+Alt+Tab is driven from Hyprland: while the switcher is up, Hyprland is in a
+submap called `fathom-switch`, so Tab reaches the switcher and nothing else.
+If nothing happens for 8 seconds it leaves the submap by itself, so the
+keyboard can't be left there.
+
+```bash
+fathom-desk tasks | snap | quick       # open or close a view
+fathom-desk state | jq .               # windows, workspaces and monitors
+fathom-desk settings | jq .            # what Quick settings shows
+fathom-desk set brightness 40          # also wifi, focus, nightlight, awake on|off; profile <name>
+```
+
+Installing adds `~/.local/bin/fathom-desk`, `~/.config/hypr/fathom-desk.lua`
+(loaded from Fathom's marked block in `hyprland.lua`) and the `fathom.desk`
+shell plugin. Uninstalling removes them, and Hyprland's reload puts Omarchy's
+own Alt+Tab and Super+Tab back.
 
 ## Command Deck
 
@@ -561,6 +638,7 @@ already.
 | 8 | Start menu and Ask bar (asks Claude Code) | first version |
 | 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
 | 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
+| 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
 
 Parts that change system files (sign-in screen, face login, Sentinel) are
 opt-in flags on `install.sh`, back up what they replace, and are undone by

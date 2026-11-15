@@ -19,6 +19,7 @@ skin=false
 signin=false
 player=false
 deck=false
+desk=false
 mail=false
 sentinel=false
 pulse=false
@@ -31,7 +32,7 @@ usage() {
   cat <<EOF
 Usage: ./install.sh [options]
 
-Parts (with none named, the ones that need no password: --skin --player --deck --mail):
+Parts (with none named, the ones that need no password: --skin --player --deck --desk --mail):
   --skin       The Fathom desktop theme
   --player     The mini-player: 'fathom-player', its window rules and keys
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
@@ -40,6 +41,9 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                (Super+Alt+D); its Care page: disk, warnings and updates
                (Super+Alt+C), checked every 3 hours by a systemd user
                timer; and the Start menu (tap Super)
+  --desk       Windows-style window handling: Alt+Tab with window previews,
+               Task view (Super+Tab, in place of Omarchy's next workspace),
+               Snap layouts (Super+Z) and Quick settings (Super+Alt+A)
   --mail       New-mail notifications (Outlook.com for now): 'fathom-mail'
                and its service. Then add your account with
                fathom-mail add outlook --client-id <id> (see the README)
@@ -77,6 +81,7 @@ while (($#)); do
     --signin) signin=true ;;
     --player) player=true ;;
     --deck) deck=true ;;
+    --desk) desk=true ;;
     --mail) mail=true ;;
     --sentinel) sentinel=true ;;
     --pulse) pulse=true ;;
@@ -86,6 +91,7 @@ while (($#)); do
       signin=true
       player=true
       deck=true
+      desk=true
       mail=true
       sentinel=true
       pulse=true
@@ -111,10 +117,11 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $mail && ! $sentinel && ! $pulse; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse; then
   skin=true
   player=true
   deck=true
+  desk=true
   mail=true
 fi
 
@@ -314,6 +321,24 @@ install_deck() {
   echo "Command Deck installed. Tap Super for Start, Super+Alt+D for the deck, Super+Alt+C for Care."
 }
 
+install_desk() {
+  local missing=() tool
+  for tool in jq hyprctl nmcli; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: the desk needs: ${missing[*]}" >&2
+    return 1
+  fi
+
+  place "$REPO/desk/bin/fathom-desk" "$BIN_DIR/fathom-desk"
+  chmod +x "$REPO/desk/bin/fathom-desk"
+  hypr_load fathom-desk "$REPO/desk/hypr/fathom-desk.lua" || return 1
+  install_plugin fathom.desk
+
+  echo "Desk installed. Alt+Tab switches windows, Super+Tab shows Task view, Super+Z snaps a window, Super+Alt+A opens Quick settings."
+}
+
 install_mail() {
   local missing=() tool
   for tool in python3 secret-tool busctl xdg-open; do
@@ -444,6 +469,7 @@ install_pulse() {
 $skin && install_skin
 $player && install_player
 $deck && install_deck
+$desk && install_desk
 $mail && install_mail
 $sentinel && install_sentinel
 $pulse && install_pulse

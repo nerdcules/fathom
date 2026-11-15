@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# Fathom desk: Alt+Tab, Task view, Snap layouts and Quick settings. The
+# desk's shell plugin (fathom.desk) calls this; you can too.
+#
+#   fathom-desk tasks                  open or close Task view
+#   fathom-desk snap                   open or close Snap layouts for the focused window
+#   fathom-desk quick                  open or close Quick settings
+#   fathom-desk state                  windows, workspaces and monitors, as JSON
+#   fathom-desk settings               what Quick settings shows, as JSON
+#   fathom-desk set <what> <value>     wifi on|off, focus on|off, nightlight on|off,
+#                                      awake on|off, profile <name>, brightness <1-100>
+#
+# Alt+Tab is driven from Hyprland (~/.config/hypr/fathom-desk.lua), not
+# from here. Everything is read from this machine; nothing is sent anywhere.
+set -euo pipefail
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+summon() {
+  exec omarchy-shell shell summon fathom.desk "{\"view\":\"$1\"}"
+}
+
+# The first number of a CSS-like gap ("5 5 5 5"), or a plain number.
+first_number() {
+  jq -r '(.css // .int // .custom // 0) | tostring | split(" ")[0] | tonumber? // 0' 2>/dev/null || echo 0
+}
+
+state() {
+  local gaps_in gaps_out border
+  gaps_in=$(hyprctl getoption general:gaps_in -j 2>/dev/null | first_number)
+  gaps_out=$(hyprctl getoption general:gaps_out -j 2>/dev/null | first_number)
+  border=$(hyprctl getoption general:border_size -j 2>/dev/null | first_number)
+  # Each part on its own; one that fails reads as empty, not as an error.
+  jq -n \
+    --argjson gapsIn "${gaps_in:-0}" --argjson gapsOut "${gaps_out:-0}" --argjson border "${border:-0}" \
+    --slurpfile clients <(hyprctl clients -j 2>/dev/null | jq -c 'arrays' 2>/dev/null || true) \
+    --slurpfile workspaces <(hyprctl workspaces -j 2>/dev/null | jq -c 'arrays' 2>/dev/null || true) \
+    --slurpfile monitors <(hyprctl monitors -j 2>/dev/null | jq -c 'arrays' 2>/dev/null || true) \
+    --slurpfile active <(hyprctl activewindow -j 2>/dev/null | jq -c 'objects' 2>/dev/null || true) \
+    '{
+      clients: ($clients[0] // []),
+      workspaces: ($workspaces[0] // []),
+      monitors: ($monitors[0] // []),
+      active: (($active[0] // {}) | {address: (.address // null)}),
+      # What tiling leaves: gaps_out plus the border at the screen edge,
+      # both windows'"'"' gaps_in and borders between two windows.
+      gapsOut: ($gapsOut + $border),
+      gapsIn: (2 * ($gapsIn + $border))
+    }'
+}
+
+# ---------------------------------------------------------------- settings
+
+wifi_json() {
+  command -v nmcli >/dev/null || { echo null; return; }
+  local radio ssid="" signal=0
+  radio=$(timeout 3 nmcli -t -f WIFI radio 2>/dev/null || true)
+  if [[ $radio == enabled ]]; then
+    IFS=: read -r _ ssid signal < <(timeout 3 nmcli -t -f ACTIVE,SSID,SIGNAL dev wifi list --rescan no 2>/dev/null | grep '^yes:' | head -n 1 || true) || true
+  fi
+  jq -nc --arg radio "$radio" --arg ssid "$ssid" --arg signal "${signal:-0}" \
+    'if $radio == "" then null else {on: ($radio == "enabled"), ssid: ($ssid | .[0:64]), signal: ($signal | tonumber? // 0)} end'
+}
+
+battery_json() {
+  local bat
+  for bat in "${FATHOM_DESK_POWER:-/sys/class/power_supply}"/BAT*; do
+    [[ -r $bat/capacity ]] || continue
+    jq -nc --arg pct "$(cat "$bat/capacity" 2>/dev/null)" --arg status "$(cat "$bat/status" 2>/dev/null)" \
+      '{pct: ($pct | tonumber? // null), status: ($status | .[0:20])}'
+    return
+  done
+  echo null
+}
+
+profiles_json() {
+  command -v powerprofilesctl >/dev/null || { echo null; return; }
+  local current
+  current=$(timeout 3 powerprofilesctl get 2>/dev/null || true)
+  { timeout 3 omarchy-powerprofiles-list 2>/dev/null || true; } |
+    jq -Rsc --arg current "$current" 'split("\n") | map(select(test("^[a-z-]+$"))) as $all
+      | if ($all | length) == 0 then null else {current: $current, all: $all} end'
+}
+
+settings() {
+  local focus nightlight awake brightness
+  focus=$(timeout 2 omarchy-shell notifications isDnd 2>/dev/null || echo unknown)
+  nightlight=$(timeout 3 omarchy-toggle-nightlight --status 2>/dev/null | jq -c '.enabled == true' 2>/dev/null || echo null)
+  [[ -f ${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/indicators/stay-awake ]] && awake=true || awake=false
+  brightness=$(timeout 3 omarchy-brightness-display 2>/dev/null || true)
+  jq -n \
+    --arg focus "$focus" --argjson nightlight "${nightlight:-null}" --argjson awake "$awake" \
+    --arg brightness "$brightness" \
+    --argjson wifi "$(wifi_json)" --argjson battery "$(battery_json)" --argjson profiles "$(profiles_json)" \
+    '{
+      time: now | floor,
+      wifi: $wifi,
+      focus: (if $focus == "on" then true elif $focus == "off" then false else null end),
+      nightlight: $nightlight,
+      awake: $awake,
+      brightness: ($brightness | tonumber? // null),
+      battery: $battery,
+      profile: $profiles
+    }'
+}
+
+on_off() {
+  [[ ${1:-} == on || ${1:-} == off ]] || { echo "fathom-desk: say on or off" >&2; exit 2; }
+}
+
+set_value() {
+  local what=${1:-} value=${2:-}
+  case $what in
+    wifi)
+      on_off "$value"
+      nmcli radio wifi "$value"
+      ;;
+    focus)
+      on_off "$value"
+      local now
+      now=$(omarchy-shell notifications isDnd 2>/dev/null || echo unknown)
+      [[ $now == "$value" ]] || omarchy-toggle-notification-silencing >/dev/null
+      ;;
+    nightlight)
+      on_off "$value"
+      local lit
+      lit=$(omarchy-toggle-nightlight --status 2>/dev/null | jq -r '.enabled == true' 2>/dev/null || echo false)
+      if [[ $value == on && $lit != true ]] || [[ $value == off && $lit == true ]]; then
+        omarchy-toggle-nightlight >/dev/null
+      fi
+      ;;
+    awake)
+      on_off "$value"
+      local file=${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/indicators/stay-awake
+      if [[ $value == on && ! -f $file ]] || [[ $value == off && -f $file ]]; then
+        omarchy-toggle-idle >/dev/null
+      fi
+      ;;
+    profile)
+      [[ $value =~ ^[a-z-]{1,32}$ ]] || { echo "fathom-desk: unknown profile" >&2; exit 2; }
+      omarchy-powerprofiles-set autodetect "$value" >/dev/null
+      ;;
+    brightness)
+      [[ $value =~ ^[0-9]{1,3}$ ]] && ((value >= 1 && value <= 100)) || { echo "fathom-desk: brightness is 1 to 100" >&2; exit 2; }
+      omarchy-brightness-display --no-osd "$value%" >/dev/null
+      ;;
+    *)
+      echo "fathom-desk: can't set '$what'" >&2
+      exit 2
+      ;;
+  esac
+}
+
+case ${1:-} in
+  tasks | snap | quick) summon "$1" ;;
+  state) state ;;
+  settings) settings ;;
+  set) set_value "${2:-}" "${3:-}" ;;
+  -h | --help | help | "") usage ;;
+  *)
+    echo "fathom-desk: unknown command '$1'" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

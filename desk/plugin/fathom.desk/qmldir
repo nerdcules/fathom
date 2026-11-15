@@ -1,0 +1,11 @@
+singleton Skin 1.0 Skin.qml
+Label 1.0 Label.qml
+Button 1.0 Button.qml
+WindowCard 1.0 WindowCard.qml
+SwitchView 1.0 SwitchView.qml
+TaskView 1.0 TaskView.qml
+SnapView 1.0 SnapView.qml
+QuickTile 1.0 QuickTile.qml
+SliderRow 1.0 SliderRow.qml
+QuickView 1.0 QuickView.qml
+Panel 1.0 Panel.qml

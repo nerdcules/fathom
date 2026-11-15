@@ -42,6 +42,18 @@ if [[ -e $HOME/.local/bin/fathom-player || -d $PLUGINS/fathom.player ]]; then
   echo "Removed the mini-player."
 fi
 
+# Desk: close it, then remove the plugin, keys and command. Hyprland's
+# reload at the end puts Omarchy's own Alt+Tab and Super+Tab back.
+if [[ -e $HOME/.local/bin/fathom-desk || -d $PLUGINS/fathom.desk ]]; then
+  omarchy-shell shell hide fathom.desk >/dev/null 2>&1 || true
+  hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
+  omarchy plugin disable fathom.desk >/dev/null 2>&1 || true
+  rm -rf "$PLUGINS/fathom.desk"
+  rm -f "$HYPR/fathom-desk.lua" "$HOME/.local/bin/fathom-desk"
+  hypr_changed=true
+  echo "Removed the desk."
+fi
+
 # Command Deck and Care: close the deck, stop Care's timer, then remove the
 # plugin, keys, commands and units.
 UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.desk",
+  "name": "Fathom desk",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Alt+Tab with window previews, Task view (Super+Tab), Snap layouts (Super+Z) and Quick settings (Super+Alt+A)",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Panel.qml"
+  }
+}
