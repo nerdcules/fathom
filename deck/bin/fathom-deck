@@ -237,8 +237,10 @@ status() {
   local sdks
   sdks=$( (command -v dotnet >/dev/null && dotnet --list-sdks 2>/dev/null) | awk '{ print $1 }' | tail -n 5 || true)
 
-  # One row per filesystem: / and /home are often the same one.
-  df -B1 --output=source,target,size,used,avail -x tmpfs -x devtmpfs -x efivarfs -x overlay 2>/dev/null |
+  # One row per filesystem: / and /home are often the same one. df exits 1
+  # if any mount can't be read (a FUSE mount whose program died, such as an
+  # ended FreeRDP session's clipboard), but still prints the others.
+  { df -B1 --output=source,target,size,used,avail -x tmpfs -x devtmpfs -x efivarfs -x overlay 2>/dev/null || true; } |
     awk 'NR > 1 && ($2 == "/" || $2 == "/home" || $2 ~ /^\/(mnt|media|run\/media)\//) && !seen[$1]++' |
     head -n 8 >"$tmp/disks"
 
