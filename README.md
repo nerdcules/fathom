@@ -17,7 +17,7 @@ cd ~/Work/fathom
 
 | Option | What it does |
 |---|---|
-| `--skin` | The desktop theme |
+| `--skin` | The desktop theme, with a glassy bar: its bar, panels and menus are frosted glass, so Hyprland's blur goes on |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck and its Care page, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
@@ -37,7 +37,8 @@ Running it again updates what's installed. If that replaces a shell plugin
 (the mini-player's bar widget, the deck or the desk), it restarts the Omarchy shell at
 the end so the new version loads; the bar blinks once.
 
-`./uninstall.sh` switches back to the theme that was on before, removes
+`./uninstall.sh` switches back to the theme that was on before, puts the
+bar back to how it looked before Fathom made it glassy, removes
 what the installer added (OpenSnitch only if Fathom installed it), and puts
 Omarchy's sign-in screen back. It leaves
 alone any `fathom` theme it did not make.

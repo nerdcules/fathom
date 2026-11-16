@@ -18,6 +18,14 @@ if [[ ${current,,} == fathom ]]; then
   echo "Switched back to $previous."
 fi
 
+# The bar's look from before Fathom made it glassy, if it's still glassy.
+if [[ -s $STATE_DIR/previous-bar && $(omarchy bar background 2>/dev/null || true) == glassy ]]; then
+  bar=$(<"$STATE_DIR/previous-bar")
+  if [[ $bar == opaque || $bar == none ]]; then
+    omarchy bar background "$bar" >/dev/null && echo "Put the bar back to $bar."
+  fi
+fi
+
 if [[ -L $THEME_DIR ]]; then
   rm "$THEME_DIR"
   echo "Removed the link at $THEME_DIR"

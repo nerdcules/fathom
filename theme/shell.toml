@@ -1,11 +1,13 @@
 # Fathom shell surfaces: Omarchy's generated shell.toml for the Fathom
-# colours, with translucent bar, menus, launcher and notifications.
+# colours, with translucent bar, menus, launcher and notifications. The
+# alphas are for the glassy bar (omarchy bar background glassy, which
+# install.sh sets), where Hyprland blurs what's behind them.
 # Regenerate the base with: omarchy theme set fathom (after removing this file).
 
 [bar]
 # Alpha companions (where present) range from 0 (invisible) to 1 (opaque).
 background       = "#070c18"
-background-alpha = 0.82
+background-alpha = 0.6
 text             = "#e6f0ff"
 # Modules calling attention to themselves (recording, voxtype, alerts, updates)
 active           = "#ff6b81"
@@ -125,7 +127,7 @@ base-size = 12
 # widths accept one CSS-style scalar/list: N, "Y X", "T X B", or "T R B L";
 # individual border-width-top/right/bottom/left keys override the list.
 background       = "#0a1020"
-background-alpha = 0.94
+background-alpha = 0.72
 text             = "#e6f0ff"
 border           = "hyprland.active-border"
 border-alpha     = 1.0
@@ -142,7 +144,7 @@ border-alpha     = 1.0
 
 [notifications]
 background       = "#0a1020"
-background-alpha = 0.92
+background-alpha = 0.78
 text             = "#e6f0ff"
 # Conventionally matches the Hyprland active-window border. Border accepts
 # either a solid color or the full active-border gradient.
@@ -157,7 +159,7 @@ countdown        = "#4cc9f0"
 # dim layer behind the card; background is the card itself. Defaults
 # mirror [menu] with the card at 0.95 to preserve the legacy translucency.
 background                = "#0a1020"
-background-alpha          = 0.9
+background-alpha          = 0.75
 text                      = "#e6f0ff"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0
@@ -174,7 +176,7 @@ selected-border-alpha     = 0.25
 # go from 0 (invisible) to 1 (opaque). scrim is the full-screen dim layer
 # behind the card. Clipboard and emojis inherit these tokens.
 background                = "#0a1020"
-background-alpha          = 0.92
+background-alpha          = 0.75
 text                      = "#e6f0ff"
 border                    = "hyprland.active-border-foreground"
 border-alpha              = 1.0

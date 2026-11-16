@@ -160,7 +160,19 @@ install_skin() {
 
   if $apply; then
     omarchy theme set fathom
-    echo "Fathom theme applied. Run ./uninstall.sh to go back to ${current:-your previous theme}."
+    # Fathom's bar and popups are glass, which needs the glassy bar: Hyprland
+    # blurs behind it (and turns blur on desktop-wide). Remember the bar's
+    # own look to go back to on uninstall.
+    local bar
+    bar=$(omarchy bar background 2>/dev/null || true)
+    if [[ $bar == opaque || $bar == none ]]; then
+      printf '%s\n' "$bar" >"$STATE_DIR/previous-bar"
+      omarchy bar background glassy >/dev/null ||
+        echo "install.sh: couldn't make the bar glassy; try: omarchy bar background glassy" >&2
+    fi
+    local previous=""
+    [[ -s $STATE_DIR/previous-theme ]] && previous=$(<"$STATE_DIR/previous-theme")
+    echo "Fathom theme applied. Run ./uninstall.sh to go back to ${previous:-your previous theme}."
   fi
 }
 
