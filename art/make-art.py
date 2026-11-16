@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Draw Fathom's wallpapers, theme preview and boot unlock logo.
+"""Draw Fathom's wallpapers, theme preview and boot unlock logo (with the
+picture of the unlock screen that Omarchy's Appearance > Unlock shows).
 
 Writes SVG into a temporary folder, renders it with rsvg-convert and
 converts wallpapers to WebP with ImageMagick. Output lands in ../theme.
@@ -9,6 +10,7 @@ converts wallpapers to WebP with ImageMagick. Output lands in ../theme.
 """
 
 import math
+import os
 import random
 import shutil
 import subprocess
@@ -248,6 +250,36 @@ def render(name, tmp):
     else:
         shutil.copyfile(png, out)
     print(f"{name:8} -> {out.relative_to(ROOT)}")
+    if name == "unlock":
+        unlock_preview(tmp)
+
+
+def theme_color(key):
+    for line in (THEME / "colors.toml").read_text().splitlines():
+        k, _, v = line.partition("=")
+        if k.strip() == key:
+            return v.strip().strip('"')
+    raise SystemExit(f"make-art: no {key} in colors.toml")
+
+
+def unlock_preview(tmp):
+    """The disk-unlock screen as Omarchy will draw it, from Omarchy's own
+    omarchy-plymouth-preview. Omarchy offers a theme under Appearance > Unlock
+    only if it has this picture. The tool ends by opening the picture in imv;
+    a stand-in imv that does nothing keeps it from doing that here."""
+    tool = shutil.which("omarchy-plymouth-preview")
+    out = THEME / "preview-unlock.png"
+    if not tool:
+        print(f"{'unlock':8} -> skipped {out.relative_to(ROOT)}: omarchy-plymouth-preview not found")
+        return
+    stub = tmp / "bin"
+    stub.mkdir(exist_ok=True)
+    (stub / "imv").write_text("#!/bin/sh\nexit 0\n")
+    (stub / "imv").chmod(0o755)
+    env = dict(os.environ, PATH=f"{stub}{os.pathsep}{os.environ.get('PATH', '')}")
+    subprocess.run([tool, theme_color("background"), theme_color("foreground"), str(THEME / "unlock.png"), str(out)],
+                   check=True, env=env)
+    print(f"{'unlock':8} -> {out.relative_to(ROOT)}")
 
 
 def main():

@@ -47,7 +47,8 @@ alone any `fathom` theme it did not make.
 
 ```
 theme/          The Omarchy desktop theme: colours, window corners,
-                wallpapers, icons, preview, boot unlock logo
+                wallpapers, icons, preview, boot unlock logo and its
+                preview
 signin/fathom/  The sign-in screen, an SDDM theme in QML
 signin/install-root.sh
                 The only part that runs as root: copies the sign-in theme
@@ -611,8 +612,13 @@ The theme has three wallpapers: **horizon** (a planet's glowing rim), **eclipse*
 (a black disc with a cyan-to-violet corona) and **hexgrid** (quiet, for working).
 Cycle them with `omarchy theme bg next`.
 
-`unlock.png` is the logo on the disk-unlock screen at boot. Omarchy only uses it
-if you pick Fathom under *Appearance › Unlock*, which needs your password.
+`unlock.png` is the logo on the disk-unlock screen at boot, in place of
+Omarchy's. Omarchy uses it once you pick **fathom** under *Appearance › Unlock*
+in its menu (or run `omarchy-plymouth-set-by-theme fathom`); that asks for your
+password and rebuilds the boot image, and *Default* there puts Omarchy's back.
+`preview-unlock.png` is the picture of that screen the menu shows, made with
+Omarchy's `omarchy-plymouth-preview`; without it, Omarchy doesn't offer Fathom
+there.
 
 ## Changing the art
 
@@ -622,6 +628,7 @@ images, then:
 ```bash
 ./art/make-art.py              # everything
 ./art/make-art.py eclipse      # one piece: horizon, eclipse, hexgrid, preview, unlock
+                               # (unlock also redraws preview-unlock.png)
 omarchy theme set fathom       # see the result
 ```
 
