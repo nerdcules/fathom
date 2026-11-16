@@ -9,6 +9,13 @@ StateDirectory=fathom-sentinel
 StateDirectoryMode=0755
 Nice=19
 IOSchedulingClass=idle
+# pacman -Qkk reads every installed file once (16.1 GiB here), and the page
+# cache it fills is charged to this service: a check soon after boot peaked at
+# 16.2G. A soft limit makes the kernel drop the check's own cache as it goes
+# instead of other programs'. Measured: a full run's own memory stayed under
+# 454 MiB, and reading a 3 GB uncached file under this limit peaked at 1025 MiB
+# in 3671 ms (3683 ms without it). MemoryHigh never kills the check.
+MemoryHigh=1G
 # Read every file, change none, talk to nobody.
 CapabilityBoundingSet=CAP_DAC_READ_SEARCH
 NoNewPrivileges=yes

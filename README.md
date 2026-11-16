@@ -372,6 +372,9 @@ check's results every minute. It runs as you. What it watches:
   package. A changed timestamp alone doesn't count. The first check sets the
   baseline; after that, only new differences are reported. The service is
   sandboxed: it can read every file but not change any, and it has no network.
+  It reads every installed file, so its disk cache is held to 1 GiB
+  (`MemoryHigh=1G`) rather than growing to the size of your installed
+  packages (16.2 GB once here) and crowding other programs' cache.
 - **OpenSnitch**, if installed: its rule counts, and new rules as they appear.
 
 Warnings, port scans, failed SSH sign-ins and USB storage send a notification;
