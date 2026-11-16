@@ -25,7 +25,8 @@ QtObject {
 
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.58)
   readonly property color faint: Qt.rgba(fg.r, fg.g, fg.b, 0.12)
-  readonly property real glassAlpha: glass ? 0.62 : 1
+  // A panel, as the Start menu draws its own: 90% over blur, else solid.
+  readonly property real panelAlpha: glass ? 0.9 : 1
   // A dimmed screen behind a view.
   readonly property real scrimAlpha: glass ? 0.55 : 1
 

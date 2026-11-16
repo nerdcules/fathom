@@ -127,29 +127,32 @@ base-size = 12
 # widths accept one CSS-style scalar/list: N, "Y X", "T X B", or "T R B L";
 # individual border-width-top/right/bottom/left keys override the list.
 background       = "#0a1020"
-background-alpha = 0.72
+background-alpha = 0.9
 text             = "#e6f0ff"
-border           = "hyprland.active-border"
-border-alpha     = 1.0
+border           = "#4cc9f0"
+border-alpha     = 0.25
+border-width     = 1
 # border-width     = 2
 
 [tooltip]
 # Hover tooltips across the bar, panels, and buttons. background-alpha of
 # 0.97 mirrors the legacy hard-coded tooltip opacity.
 background       = "#0a1020"
-background-alpha = 0.97
+background-alpha = 0.9
 text             = "#e6f0ff"
-border           = "hyprland.active-border-foreground"
-border-alpha     = 1.0
+border           = "#4cc9f0"
+border-alpha     = 0.25
+border-width     = 1
 
 [notifications]
 background       = "#0a1020"
-background-alpha = 0.78
+background-alpha = 0.9
 text             = "#e6f0ff"
 # Conventionally matches the Hyprland active-window border. Border accepts
 # either a solid color or the full active-border gradient.
-border           = "hyprland.active-border"
-border-alpha     = 1.0
+border           = "#4cc9f0"
+border-alpha     = 0.25
+border-width     = 1
 # border-width     = 2
 countdown        = "#4cc9f0"
 
@@ -159,10 +162,11 @@ countdown        = "#4cc9f0"
 # dim layer behind the card; background is the card itself. Defaults
 # mirror [menu] with the card at 0.95 to preserve the legacy translucency.
 background                = "#0a1020"
-background-alpha          = 0.75
+background-alpha          = 0.9
 text                      = "#e6f0ff"
-border                    = "hyprland.active-border-foreground"
-border-alpha              = 1.0
+border                    = "#4cc9f0"
+border-alpha              = 0.25
+border-width              = 1
 scrim                     = "#04070f"
 scrim-alpha               = 0.6
 selected-background       = "#e6f0ff"
@@ -176,10 +180,11 @@ selected-border-alpha     = 0.25
 # go from 0 (invisible) to 1 (opaque). scrim is the full-screen dim layer
 # behind the card. Clipboard and emojis inherit these tokens.
 background                = "#0a1020"
-background-alpha          = 0.75
+background-alpha          = 0.9
 text                      = "#e6f0ff"
-border                    = "hyprland.active-border-foreground"
-border-alpha              = 1.0
+border                    = "#4cc9f0"
+border-alpha              = 0.25
+border-width              = 1
 scrim                     = "#04070f"
 scrim-alpha               = 0.6
 selected-background       = "#e6f0ff"
@@ -198,9 +203,10 @@ background       = "#0a1020"
 background-alpha = 0.95
 text             = "#e6f0ff"
 text-error       = "#ff6b81"
-border           = "hyprland.active-border"
+border           = "#4cc9f0"
 border-error     = "#ff6b81"
-border-alpha     = 1.0
+border-alpha     = 0.25
+border-width     = 1
 scrim            = "#04070f"
 scrim-alpha      = 0.6
 # accent is the lock-icon glyph color + text-selection tint.

@@ -151,16 +151,12 @@ Item {
   }
 
   // The picker.
-  Rectangle {
+  Glass {
     id: picker
     visible: view.assistLayout < 0
     anchors { top: parent.top; topMargin: 70 * Skin.u; horizontalCenter: parent.horizontalCenter }
     width: content.width + 36 * Skin.u
     height: content.height + 32 * Skin.u
-    radius: 20 * Skin.u
-    color: Skin.tint(Skin.bg, Skin.glassAlpha)
-    border.width: 1
-    border.color: Skin.tint(Skin.accent, 0.28)
     MouseArea { anchors.fill: parent }
 
     Column {
@@ -261,7 +257,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       radius: 14 * Skin.u
-      color: Skin.tint(Skin.bg, Skin.glassAlpha)
+      color: Skin.tint(Skin.bg, Skin.panelAlpha)
       border.width: 2
       border.color: Skin.accent
       MouseArea { anchors.fill: parent }

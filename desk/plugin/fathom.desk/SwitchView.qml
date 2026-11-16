@@ -40,16 +40,12 @@ Item {
     onClicked: view.cancelRequested()
   }
 
-  Rectangle {
+  Glass {
     id: panel
     anchors.centerIn: parent
     width: Math.max(320 * Skin.u, view.columns * (view.cardW + view.gap) - view.gap + 40 * Skin.u)
     height: (view.windows.length === 0 ? 120 * Skin.u
       : view.shownRows * (view.cardH + view.gap) - view.gap + 40 * Skin.u)
-    radius: 22 * Skin.u
-    color: Skin.tint(Skin.bg, Skin.glassAlpha)
-    border.width: 1
-    border.color: Skin.tint(Skin.accent, 0.28)
 
     MouseArea { anchors.fill: parent }   // clicks on the panel stay on it
 

@@ -70,17 +70,13 @@ Item {
   // A click anywhere else closes it.
   MouseArea { anchors.fill: parent; onClicked: view.done() }
 
-  Rectangle {
+  Glass {
     id: panel
     readonly property real barTop: view.host && view.host.monitor && Array.isArray(view.host.monitor.reserved)
       ? Number(view.host.monitor.reserved[1]) || 0 : 0
     anchors { right: parent.right; rightMargin: 12 * Skin.u; top: parent.top; topMargin: barTop + 10 * Skin.u }
     width: 420 * Skin.u
     height: body.implicitHeight + 36 * Skin.u
-    radius: 20 * Skin.u
-    color: Skin.tint(Skin.bg, Skin.glassAlpha)
-    border.width: 1
-    border.color: Skin.tint(Skin.accent, 0.28)
     opacity: view.shown ? 1 : 0
     transform: Translate { y: view.shown ? 0 : -10 * Skin.u; Behavior on y { NumberAnimation { duration: Skin.ms(160); easing.type: Easing.OutCubic } } }
     Behavior on opacity { NumberAnimation { duration: Skin.ms(140) } }
