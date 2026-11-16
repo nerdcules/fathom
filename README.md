@@ -46,8 +46,8 @@ alone any `fathom` theme it did not make.
 ## What's here
 
 ```
-theme/          The Omarchy desktop theme: colours, wallpapers, icons,
-                preview, boot unlock logo
+theme/          The Omarchy desktop theme: colours, window corners,
+                wallpapers, icons, preview, boot unlock logo
 signin/fathom/  The sign-in screen, an SDDM theme in QML
 signin/install-root.sh
                 The only part that runs as root: copies the sign-in theme

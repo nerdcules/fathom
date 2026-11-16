@@ -3,11 +3,12 @@ import "."
 
 // The desk's panels, drawn as the Start menu's is (deck/plugin/fathom.deck/
 // StartView.qml): the theme's background at 90% over Hyprland's blur (solid
-// without blur), a 1 px border of the accent at 25%, 22 px corners, and the
-// accent's glow along the top edge.
+// without blur), a 1 px border of the accent at 25%, 22 px corners (not
+// scaled: windows share them, theme/hyprland.lua), and the accent's glow
+// along the top edge.
 Rectangle {
   id: glass
-  radius: 22 * Skin.u
+  radius: 22
   color: Skin.tint(Skin.bg, Skin.panelAlpha)
   border.width: 1
   border.color: Skin.tint(Skin.accent, 0.25)

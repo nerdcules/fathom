@@ -18,11 +18,12 @@ Rectangle {
   Layout.preferredWidth: 1
   Layout.minimumHeight: 240 * Skin.u
   implicitHeight: inner.implicitHeight + 44 * Skin.u
-  // Drawn as the Start menu's panel is (StartView.qml): 22 px corners, the
+  // Drawn as the Start menu's panel is (StartView.qml): 22 px corners (not
+  // scaled; windows share them, theme/hyprland.lua), the
   // accent at 25% for the border, its glow along the top, and 90% over
   // Hyprland's blur. Without blur the deck's scrim is solid, and a card at
   // 62% on it keeps its shade apart from the scrim's.
-  radius: 22 * Skin.u
+  radius: 22
   color: Skin.tint(Skin.bg, Skin.glass ? 0.9 : 0.62)
   border.width: 1
   border.color: Skin.tint(Skin.accent, 0.25)
