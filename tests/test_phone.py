@@ -265,5 +265,56 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual(tests[0]["actions"], [])
 
 
+    # Sankofa
+    def sankofa_repo(self):
+        """A repo with a Sankofa ledger, and a stub sankofa printing its events."""
+        repo = os.path.join(self.tmp, "proj")
+        os.makedirs(os.path.join(repo, ".sankofa"))
+        events = [
+            {"ts": "2026-11-17T10:00:00Z", "id": "e1", "type": "awaiting", "text": "Run the install yourself", "repo": repo},
+            {"ts": "2026-11-17T10:01:00Z", "id": "e2", "type": "todo", "text": "Write the docs", "repo": repo},
+            {"ts": "2026-11-17T10:02:00Z", "id": "e3", "type": "todo", "text": "Fixed already", "repo": repo},
+            {"ts": "2026-11-17T10:03:00Z", "id": "e4", "type": "done", "ref": "e3", "repo": repo},
+            {"ts": "2026-11-17T10:04:00Z", "id": "e5", "type": "claim", "glob": "src/*", "agent": "main",
+             "session": "abcdef0123", "expires": "2999-01-01T00:00:00Z", "repo": repo},
+            {"ts": "2026-11-17T10:05:00Z", "id": "e6", "type": "claim", "glob": "old/*", "agent": "main",
+             "session": "abcdef0123", "expires": "2000-01-01T00:00:00Z", "repo": repo},
+            {"ts": "2026-11-17T10:06:00Z", "id": "e7", "type": "note", "text": "Shipped  the\nparser", "repo": repo},
+            {"ts": "2026-11-17T10:07:00Z", "id": "e1", "type": "awaiting", "text": "scratch",
+             "repo": os.path.join(self.tmp, "deleted-scratch")},
+        ]
+        with open(os.path.join(self.tmp, "events.jsonl"), "w") as f:
+            f.write("\n".join(json.dumps(e) for e in events) + "\n")
+        path = os.path.join(self.home, ".local", "bin", "sankofa")
+        with open(path, "w") as f:
+            f.write(f'#!/bin/sh\n[ "$1" = events ] && exec cat "{self.tmp}/events.jsonl"\n'
+                    'echo "sankofa $* in $PWD" >> "$CALLS"\n')
+        os.chmod(path, 0o755)
+        return repo
+
+    def test_sankofa_shows_open_items_live_leases_and_the_last_note(self):
+        repo = self.sankofa_repo()
+        fp, dev = self.paired()
+        code, body = self.call("GET", "/v1/part/sankofa", fp, token=dev["token"])
+        self.assertEqual(code, 200)
+        body = body["sankofa"]
+        self.assertEqual(body["awaiting"], 1)
+        [r] = body["repos"]  # the deleted scratch repo is left out
+        self.assertEqual((r["repo"], r["name"], r["openCount"]), (repo, "proj", 2))
+        self.assertEqual([(i["id"], i["type"]) for i in r["open"]], [("e1", "awaiting"), ("e2", "todo")])
+        self.assertEqual([l["glob"] for l in r["leases"]], ["src/*"])
+        self.assertEqual(r["last"]["text"], "Shipped the parser")
+
+    def test_sankofa_waiting_on_you_is_an_alert_marked_done_from_the_phone(self):
+        repo = self.sankofa_repo()
+        fp, dev = self.paired()
+        code, body = self.call("GET", "/v1/alerts", fp, token=dev["token"])
+        [a] = [x for x in body["alerts"] if x["part"] == "Sankofa"]
+        self.assertEqual((a["title"], a["detail"]), ("proj needs you", "Run the install yourself"))
+        code, _ = self.call("POST", "/v1/action", fp, {"alert": a["id"], "action": "done"}, token=dev["token"])
+        self.assertEqual(code, 200)
+        self.assertEqual(self.recorded(), [f"sankofa done e1 done, from the phone in {repo}"])
+
+
 if __name__ == "__main__":
     unittest.main()

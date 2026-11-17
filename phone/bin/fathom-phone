@@ -70,7 +70,66 @@ SOURCES = {
     "crumbs": ["fathom-crumbs", "status"],
     "update": ["fathom-update", "status"],
     "look": ["fathom-look", "state"],
+    "sankofa": ["sankofa", "events", "--all", "--since", "0"],
 }
+
+
+def sankofa_summary(text, now=None):
+    """Sankofa's ledger, per repo: the items still open, the leases still
+    held, and the last thing recorded. From sankofad's events (one JSON a
+    line); repos whose .sankofa/ has gone (deleted scratch copies) are left
+    out."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    repos = {}
+    for line in text.splitlines():
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        repo = e.get("repo") or ""
+        if not repo:
+            continue
+        r = repos.setdefault(repo, {"items": {}, "leases": {}, "last": None, "updated": ""})
+        kind, eid, ref = e.get("type"), e.get("id"), e.get("ref")
+        r["updated"] = max(r["updated"], e.get("ts", ""))
+        if kind in ("todo", "awaiting"):
+            r["items"][eid] = {"id": eid, "type": kind, "text": plain_text(e.get("text"), 300), "time": e.get("ts")}
+        elif kind == "claim":
+            r["leases"][eid] = {"id": eid, "glob": e.get("glob"), "agent": e.get("agent"),
+                                "session": str(e.get("session", ""))[:8], "expires": e.get("expires")}
+        elif kind == "renew" and ref in r["leases"]:
+            r["leases"][ref]["expires"] = e.get("expires")
+        elif kind in ("done", "expire", "release"):
+            r["items"].pop(ref, None)
+            r["leases"].pop(ref, None)
+        if kind in ("note", "stop", "handoff"):
+            r["last"] = {"type": kind, "text": plain_text(e.get("text"), 300), "time": e.get("ts")}
+
+    def live(lease):
+        try:
+            return datetime.datetime.fromisoformat(str(lease["expires"]).replace("Z", "+00:00")) > now
+        except ValueError:
+            return False
+
+    out = []
+    for repo, r in repos.items():
+        if not os.path.isdir(os.path.join(repo, ".sankofa")):
+            continue
+        items = sorted(r["items"].values(), key=lambda i: (i["type"] != "awaiting", i["time"] or ""))
+        out.append({"repo": repo, "name": os.path.basename(repo.rstrip("/")), "updated": r["updated"],
+                    "open": items[:20], "openCount": len(items),
+                    "leases": [l for l in r["leases"].values() if live(l)], "last": r["last"]})
+    out.sort(key=lambda r: r["updated"], reverse=True)
+    return {"repos": out, "awaiting": sum(1 for r in out for i in r["open"] if i["type"] == "awaiting")}
+
+
+def plain_text(text, limit):
+    text = " ".join(str(text or "").split())
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+# Parts whose command doesn't print one JSON document.
+READERS = {"sankofa": sankofa_summary}
 
 
 class PhoneError(Exception):
@@ -186,7 +245,7 @@ class Reader:
             try:
                 r = subprocess.run([path, *cmd[1:]], capture_output=True, text=True, timeout=20)
                 if r.returncode == 0:
-                    value = json.loads(r.stdout)
+                    value = READERS[name](r.stdout) if name in READERS else json.loads(r.stdout)
             except (subprocess.TimeoutExpired, ValueError, OSError):
                 value = None
         with self.lock:
@@ -202,6 +261,7 @@ READER = Reader()
 MAC = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
 UNIT = re.compile(r"^[A-Za-z0-9@._:\\-]{1,200}\.(service|timer|socket|mount|path)$")
 DAY = 86400
+SANKOFA_ID = re.compile(r"^e[0-9]{1,9}$")
 
 
 def alerts(read=None, now=None):
@@ -279,6 +339,14 @@ def alerts(read=None, now=None):
             add(f"claude:{p.get('id')}:{p.get('waitingSince')}", "Claude Code", "claude.waiting", "warn",
                 f"Claude Code is waiting for you in {p.get('name')}", "", p.get("waitingSince"))
 
+    sankofa = read("sankofa") or {}
+    for r in sankofa.get("repos") or []:
+        for item in r.get("open") or []:
+            if item.get("type") == "awaiting":
+                add(f"sankofa:{r['repo']}:{item['id']}", "Sankofa", "sankofa.awaiting", "warn",
+                    f"{r['name']} needs you", item.get("text", ""), None,
+                    [{"id": "done", "label": "Done", "onLaptop": False, "args": [r["repo"], item["id"]]}])
+
     update = read("update") or {}
     if update.get("available") and update.get("target"):
         add(f"update:{update['target']}", "Fathom", "fathom.update", "info",
@@ -296,6 +364,9 @@ ACTIONS = {
     "trust": lambda a: ["fathom-sentinel", "trust", a[0]] if MAC.match(a[0]) else None,
     "restart": lambda a: ["fathom-care", "restart", a[0], a[1]] if a[0] in ("user", "system") and UNIT.match(a[1]) else None,
     "block": lambda a: ["fathom-sentinel", "block", str(ipaddress.ip_address(a[0]))],
+    # Resolve an item someone waits on you for; runs in its repo.
+    "done": lambda a: (["sankofa", "done", a[1], "done, from the phone"], a[0])
+    if SANKOFA_ID.match(a[1]) and os.path.isdir(os.path.join(a[0], ".sankofa")) else None,
 }
 
 
@@ -313,6 +384,9 @@ def act(alert_id, action_id, device):
         cmd = None
     if cmd is None:
         return 400, {"error": "that alert's details don't check out"}
+    cwd = None
+    if isinstance(cmd, tuple):
+        cmd, cwd = cmd
     path = os.path.join(BIN, cmd[0])
     if not os.access(path, os.X_OK):
         return 501, {"error": f"{cmd[0]} isn't installed"}
@@ -323,7 +397,7 @@ def act(alert_id, action_id, device):
         # Asks for the password on the laptop; don't hold the phone waiting.
         subprocess.Popen([path, *cmd[1:]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         return 202, {"started": True, "note": "Confirm it on the laptop: it asks for your password there."}
-    r = subprocess.run([path, *cmd[1:]], capture_output=True, text=True, timeout=60)
+    r = subprocess.run([path, *cmd[1:]], capture_output=True, text=True, timeout=60, cwd=cwd)
     if r.returncode != 0:
         return 500, {"error": (r.stderr or r.stdout).strip()[:200] or f"exit {r.returncode}"}
     return 200, {"done": True}

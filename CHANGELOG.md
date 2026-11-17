@@ -26,6 +26,10 @@ Each line names its commit.
   service, block an address), with the arguments from the laptop's own copy
   of that alert; those needing root ask for the password on the laptop.
   `fathom-phone alerts` and `fathom-phone test-alert`.
+- `fathom-phone` reads Sankofa: per repo, the items still open, the leases
+  still held and the last note (repos whose `.sankofa/` has gone are left
+  out). An item waiting on you is an alert, with a Done action that runs
+  `sankofa done` in its repo.
 
 ## [0.1.0] - 2026-11-17
 

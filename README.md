@@ -830,18 +830,22 @@ you alone). A 6-digit code isn't used: on a network someone else can watch,
 all million codes could be tried against what they saw.
 
 A paired phone can read what the deck shows: Deck, Care, Sentinel, Pulse
-and Claude Code's day, Crumbs, the Fathom update and your look. It also reads
+and Claude Code's day, Crumbs, the Fathom update and your look (the app
+takes on its accent, frame, corners and opacity), and Sankofa's ledgers: per
+repo, what's open, the leases held and the last note. It also reads
 the alerts `fathom-phone` works out from those: a failed service, a disk
 filling up, a restart to finish an update, a container restarting or
 unhealthy, Sentinel's warnings from the last 24 hours (minus devices you've
 since trusted), errors in Pulse, Claude Code waiting for you and a Fathom
-update. Each alert keeps the same id while it's true, so the phone notifies
+update, plus anything [Sankofa](https://github.com/nerdcules/sankofa) has
+waiting on you. Each alert keeps the same id while it's true, so the phone notifies
 once. The phone checks about every 15 minutes, the shortest Android allows
 an app in the background.
 
 Some alerts offer an action, and those are the only changes a phone can
 make: trust a new device (`fathom-sentinel trust`), restart a failed service
-(`fathom-care restart`), block an address (`fathom-sentinel block`). The
+(`fathom-care restart`), block an address (`fathom-sentinel block`), mark a
+Sankofa item done (`sankofa done`, run in its repo). The
 phone names the alert and the action; the arguments come from the laptop's
 own copy of that alert, so a phone can't pass its own. Blocking and
 restarting a system service need root, so they ask for your password on the
