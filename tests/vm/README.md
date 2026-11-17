@@ -54,7 +54,10 @@ each. Uninstalls are compared with a capture taken before the first install
 `hyprland.lua.bak.<time>` backups install.sh makes (uninstall leaves them,
 as the main README says), and Omarchy rewriting the bar setting in
 `shell.json` (`"transparent": false` becomes `"background": "opaque"`).
-`fwtest.sh` is the real-ufw check for issue #1. Logs go to
+`fwtest.sh` is the real-ufw check for issue #1. Last, `fathom-update`: it
+installs the desk from a git clone tagged v0.1.0, publishes a v0.2.0 that
+changes the desk in a repository inside the VM, and checks `fathom-update
+check`, `apply` and `rollback` against the plugin actually installed. Logs go to
 `~/VMs/omarchy-test/logs/<time>-<commit>`.
 
 Each step has 5 minutes; a step that hangs fails rather than stopping the
@@ -90,6 +93,9 @@ sign-in message), against e132146.
     every machine; it now reads SDDM's `[Autologin]` and says so only when
     it applies. The first version of that check stopped `--signin` where
     `/etc/sddm.conf` doesn't exist (the VM); caught here, fixed.
+- With `fathom-update` (332a7c4 and the fix to this step's setup): one run,
+  25 passed, 0 failed in 75 s; the update step found v0.2.0 (one part,
+  desk, no password), `apply` installed it, `rollback` put v0.1.0's back.
 - Earlier the same day, by hand with the same steps: the same results,
   including `fwtest.sh`'s 15 checks (one first failed through the test's
   own error: it expected one interface rule where ufw makes two with IPv6

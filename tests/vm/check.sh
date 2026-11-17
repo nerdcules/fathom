@@ -4,8 +4,10 @@
 # In the running test VM, with Fathom not installed: an older Fathom
 # (default e132146, before issues #1-#3), then this one over it (upgrade),
 # uninstall, a fresh install, the opt-in parts, the real-ufw checks
-# (fwtest.sh), and a full uninstall beside a ufw rule of the user's. Each
-# uninstall is compared with a capture taken before the first install.
+# (fwtest.sh), a full uninstall beside a ufw rule of the user's, and
+# fathom-update (install from a clone at v0.1.0, publish a v0.2.0, check,
+# apply, rollback). Each uninstall is compared with a capture taken before
+# the first install.
 # Prints PASS/FAIL per check; logs go to $FATHOM_VM/logs/<time>-<commit>.
 # Every command runs in the VM; the host only copies files in.
 set -uo pipefail
@@ -104,12 +106,13 @@ vm 'sudo ufw delete deny from 192.0.2.66 >/dev/null'
 
 # Updates: install from a git clone at v0.1.0, publish a v0.2.0 that changes
 # the desk, then fathom-update check, apply and rollback.
-ref=refs/fathom-vm/check
+# A temporary branch: git clone only brings branches and tags across.
+ref=refs/heads/fathom-vm-check
 git -C "$repo" update-ref "$ref" "$tree"
 git -C "$repo" bundle create -q "$logs/fathom.bundle" "$ref" 2>/dev/null
 git -C "$repo" update-ref -d "$ref"
 vm 'rm -rf ~/up.git ~/fathom-git ~/fathom-up ~/fathom.bundle && cat > ~/fathom.bundle' <"$logs/fathom.bundle"
-vm 'git clone -q --bare ~/fathom.bundle ~/up.git && git -C ~/up.git update-ref refs/heads/main refs/fathom-vm/check \
+vm 'git clone -q --bare ~/fathom.bundle ~/up.git && git -C ~/up.git branch -m fathom-vm-check main \
     && git -C ~/up.git symbolic-ref HEAD refs/heads/main && git -C ~/up.git tag v0.1.0 main \
     && git clone -q ~/up.git ~/fathom-git' >"$logs/update-setup.log" 2>&1
 step update-install 'cd ~/fathom-git && ./install.sh --desk'; check "install from a git clone at v0.1.0" $?
