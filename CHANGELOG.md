@@ -54,12 +54,20 @@ The first release: everything Fathom had on 17 November 2026.
   `hyprland.lua` loads before taking the block out (6b4f7d0).
 - Sentinel's firewall buttons and uninstall could remove a ufw rule of yours
   identical to Fathom's; they now remove only Fathom's own (fbf3f42).
+- Pulse's firewall rule had the same fault: uninstall now removes it by its
+  comment, and install no longer takes over a matching rule of yours
+  (fbf3f42).
+- Sentinel didn't show IPv6 blocks (it read only `user.rules`), and a
+  firewall button that was refused failed silently; it now reads both
+  files and sends a notification (fbf3f42).
 - The README now names every root step, what Mail does with no account, and
   what uninstall deletes (658b7d0).
 - Sentinel: a TV answering discovery isn't a port scan (d4e7200); the daily
   file check's cache is held to 1 GiB (c4c85b8).
 - Deck and Care: one tool's odd answer no longer blanks a page (5195495);
   the disks df could read still show when one mount can't be (2bffc44).
+- Care's own description said its check runs hourly; it runs every 3 hours
+  (332a7c4).
 
 [Unreleased]: https://github.com/nerdcules/fathom/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/nerdcules/fathom/releases/tag/v0.1.0
