@@ -53,6 +53,7 @@ PARTS = {
     "sentinel": ("sentinel/",),
     "pulse": ("pulse/",),
     "crumbs": ("crumbs/",),
+    "phone": ("phone/",),
     "signin": ("signin/",),
 }
 ORDER = list(PARTS)
@@ -70,6 +71,7 @@ EVIDENCE = {
     "sentinel": os.path.join(BIN, "fathom-sentinel"),
     "pulse": os.path.join(BIN, "fathom-pulse"),
     "crumbs": os.path.join(BIN, "fathom-crumbs"),
+    "phone": os.path.join(BIN, "fathom-phone"),
     "signin": os.environ.get("FATHOM_UPDATE_SDDM_THEME", "/usr/share/sddm/themes/fathom"),
 }
 # A release: a semantic version tag. Pre-releases (v1.2.0-rc1) and other

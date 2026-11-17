@@ -42,6 +42,7 @@ cd ~/Work/fathom
 | `--pulse` | Pulse, its key and its collector service. Asks for your password once if `ufw` is installed and Docker's bridge (`docker0`) has an address, so containers can reach it |
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--crumbs` | Crumbs, its key, and the helper that writes the browsers' cookie rules. Needs your password for the helper |
+| `--phone` | The laptop side of [Fathom for Android](#phone): `fathom-phone` and its service, and a firewall rule for port 4920. Needs your password for the rule |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part (OpenSnitch only with `--opensnitch`) |
 | `--link` | Link the commands, their Hyprland files and the theme `fathom-look` builds from to this repo instead of copying, for working on them (theme edits show after `fathom-look apply`) |
@@ -139,6 +140,8 @@ with `pkexec` (a polkit password prompt) otherwise; Sentinel and Crumbs use
 | | Care: freeing system logs | `journalctl --vacuum-size=200M` |
 | | Care: restarting a failed system service | `systemctl restart <that unit>` |
 | Any | `fathom-update apply` and `rollback` | Whatever `install.sh` runs as root for the parts being reinstalled, as above; nothing else |
+| `--phone` | `install.sh` | In one call: `ufw allow proto tcp from <range> to any port 4920 comment fathom-phone` for each of 192.168.0.0/16, 10.0.0.0/8 and 172.16.0.0/12, and `ufw allow in on tailscale0 to any port 4920 proto tcp comment fathom-phone` if there's a `tailscale0`; only for rules not there already (Fathom's or yours), and only if `ufw` is installed |
+| | `uninstall.sh` | In one call, `ufw delete` of each of those rules, with its comment, if any rule carries Fathom's comment |
 | `--signin` | `install.sh` | `signin/install-root.sh install`: copies the theme to `/usr/share/sddm/themes/fathom` (owned by root) and writes `/etc/sddm.conf.d/99-zz-fathom.conf`, which selects it |
 | | `uninstall.sh` | `signin/install-root.sh uninstall`: deletes both |
 
@@ -177,6 +180,8 @@ These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
 - `~/.config/fathom/mail.json`: Mail's accounts and client IDs, and every
   keyring entry Fathom Mail saved (`secret-tool clear application
   fathom-mail`), which are its sign-ins (with Mail).
+- `~/.config/fathom/phone.json`: the phones paired with Fathom (with the
+  phone service); its key and certificate go with `~/.local/state/fathom`.
 - `~/.config/fathom/sentinel.json`: the devices you marked as yours (with
   Sentinel).
 - `~/.local/state/fathom`, all of it: Care's measurements and disk history,
@@ -264,6 +269,10 @@ sentinel/systemd/
                 and timer (system)
 sentinel/install-root.sh
                 Installs and removes the root parts
+phone/bin/fathom-phone
+                The phone's laptop side: an HTTPS service on port 4920 that a
+                paired phone reads the deck from, and pairing by QR code
+phone/systemd/  Its user service
 crumbs/bin/fathom-crumbs
                 Crumbs' command: reads every browser's cookies and history
                 (from copies) as JSON, and forgets cookies
@@ -796,6 +805,37 @@ fathom-crumbs apply --third-party on --prevention strict --block demdex.net
 fathom-crumbs clear                         # take Fathom's rules out
 ```
 
+## Phone
+
+The laptop side of [Fathom for Android](https://github.com/nerdcules/fathom-android),
+a home screen for your phone in Fathom's look. Install it with
+`./install.sh --phone`, then pair a phone once:
+
+```bash
+fathom-phone pair        # shows a QR code for 2 minutes; scan it in the app
+fathom-phone devices     # the phones paired
+fathom-phone unpair <id> # forget one; its token stops working
+```
+
+`fathom-phone` runs as a user service and answers HTTPS on port 4920 with a
+certificate it made itself. The QR code carries the laptop's addresses (Wi-Fi
+or wired first, then Tailscale's), the certificate's SHA-256 fingerprint and
+a one-time secret: the phone connects only to a laptop showing that
+certificate, and proves the secret to be given its own token. The window
+closes after 2 minutes, after one pairing, or after 5 wrong secrets. Fathom
+keeps only each token's SHA-256 (`~/.config/fathom/phone.json`, readable by
+you alone). A 6-digit code isn't used: on a network someone else can watch,
+all million codes could be tried against what they saw.
+
+A paired phone can read what the deck shows: Deck, Care, Sentinel, Pulse
+and Claude Code's day, Crumbs, the Fathom update and your look. In this first
+version it can read and not change anything. The laptop announces itself on
+the home network as `_fathom._tcp` (Avahi) so the phone can find it when its
+address changes. The firewall rule lets in only the private address ranges
+home networks use, and Tailscale; Sentinel's lockdown blocks the phone like
+everything else. Nothing is sent anywhere: the phone asks, the laptop
+answers.
+
 ## Mail
 
 Once an account is added (see below), new mail in your Outlook.com inbox
@@ -958,6 +998,7 @@ already.
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
+| 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, read-only) | first version |
 
 Parts that change system files or the firewall (the sign-in screen,
 Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on

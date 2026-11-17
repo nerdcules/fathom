@@ -11,6 +11,14 @@ Each line names its commit.
 
 ## [Unreleased]
 
+### Added
+
+- `fathom-phone` (`./install.sh --phone`): the laptop side of Fathom for
+  Android. An HTTPS service on port 4920 with a pinned self-signed
+  certificate, pairing by QR code (one-time secret, 2 minutes, 5 tries),
+  a token per phone kept as its SHA-256, and read-only access to what the
+  deck shows; `devices` and `unpair`.
+
 ## [0.1.0] - 2026-11-17
 
 The first release: everything Fathom had on 17 November 2026.

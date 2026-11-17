@@ -30,6 +30,7 @@ mail=false
 sentinel=false
 pulse=false
 crumbs=false
+phone=false
 opensnitch=false
 link=false
 apply=true
@@ -65,6 +66,10 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                Needs python-opentelemetry-proto, python-grpcio and
                python-protobuf. Asks for your password once if the firewall
                is on and Docker is installed, to let containers reach it
+  --phone      The laptop side of Fathom for Android: a service the phone
+               pairs with (fathom-phone pair) and reads the deck from, on
+               port 4920. Needs your password for the firewall rule that
+               lets your home network and Tailscale reach it
   --crumbs     Crumbs: the cookies every browser here keeps, which are
                trackers and which sites led to them (Super+Alt+O), and
                blocking them. Needs your password for the helper that
@@ -100,6 +105,7 @@ while (($#)); do
     --sentinel) sentinel=true ;;
     --pulse) pulse=true ;;
     --crumbs) crumbs=true ;;
+    --phone) phone=true ;;
     --opensnitch) opensnitch=true ;;
     --all)
       skin=true
@@ -111,6 +117,7 @@ while (($#)); do
       sentinel=true
       pulse=true
       crumbs=true
+      phone=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -133,7 +140,7 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs && ! $phone; then
   skin=true
   player=true
   deck=true
@@ -605,6 +612,61 @@ install_pulse() {
   echo "Pulse is listening. Point an app's OpenTelemetry exporter at it (see the README), then press Super+Alt+P."
 }
 
+# Let the phone reach fathom-phone on port 4920: from the private address
+# ranges home networks use, and on Tailscale's interface if there is one.
+# A matching rule already there is left alone (ufw would otherwise turn a
+# rule of yours into Fathom's); Fathom's own are tagged fathom-phone. All
+# the rules needed go in one root call, so one password prompt.
+phone_firewall() {
+  command -v ufw >/dev/null || return 0
+  local hex src line cmds=()
+  hex=$(printf fathom-phone | od -An -tx1 | tr -d ' \n')
+  for src in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do
+    line=$(grep -E "^### tuple ### [^ ]+ tcp 4920 0\.0\.0\.0/0 any ${src//./\\.} in( |\$)" \
+      "$UFW_DIR/user.rules" 2>/dev/null || true)
+    if [[ -z $line ]]; then
+      cmds+=("ufw allow proto tcp from $src to any port 4920 comment fathom-phone")
+    elif [[ $line != *"comment=$hex" ]]; then
+      echo "install.sh: a firewall rule of yours for port 4920 from $src is there already; Fathom leaves it."
+    fi
+  done
+  if ip link show tailscale0 >/dev/null 2>&1; then
+    line=$(grep -E "^### tuple ### [^ ]+ tcp 4920 0\.0\.0\.0/0 any 0\.0\.0\.0/0 in_tailscale0( |\$)" \
+      "$UFW_DIR/user.rules" 2>/dev/null || true)
+    if [[ -z $line ]]; then
+      cmds+=("ufw allow in on tailscale0 to any port 4920 proto tcp comment fathom-phone")
+    elif [[ $line != *"comment=$hex" ]]; then
+      echo "install.sh: a firewall rule of yours for port 4920 on Tailscale is there already; Fathom leaves it."
+    fi
+  fi
+  ((${#cmds[@]})) || return 0
+  local joined
+  joined=$(printf '%s >/dev/null && ' "${cmds[@]}")
+  as_root bash -c "${joined% && }"
+}
+
+install_phone() {
+  local missing=() tool
+  for tool in python3 openssl ip; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: the phone service needs: ${missing[*]}" >&2
+    return 1
+  fi
+  place "$REPO/phone/bin/fathom-phone" "$BIN_DIR/fathom-phone"
+  chmod +x "$REPO/phone/bin/fathom-phone"
+  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+  mkdir -p "$units"
+  cp "$REPO/phone/systemd/fathom-phone.service" "$units/fathom-phone.service"
+  systemctl --user daemon-reload
+  systemctl --user enable fathom-phone.service >/dev/null 2>&1 || true
+  systemctl --user restart fathom-phone.service
+  phone_firewall ||
+    echo "install.sh: couldn't open port 4920 in the firewall; the phone can't reach Fathom until it is (see the README)." >&2
+  echo "Phone service installed. Pair your phone: fathom-phone pair"
+}
+
 install_crumbs() {
   command -v python3 >/dev/null || { echo "install.sh: Crumbs needs python3" >&2; return 1; }
   place "$REPO/crumbs/bin/fathom-crumbs" "$BIN_DIR/fathom-crumbs"
@@ -643,7 +705,7 @@ restore_staged() {
 
 # The parts asked for, in the order they're installed.
 parts=()
-for part in skin player deck desk mail sentinel pulse crumbs signin; do
+for part in skin player deck desk mail sentinel pulse crumbs phone signin; do
   ${!part} && parts+=("$part")
 done
 done_parts=()

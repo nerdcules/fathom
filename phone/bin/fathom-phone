@@ -1,0 +1,412 @@
+#!/usr/bin/env python3
+"""Fathom for your phone: the laptop side. The phone app (fathom-android)
+pairs with it once, then reads what the Command Deck shows.
+
+  fathom-phone serve            run the service (fathom-phone.service does)
+  fathom-phone pair             open a 2-minute pairing window and show its
+                                QR code; scan it with the phone app
+  fathom-phone devices          the phones paired, and when each last called
+  fathom-phone unpair <id>|all  forget a phone (its token stops working)
+  fathom-phone status           the service, its fingerprint and devices, as JSON
+
+HTTPS on port 4920 with a self-signed certificate, which the phone pins:
+the pairing QR code carries its fingerprint, the laptop's addresses and a
+one-time secret. A paired phone gets its own token; only its SHA-256 is
+kept. Phase 1 is read-only: the phone can read, not change, anything.
+Nothing is sent anywhere; the phone asks, the laptop answers.
+"""
+
+import datetime
+import hashlib
+import hmac
+import http.server
+import json
+import os
+import secrets
+import shutil
+import signal
+import socket
+import ssl
+import subprocess
+import sys
+import threading
+import time
+
+HOME = os.path.expanduser("~")
+CONFIG = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "fathom")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "fathom")
+BIN = os.path.join(HOME, ".local", "bin")
+DIR = os.path.join(STATE, "phone")
+KEY = os.path.join(DIR, "key.pem")
+CERT = os.path.join(DIR, "cert.pem")
+PAIRING = os.path.join(DIR, "pairing.json")
+DEVICES = os.path.join(CONFIG, "phone.json")
+PORT = int(os.environ.get("FATHOM_PHONE_PORT", "4920"))
+BIND = os.environ.get("FATHOM_PHONE_BIND", "0.0.0.0")
+API = 1
+PAIR_SECONDS = 120
+PAIR_TRIES = 5
+MAX_BODY = 4096
+CACHE_SECONDS = 5
+
+# What the phone can read: the command each part's page uses.
+SOURCES = {
+    "deck": ["fathom-deck", "status"],
+    "care": ["fathom-care", "status"],
+    "sentinel": ["fathom-sentinel", "status"],
+    "pulse": ["fathom-pulse", "status", "15m"],
+    "agents": ["fathom-pulse", "agents"],
+    "crumbs": ["fathom-crumbs", "status"],
+    "update": ["fathom-update", "status"],
+    "look": ["fathom-look", "state"],
+}
+
+
+class PhoneError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- files
+
+
+def private_dir(path):
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    os.chmod(path, 0o700)
+
+
+def read_json(path, default):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def write_private(path, data):
+    private_dir(os.path.dirname(path))
+    tmp = f"{path}.{os.getpid()}.new"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+# One lock for every read-modify-write of the devices and pairing files.
+LOCK = threading.Lock()
+
+
+def devices():
+    data = read_json(DEVICES, {})
+    return data.get("devices", []) if isinstance(data, dict) else []
+
+
+def save_devices(devs):
+    write_private(DEVICES, {"devices": devs})
+
+
+def digest(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+# ---------------------------------------------------------------- certificate
+
+
+def ensure_cert():
+    if os.path.exists(KEY) and os.path.exists(CERT):
+        return
+    private_dir(DIR)
+    host = socket.gethostname()
+    r = subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+                        "-nodes", "-days", "3650", "-subj", f"/CN=fathom-phone {host}",
+                        "-keyout", KEY, "-out", CERT], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise PhoneError(f"couldn't make the certificate: {r.stderr.strip()[:200]}")
+    os.chmod(KEY, 0o600)
+
+
+def fingerprint():
+    """SHA-256 of the certificate (DER), as the phone checks it."""
+    with open(CERT) as f:
+        der = ssl.PEM_cert_to_DER_cert(f.read())
+    return hashlib.sha256(der).hexdigest()
+
+
+def addresses():
+    """IPv4 addresses the phone may reach: Wi-Fi and wired, then Tailscale."""
+    r = subprocess.run(["ip", "-j", "-4", "addr", "show"], capture_output=True, text=True)
+    try:
+        links = json.loads(r.stdout or "[]")
+    except ValueError:
+        links = []
+    lan, tail = [], []
+    for link in links:
+        name = link.get("ifname", "")
+        for a in link.get("addr_info", []):
+            ip = a.get("local")
+            if not ip:
+                continue
+            if name.startswith(("wl", "en", "eth")):
+                lan.append(ip)
+            elif name.startswith("tailscale"):
+                tail.append(ip)
+    return lan + tail
+
+
+# ---------------------------------------------------------------- reading the parts
+
+
+class Reader:
+    """Runs each part's status command, at most once every few seconds."""
+
+    def __init__(self):
+        self.cache = {}
+        self.lock = threading.Lock()
+
+    def part(self, name):
+        with self.lock:
+            hit = self.cache.get(name)
+            if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+                return hit[1]
+        cmd = SOURCES[name]
+        path = os.path.join(BIN, cmd[0])
+        value = None
+        if os.access(path, os.X_OK):
+            try:
+                r = subprocess.run([path, *cmd[1:]], capture_output=True, text=True, timeout=20)
+                if r.returncode == 0:
+                    value = json.loads(r.stdout)
+            except (subprocess.TimeoutExpired, ValueError, OSError):
+                value = None
+        with self.lock:
+            self.cache[name] = (time.monotonic(), value)
+        return value
+
+
+READER = Reader()
+
+
+# ---------------------------------------------------------------- the service
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    server_version = "fathom-phone"
+    sys_version = ""
+    timeout = 15
+
+    def log_message(self, fmt, *args):
+        pass  # no request log: what the phone asks is its own business
+
+    def reply(self, code, data):
+        body = json.dumps(data).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def device(self):
+        """The paired device this request's token belongs to, or None."""
+        auth = self.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return None
+        given = digest(auth[7:].strip())
+        found = None
+        with LOCK:
+            devs = devices()
+            for d in devs:
+                if hmac.compare_digest(given, d.get("tokenHash", "")):
+                    found = d
+            if found and time.time() - found.get("lastSeen", 0) > 60:
+                found["lastSeen"] = int(time.time())
+                save_devices(devs)
+        return found
+
+    def do_GET(self):
+        if self.path == "/v1/hello":
+            return self.reply(200, {"app": "fathom-phone", "api": API})
+        dev = self.device()
+        if dev is None:
+            return self.reply(401, {"error": "not paired"})
+        if self.path == "/v1/status":
+            data = {name: READER.part(name) for name in SOURCES}
+            data.update(time=int(time.time()), host=socket.gethostname(), api=API)
+            return self.reply(200, data)
+        if self.path.startswith("/v1/part/"):
+            name = self.path[len("/v1/part/"):]
+            if name in SOURCES:
+                return self.reply(200, {"time": int(time.time()), name: READER.part(name)})
+        return self.reply(404, {"error": "no such thing"})
+
+    def do_POST(self):
+        if self.path != "/v1/pair":
+            return self.reply(404, {"error": "no such thing"})
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > MAX_BODY:
+            return self.reply(413, {"error": "too large"})
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
+            secret = str(body.get("secret", ""))
+            name = str(body.get("name", "Phone"))[:60] or "Phone"
+        except (ValueError, AttributeError):
+            return self.reply(400, {"error": "bad request"})
+        with LOCK:
+            window = read_json(PAIRING, None)
+            if not window or window.get("closed") or time.time() > window.get("expires", 0):
+                return self.reply(403, {"error": "no pairing window open; run fathom-phone pair"})
+            if not hmac.compare_digest(digest(secret), window.get("secretHash", "")):
+                window["tries"] = window.get("tries", 0) + 1
+                if window["tries"] >= PAIR_TRIES:
+                    window["closed"] = "too many wrong tries"
+                write_private(PAIRING, window)
+                return self.reply(403, {"error": "wrong secret"})
+            token = secrets.token_urlsafe(32)
+            dev = {"id": secrets.token_hex(4), "name": name, "tokenHash": digest(token),
+                   "pairedAt": int(time.time()), "lastSeen": int(time.time())}
+            devs = devices()
+            devs.append(dev)
+            save_devices(devs)
+            window.update(closed="paired", device=dev["id"], deviceName=name)
+            write_private(PAIRING, window)
+        return self.reply(200, {"deviceId": dev["id"], "token": token, "host": socket.gethostname(), "api": API})
+
+
+def serve():
+    ensure_cert()
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_3
+    ctx.load_cert_chain(CERT, KEY)
+    server = http.server.ThreadingHTTPServer((BIND, PORT), Handler)
+    server.daemon_threads = True
+    server.socket = ctx.wrap_socket(server.socket, server_side=True, do_handshake_on_connect=False)
+    port = server.server_address[1]
+    announce = None
+    if shutil.which("avahi-publish") and BIND != "127.0.0.1":
+        # So the phone finds the laptop on the home network by name.
+        announce = subprocess.Popen(["avahi-publish", "-s", f"Fathom on {socket.gethostname()}", "_fathom._tcp",
+                                     str(port), f"fp={fingerprint()}", f"api={API}"],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(f"fathom-phone: listening on {BIND}:{port}", flush=True)
+
+    def stop(*_):
+        threading.Thread(target=server.shutdown, daemon=True).start()
+    signal.signal(signal.SIGTERM, stop)
+    try:
+        server.serve_forever()
+    finally:
+        if announce:
+            announce.terminate()
+    return 0
+
+
+# ---------------------------------------------------------------- pairing
+
+
+def open_window(minutes):
+    ensure_cert()
+    secret = secrets.token_urlsafe(24)
+    expires = int(time.time() + minutes * 60)
+    with LOCK:
+        write_private(PAIRING, {"secretHash": digest(secret), "expires": expires, "tries": 0})
+    addrs = addresses()
+    uri = (f"fathom://pair?v={API}&host={socket.gethostname()}&addr={','.join(addrs)}&port={PORT}"
+           f"&fp={fingerprint()}&secret={secret}")
+    return {"uri": uri, "secret": secret, "fingerprint": fingerprint(), "addresses": addrs,
+            "port": PORT, "expires": expires}
+
+
+def service_up():
+    try:
+        with socket.create_connection(("127.0.0.1", PORT), timeout=2):
+            return True
+    except OSError:
+        return False
+
+
+def pair(args):
+    minutes = PAIR_SECONDS / 60
+    as_json = "--json" in args
+    wait = "--no-wait" not in args
+    w = open_window(minutes)
+    if as_json:
+        print(json.dumps(w))
+    else:
+        if not service_up():
+            print("fathom-phone: the service isn't answering on port "
+                  f"{PORT}; start it with: systemctl --user start fathom-phone", file=sys.stderr)
+        if shutil.which("qrencode"):
+            subprocess.run(["qrencode", "-t", "ANSIUTF8", "-m", "2", w["uri"]])
+        until = datetime.datetime.fromtimestamp(w["expires"]).strftime("%H:%M:%S")
+        print(f"Scan this with Fathom on your phone (open until {until}).")
+        print(f"Or type: addresses {', '.join(w['addresses'])}, port {w['port']},")
+        print(f"         fingerprint {w['fingerprint']}")
+        print(f"         secret {w['secret']}")
+    if not wait:
+        return 0
+    while time.time() < w["expires"]:
+        state = read_json(PAIRING, {})
+        if state.get("closed") == "paired":
+            print(f"Paired: {state.get('deviceName')} ({state.get('device')}).")
+            return 0
+        if state.get("closed"):
+            print(f"Pairing closed: {state['closed']}. Run fathom-phone pair again.", file=sys.stderr)
+            return 1
+        time.sleep(1)
+    with LOCK:
+        state = read_json(PAIRING, {})
+        if not state.get("closed"):
+            state["closed"] = "timed out"
+            write_private(PAIRING, state)
+    print("Pairing timed out; nothing was paired.", file=sys.stderr)
+    return 1
+
+
+# ---------------------------------------------------------------- commands
+
+
+def ago(t):
+    s = int(time.time() - t)
+    return f"{s // 60} min ago" if s < 3600 else (f"{s // 3600} h ago" if s < 172800 else f"{s // 86400} days ago")
+
+
+def main(argv):
+    cmd, args = (argv[0], argv[1:]) if argv else ("--help", [])
+    try:
+        if cmd in ("-h", "--help", "help"):
+            print(__doc__.strip())
+        elif cmd == "serve":
+            return serve()
+        elif cmd == "pair":
+            return pair(args)
+        elif cmd == "devices":
+            devs = devices()
+            if not devs:
+                print("No phone is paired. Pair one with: fathom-phone pair")
+            for d in devs:
+                print(f"{d['id']}  {d['name']}  paired {ago(d['pairedAt'])}, last seen {ago(d['lastSeen'])}")
+        elif cmd == "unpair":
+            if len(args) != 1:
+                raise PhoneError("unpair takes a device id (see fathom-phone devices) or all")
+            with LOCK:
+                devs = devices()
+                keep = [] if args[0] == "all" else [d for d in devs if d["id"] != args[0]]
+                if len(keep) == len(devs):
+                    raise PhoneError(f"no paired device {args[0]}")
+                save_devices(keep)
+            print(f"Forgot {len(devs) - len(keep)} device{'s' if len(devs) - len(keep) != 1 else ''}.")
+        elif cmd == "status":
+            ensure_cert()
+            print(json.dumps({"running": service_up(), "port": PORT, "fingerprint": fingerprint(),
+                              "addresses": addresses(),
+                              "devices": [{k: d[k] for k in ("id", "name", "pairedAt", "lastSeen")} for d in devices()]}))
+        else:
+            raise PhoneError(f"unknown command '{cmd}'; see fathom-phone --help")
+    except PhoneError as e:
+        print(f"fathom-phone: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

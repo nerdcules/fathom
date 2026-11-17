@@ -173,6 +173,28 @@ if [[ -e $HOME/.local/bin/fathom-crumbs || -d /usr/local/lib/fathom-crumbs ]]; t
   echo "Removed Crumbs and its cookie rules."
 fi
 
+# The phone service: stop it, remove it and its firewall rules (each by its
+# comment, so a rule of yours that matches is kept), its key and the phones
+# paired with it.
+if [[ -e $HOME/.local/bin/fathom-phone || -f $UNITS/fathom-phone.service ]]; then
+  systemctl --user disable --now fathom-phone.service >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-phone.service" "$HOME/.local/bin/fathom-phone" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/phone.json"
+  systemctl --user daemon-reload
+  hex=$(printf fathom-phone | od -An -tx1 | tr -d ' \n')
+  if command -v ufw >/dev/null && grep -qs "comment=$hex" "${FATHOM_UFW_DIR:-/etc/ufw}/user.rules"; then
+    cmds="ufw delete allow proto tcp from 192.168.0.0/16 to any port 4920 comment fathom-phone >/dev/null 2>&1;"
+    cmds+=" ufw delete allow proto tcp from 10.0.0.0/8 to any port 4920 comment fathom-phone >/dev/null 2>&1;"
+    cmds+=" ufw delete allow proto tcp from 172.16.0.0/12 to any port 4920 comment fathom-phone >/dev/null 2>&1;"
+    cmds+=" ufw delete allow in on tailscale0 to any port 4920 proto tcp comment fathom-phone >/dev/null 2>&1; true"
+    if [[ -t 0 ]]; then
+      sudo bash -c "$cmds"
+    else
+      pkexec bash -c "$cmds"
+    fi
+  fi
+  echo "Removed the phone service and its pairings."
+fi
+
 # The shell forgets the plugins removed above. (Their Hyprland block went
 # first, at the top.)
 if $hypr_changed; then

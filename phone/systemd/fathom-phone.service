@@ -1,0 +1,11 @@
+[Unit]
+Description=Fathom for your phone: the laptop side (HTTPS on port 4920)
+After=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/fathom-phone serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
