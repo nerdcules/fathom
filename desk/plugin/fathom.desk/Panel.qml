@@ -59,6 +59,25 @@ Item {
   Binding { target: Skin; property: "fontFamily"; value: Style.font.family }
   Binding { target: Skin; property: "motion"; value: Style.duration(100) / 100 }
   Binding { target: Skin; property: "strings"; value: catalog }
+  Binding { target: Skin; property: "radius"; value: Style.cornerRadius }
+  Binding { target: Skin; property: "glassAlpha"; value: Commons.Color.menu.background.a }
+  Binding { target: Skin; property: "edgeAlpha"; value: Commons.Color.menu.border.a }
+
+  // The glow is Fathom's own, so it lives only in look.json (fathom-look);
+  // the rest of the look reaches here through the theme.
+  FileView {
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/fathom/look.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try {
+        var look = JSON.parse(text())
+        Skin.glow = look.glow !== false
+      } catch (e) { Skin.glow = true }
+    }
+    onLoadFailed: Skin.glow = true
+  }
 
   // ------------------------------------------------ opening and closing
 

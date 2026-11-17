@@ -1,4 +1,4 @@
--- Fathom Command Deck: its keys (Deck, its Care page, and the Start menu)
+-- Fathom Command Deck: its keys (Deck, its Care and Personalise pages, and the Start menu)
 -- and how Hyprland draws it. Installed to
 -- ~/.config/hypr/fathom-deck.lua and loaded from hyprland.lua by Fathom's
 -- install.sh (uninstall.sh removes both).
@@ -17,3 +17,6 @@ o.bind("SUPER + ALT + C", "Care: disk, warnings and updates", bin .. "fathom-car
 -- held, so Super + anything works as before.
 o.bind("SUPER + Super_L", "Start menu", bin .. "fathom-start", { release = true })
 o.bind("SUPER + Super_R", "Start menu", bin .. "fathom-start", { release = true })
+
+-- Personalise: the deck's page for Fathom's look (fathom-look does the work).
+o.bind("SUPER + ALT + I", "Personalise Fathom's look", "omarchy-shell shell summon fathom.deck '{\"page\":\"look\"}'")

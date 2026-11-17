@@ -33,14 +33,16 @@ usage() {
 Usage: ./install.sh [options]
 
 Parts (with none named, the ones that need no password: --skin --player --deck --desk --mail):
-  --skin       The Fathom desktop theme
+  --skin       The Fathom desktop theme, and 'fathom-look', which changes
+               its look (the deck's Personalise page uses it)
   --player     The mini-player: 'fathom-player', its window rules and keys
                (Super+Alt+Y plays the copied link, Super+Ctrl+Y closes it),
                and a bar widget showing what is playing
   --deck       The Command Deck: system, Docker, .NET and AI at a glance
                (Super+Alt+D); its Care page: disk, warnings and updates
                (Super+Alt+C), checked every 3 hours by a systemd user
-               timer; and the Start menu (tap Super)
+               timer; Personalise, for Fathom's look (Super+Alt+I);
+               and the Start menu (tap Super)
   --desk       Windows-style window handling: Alt+Tab with window previews,
                Task view (Super+Tab, in place of Omarchy's next workspace),
                Snap layouts (Super+Z) and Quick settings (Super+Alt+A)
@@ -63,9 +65,10 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
 Options:
   --opensnitch With --sentinel: also install OpenSnitch, which asks the first
                time each app connects somewhere new
-  --link       Symlink the desktop theme, the commands and their Hyprland
-               files to this repo instead of copying them, so edits here take
-               effect (shell plugins are always copied: Omarchy refuses
+  --link       Symlink the commands, their Hyprland files and the theme
+               fathom-look builds from to this repo instead of copying them,
+               so edits here take effect (after 'fathom-look apply' for the
+               theme; shell plugins are always copied: Omarchy refuses
                symlinks there)
   --no-apply   Install the desktop theme without switching to it
   -h, --help   Show this help
@@ -149,14 +152,19 @@ install_skin() {
   fi
   rm -rf "$THEME_DIR"
 
+  # Fathom's theme as shipped goes in ~/.local/share/fathom/theme (linked to
+  # the repo with --link). fathom-look builds the folder Omarchy reads from
+  # it, with your look from Personalise (~/.config/fathom/look.json).
+  mkdir -p "$SHARE_DIR"
+  rm -rf "$SHARE_DIR/theme"
   if $link; then
-    ln -s "$REPO/theme" "$THEME_DIR"
-    echo "Linked $THEME_DIR -> $REPO/theme"
+    ln -s "$REPO/theme" "$SHARE_DIR/theme"
   else
-    cp -r "$REPO/theme" "$THEME_DIR"
-    git -C "$REPO" rev-parse --short HEAD >"$THEME_DIR/$MARKER" 2>/dev/null || echo unknown >"$THEME_DIR/$MARKER"
-    echo "Copied the theme to $THEME_DIR"
+    cp -r "$REPO/theme" "$SHARE_DIR/theme"
   fi
+  place "$REPO/look/bin/fathom-look" "$BIN_DIR/fathom-look"
+  chmod +x "$REPO/look/bin/fathom-look"
+  "$BIN_DIR/fathom-look" build
 
   if $apply; then
     omarchy theme set fathom

@@ -28,6 +28,11 @@ Item {
   property string pulseRange: "15m"
   property var agents: null
   property var startMenu: null
+  // Personalise: `fathom-look state`, and the change in flight.
+  property var look: null
+  property bool lookBusy: false
+  property string lookMessage: ""
+  property bool lookFailed: false
   property var apps: []
   property string error: ""
   property var busy: ({})
@@ -40,6 +45,7 @@ Item {
   readonly property string playerTool: home + "/.local/bin/fathom-player"
   readonly property string sentinelTool: home + "/.local/bin/fathom-sentinel"
   readonly property string pulseTool: home + "/.local/bin/fathom-pulse"
+  readonly property string lookTool: home + "/.local/bin/fathom-look"
   readonly property string pluginId: (manifest && manifest.id) || "fathom.deck"
   // Care runs its own check when it's this stale (the timer may be off).
   readonly property int staleSeconds: 3 * 3600
@@ -55,16 +61,36 @@ Item {
   Binding { target: Skin; property: "motion"; value: Style.duration(100) / 100 }
   Binding { target: Skin; property: "locale"; value: Qt.locale(Commons.I18n.formatLocale) }
   Binding { target: Skin; property: "strings"; value: catalog }
+  Binding { target: Skin; property: "radius"; value: Style.cornerRadius }
+  Binding { target: Skin; property: "glassAlpha"; value: Commons.Color.menu.background.a }
+  Binding { target: Skin; property: "edgeAlpha"; value: Commons.Color.menu.border.a }
+
+  // The glow is Fathom's own, so it lives only in look.json (fathom-look);
+  // the rest of the look reaches here through the theme.
+  FileView {
+    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/fathom/look.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try {
+        var look = JSON.parse(text())
+        Skin.glow = look.glow !== false
+      } catch (e) { Skin.glow = true }
+    }
+    onLoadFailed: Skin.glow = true
+  }
   Component.onCompleted: Skin.fmt = function(v, d) { return Commons.I18n.formatNumber(v, d) }
 
-  // `shell summon fathom.deck '{"page":"care"}'` (or "deck", "start").
+  // `shell summon fathom.deck '{"page":"care"}'` (or "deck", "start",
+  // "sentinel", "pulse", "look").
   // Asking for the page that is already showing closes it, so one key opens
   // and closes it.
   function open(payloadJson) {
     var wanted = "deck"
     try {
       var payload = JSON.parse(payloadJson || "{}")
-      if (payload && ["care", "start", "sentinel", "pulse"].indexOf(payload.page) !== -1) wanted = payload.page
+      if (payload && ["care", "start", "sentinel", "pulse", "look"].indexOf(payload.page) !== -1) wanted = payload.page
     } catch (e) {}
     if (opened && page === wanted) {
       dismiss()
@@ -98,6 +124,9 @@ Item {
       if (!deckProc.running) deckProc.running = true
     } else if (page === "sentinel") {
       if (!sentinelProc.running) sentinelProc.running = true
+    } else if (page === "look") {
+      // Read when it opens and after each change, not on a timer.
+      if (!lookProc.running) lookProc.running = true
     } else if (page === "pulse") {
       if (!pulseProc.running) pulseProc.running = true
       if (!agentsProc.running) agentsProc.running = true
@@ -216,6 +245,20 @@ Item {
     if (id === "focus") run([startTool, "focus"])
     else if (id === "play") handOff([playerTool, "play"])
     else handOff([startTool, "power", id])
+  }
+
+  // ------------------------------------------------ Personalise
+
+  // One change at a time: `fathom-look set …` (rebuilds and refreshes the
+  // theme, a few seconds), `bar <mode>` or `wallpaper <file>`.
+  function lookRun(args, doneText) {
+    if (lookBusy) return
+    lookBusy = true
+    lookFailed = false
+    lookMessage = ""
+    lookActProc.doneText = doneText
+    lookActProc.command = [lookTool].concat(args)
+    lookActProc.running = true
   }
 
   function check() {
@@ -347,6 +390,39 @@ Item {
   }
 
   Process {
+    id: lookProc
+    command: [root.lookTool, "state"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(text)
+          if (parsed && parsed.look) { root.look = parsed; return }
+        } catch (e) {}
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0 && !root.lookBusy) {
+        root.lookFailed = true
+        root.lookMessage = catalog.t("look.missing")
+      }
+    }
+  }
+
+  Process {
+    id: lookActProc
+    property string doneText: ""
+    stderr: StdioCollector { id: lookErr }
+    onExited: function(exitCode) {
+      root.lookBusy = false
+      root.lookFailed = exitCode !== 0
+      root.lookMessage = exitCode === 0 ? doneText : String(lookErr.text || "").trim().replace(/^fathom-look: /, "").slice(0, 200)
+      // Glassy turns blur on and the others may turn it off.
+      if (!blurProc.running) blurProc.running = true
+      if (!lookProc.running) lookProc.running = true
+    }
+  }
+
+  Process {
     id: checkProc
     command: [root.careTool, "check"]
     onExited: root.refresh()
@@ -357,7 +433,7 @@ Item {
   Timer {
     id: pause
     interval: root.page === "deck" ? 2500 : 5000
-    onTriggered: if (root.page !== "start") root.refresh()
+    onTriggered: if (root.page !== "start" && root.page !== "look") root.refresh()
   }
 
   Component {
@@ -421,6 +497,13 @@ Item {
         }
         // Claude Code opens in a terminal, so the deck steps aside.
         onAskRequested: function(text) { root.handOff([root.startTool, "ask", text]) }
+        look: root.look
+        lookBusy: root.lookBusy
+        lookMessage: root.lookMessage
+        lookFailed: root.lookFailed
+        onLookApplyRequested: function(args) { root.lookRun(args, catalog.t("look.applied")) }
+        onLookBarRequested: function(mode) { root.lookRun(["bar", mode], catalog.t("look.barDone")) }
+        onLookWallpaperRequested: function(path) { root.lookRun(["wallpaper", path], catalog.t("look.wallpaperDone")) }
       }
 
       StartView {

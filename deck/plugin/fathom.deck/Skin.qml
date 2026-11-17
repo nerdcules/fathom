@@ -22,6 +22,15 @@ QtObject {
   // show sharp text behind them, so they go solid. Panel.qml asks
   // Hyprland each time the deck opens.
   property bool glass: false
+  // The look from Personalise (fathom-look), as applied: corners as
+  // Hyprland rounds windows (Style.cornerRadius), how opaque panels are
+  // over blur and how strong their border is (the theme's menu alpha and
+  // border alpha), and the accent's glow along their top (look.json).
+  // Panel.qml binds these; the values here are Fathom's own look.
+  property int radius: 22
+  property real glassAlpha: 0.9
+  property real edgeAlpha: 0.25
+  property bool glow: true
   property var locale: Qt.locale()
   // Translations: an object with t(key) and tn(key, count).
   property var strings: null
@@ -34,6 +43,8 @@ QtObject {
   property var ask: function(title, body, confirmText, onConfirm) { console.warn("fathom.deck: no dialog to ask with") }
 
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.58)
+  // A panel: the look's opacity over blur, solid without it.
+  readonly property real panelAlpha: glass ? glassAlpha : 1
   readonly property color faint: Qt.rgba(fg.r, fg.g, fg.b, 0.12)
 
   function t(key) { return strings ? strings.t(key) : key }

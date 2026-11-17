@@ -19,9 +19,9 @@ cd ~/Work/fathom
 
 | Option | What it does |
 |---|---|
-| `--skin` | The desktop theme, with a glassy bar: its bar, panels and menus are frosted glass, so Hyprland's blur goes on |
+| `--skin` | The desktop theme, with a glassy bar: its bar, panels and menus are frosted glass, so Hyprland's blur goes on. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) |
 | `--player` | The mini-player, its keys and its bar widget |
-| `--deck` | The Start menu, the Command Deck and its Care page, their keys, Care's check every 3 hours, and the deck's pill in the bar |
+| `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
 | `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
@@ -29,7 +29,7 @@ cd ~/Work/fathom
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part (OpenSnitch only with `--opensnitch`) |
-| `--link` | Link the theme, the commands and their Hyprland files to this repo instead of copying, for working on them |
+| `--link` | Link the commands, their Hyprland files and the theme `fathom-look` builds from to this repo instead of copying, for working on them (theme edits show after `fathom-look apply`) |
 | `--no-apply` | Install the desktop theme without switching to it |
 
 With no part named, it installs the parts that need no password: `--skin`,
@@ -75,6 +75,9 @@ desk/hypr/      Its keys, and Alt+Tab's handling of Tab and Alt
 desk/plugin/fathom.desk/
                 The desk itself, an Omarchy shell panel kept loaded:
                 Alt+Tab, Task view, Snap layouts and Quick settings
+look/bin/fathom-look
+                Personalise's command: keeps your look and builds the theme
+                folder Omarchy reads from theme/ with it
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -626,6 +629,45 @@ password and rebuilds the boot image, and *Default* there puts Omarchy's back.
 Omarchy's `omarchy-plymouth-preview`; without it, Omarchy doesn't offer Fathom
 there.
 
+## Personalise
+
+![Fathom's Personalise page](look/preview.jpg)
+
+Personalise is the deck's fifth page: **Super+Alt+I**, Ctrl+Tab from Pulse,
+or search Start for "personalise". It changes how Fathom looks:
+
+- **Accent:** one of eight colours from Fathom's palette, or any `#rrggbb`.
+  Borders, highlights, buttons and the glow use it, in Fathom and in
+  Omarchy's own panels, menus and notifications.
+- **Window frame:** the focused window's border as a gradient from the
+  accent to a second colour (Fathom's is cyan to violet), or the accent alone.
+- **Corners:** 0 to 30 px (Fathom's is 22). Windows, Fathom's panels and
+  Omarchy's menus and notifications share them.
+- **Panel opacity:** 60 to 100% (Fathom's is 90%) for Fathom's panels and
+  Omarchy's menus, launcher, popups, tooltips and notifications. It shows
+  only while Hyprland's blur is on; with blur off, panels are solid, and the
+  page says so.
+- **Glow** along the top of Fathom's panels, on or off.
+- **Bar:** Omarchy's bar background, glassy, solid or clear. This one, and
+  the **wallpaper**, change as soon as you click.
+
+The rest wait in a preview until **Apply**. **Fathom's look** puts the
+shipped look back in the draft. Applying rebuilds the theme and refreshes
+it: one `fathom-look set` took 407 ms on this laptop (2026-11-17, one run).
+
+Your look is kept in `~/.config/fathom/look.json`. Omarchy reads the theme
+from `~/.config/omarchy/themes/fathom`, which `fathom-look` builds from
+Fathom's theme (`~/.local/share/fathom/theme`) with `colors.toml`,
+`shell.toml` and `hyprland.lua` rewritten for your look. With Fathom's own
+look the built files are the same as `theme/`'s.
+
+```bash
+fathom-look                                  # open Personalise
+fathom-look state | jq .                     # the look, the bar and the wallpapers
+fathom-look set accent '#ff6b81' corners 14  # change some of it and apply
+fathom-look reset                            # Fathom's own look again
+```
+
 ## Changing the art
 
 The images are drawn in code, so change `art/make-art.py` rather than the
@@ -635,7 +677,7 @@ images, then:
 ./art/make-art.py              # everything
 ./art/make-art.py eclipse      # one piece: horizon, eclipse, hexgrid, preview, unlock
                                # (unlock also redraws preview-unlock.png)
-omarchy theme set fathom       # see the result
+fathom-look apply              # rebuild the theme and see the result
 ```
 
 It needs `rsvg-convert` (librsvg) and `magick` (ImageMagick), both on Omarchy
@@ -656,6 +698,7 @@ already.
 | 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
 | 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
 | 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
+| 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
 
 Parts that change system files (sign-in screen, face login, Sentinel) are
 opt-in flags on `install.sh`, back up what they replace, and are undone by

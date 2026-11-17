@@ -21,12 +21,22 @@ QtObject {
   // at its brightest against its own 0.059, faint but legible; at 1.0, 0.059
   // (2026-11-15).
   property bool glass: false
+  // The look from Personalise (fathom-look), as applied: corners as
+  // Hyprland rounds windows (Style.cornerRadius), how opaque panels are
+  // over blur and how strong their border is (the theme's menu alpha and
+  // border alpha), and the accent's glow along their top (look.json).
+  // Panel.qml binds these; the values here are Fathom's own look.
+  property int radius: 22
+  property real glassAlpha: 0.9
+  property real edgeAlpha: 0.25
+  property bool glow: true
   property var strings: null
 
   readonly property color dim: Qt.rgba(fg.r, fg.g, fg.b, 0.58)
   readonly property color faint: Qt.rgba(fg.r, fg.g, fg.b, 0.12)
-  // A panel, as the Start menu draws its own: 90% over blur, else solid.
-  readonly property real panelAlpha: glass ? 0.9 : 1
+  // A panel, as the Start menu draws its own: the look's opacity over
+  // blur, else solid.
+  readonly property real panelAlpha: glass ? glassAlpha : 1
   // A dimmed screen behind a view.
   readonly property real scrimAlpha: glass ? 0.55 : 1
 

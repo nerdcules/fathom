@@ -18,4 +18,5 @@ AppIcon 1.0 AppIcon.qml
 Stage 1.0 Stage.qml
 SentinelPage 1.0 SentinelPage.qml
 PulsePage 1.0 PulsePage.qml
+LookPage 1.0 LookPage.qml
 DeckBar 1.0 DeckBar.qml

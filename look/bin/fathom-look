@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""Fathom's look: the accent colour, the window frame, corners, how see-through
+panels are, the glow along their top, the bar and the wallpaper.
+
+  fathom-look                       open Personalise (the Command Deck's page)
+  fathom-look state                 the look, the bar and the wallpapers, as JSON
+  fathom-look set <key> <value>...  change the look and apply it. Keys:
+                                      accent <#rrggbb>, frame <#rrggbb>,
+                                      frame-style gradient|solid,
+                                      corners <0-30>, opacity <60-100>,
+                                      glow on|off
+  fathom-look reset                 Fathom's own look back, and apply it
+  fathom-look bar glassy|opaque|none
+                                    the bar's background (Omarchy's setting;
+                                    glassy turns Hyprland's blur on)
+  fathom-look wallpaper <file>      set the wallpaper
+  fathom-look build                 rebuild the theme folder, without applying
+  fathom-look apply                 rebuild it and refresh the theme if it's on
+
+The look is kept in ~/.config/fathom/look.json. The theme folder Omarchy reads
+(~/.config/omarchy/themes/fathom) is built from Fathom's theme, installed at
+~/.local/share/fathom/theme, with colors.toml, shell.toml and hyprland.lua
+rewritten for the look. Everything stays on this machine.
+"""
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+HOME = os.path.expanduser("~")
+CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+DATA = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local", "share")
+STATE = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state")
+
+LOOK_FILE = os.path.join(CONFIG, "fathom", "look.json")
+BASE_DIR = os.path.join(DATA, "fathom", "theme")
+THEME_DIR = os.path.join(CONFIG, "omarchy", "themes", "fathom")
+# The installer's mark on a theme folder it made; uninstall.sh removes such a folder.
+MARKER = ".fathom-install"
+CURRENT_THEME = os.path.join(STATE, "omarchy", "current", "theme")
+CURRENT_BACKGROUND = os.path.join(STATE, "omarchy", "current", "background")
+USER_BACKGROUNDS = os.path.join(CONFIG, "omarchy", "backgrounds", "fathom")
+
+# Fathom's own look: what theme/ ships. Building with these gives back
+# theme/'s files unchanged.
+DEFAULTS = {
+    "accent": "#4cc9f0",
+    "frame": "#9d8cff",
+    "frameStyle": "gradient",
+    "corners": 22,
+    "opacity": 90,
+    "glow": True,
+}
+CORNERS = (0, 30)
+OPACITY = (60, 100)
+BAR_MODES = ("glassy", "opaque", "none")
+# The shell surfaces drawn as panels: their background-alpha follows opacity.
+# The bar, the lock screen and the password prompt keep theirs.
+PANEL_SECTIONS = ("popups", "tooltip", "notifications", "launcher", "menu")
+IMAGE_TYPES = (".png", ".jpg", ".jpeg", ".webp")
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+class LookError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- the look
+
+
+def clean(look):
+    """A whole, valid look from what's stored: anything missing or wrong
+    falls back to Fathom's own."""
+    out = dict(DEFAULTS)
+    if not isinstance(look, dict):
+        return out
+    for key in ("accent", "frame"):
+        v = look.get(key)
+        if isinstance(v, str) and HEX.match(v):
+            out[key] = v.lower()
+    if look.get("frameStyle") in ("gradient", "solid"):
+        out["frameStyle"] = look["frameStyle"]
+    for key, (lo, hi) in (("corners", CORNERS), ("opacity", OPACITY)):
+        v = look.get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and lo <= v <= hi:
+            out[key] = int(round(v))
+    if isinstance(look.get("glow"), bool):
+        out["glow"] = look["glow"]
+    return out
+
+
+def load():
+    try:
+        with open(LOOK_FILE) as f:
+            return clean(json.load(f))
+    except (OSError, ValueError):
+        return dict(DEFAULTS)
+
+
+def save(look):
+    os.makedirs(os.path.dirname(LOOK_FILE), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(LOOK_FILE), prefix=".look.")
+    with os.fdopen(fd, "w") as f:
+        json.dump(look, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, LOOK_FILE)
+
+
+def parse_value(key, value):
+    """One `set` argument, checked. Returns (field, value)."""
+    if key in ("accent", "frame"):
+        if not HEX.match(value):
+            raise LookError(f"{key} must be a colour like #4cc9f0, not '{value}'")
+        return key, value.lower()
+    if key == "frame-style":
+        if value not in ("gradient", "solid"):
+            raise LookError(f"frame-style is gradient or solid, not '{value}'")
+        return "frameStyle", value
+    if key in ("corners", "opacity"):
+        lo, hi = CORNERS if key == "corners" else OPACITY
+        try:
+            n = int(value)
+        except ValueError:
+            raise LookError(f"{key} must be a whole number from {lo} to {hi}, not '{value}'")
+        if not lo <= n <= hi:
+            raise LookError(f"{key} must be from {lo} to {hi}, not {n}")
+        return key, n
+    if key == "glow":
+        if value not in ("on", "off"):
+            raise LookError(f"glow is on or off, not '{value}'")
+        return "glow", value == "on"
+    raise LookError(f"unknown setting '{key}'; see fathom-look --help")
+
+
+# ---------------------------------------------------------------- building
+
+
+def rgba(hex_colour, alpha="ee"):
+    return f"rgba({hex_colour[1:].lower()}{alpha})"
+
+
+def border_spec(look):
+    """Hyprland's active border, as colors.toml and shell.toml write it."""
+    if look["frameStyle"] == "solid":
+        return rgba(look["accent"])
+    return f"{rgba(look['accent'])} {rgba(look['frame'])} 45deg"
+
+
+def border_lua(look):
+    if look["frameStyle"] == "solid":
+        return f'"{rgba(look["accent"])}"'
+    return f'{{ colors = {{ "{rgba(look["accent"])}", "{rgba(look["frame"])}" }}, angle = 45 }}'
+
+
+def alpha_text(percent):
+    return "1.0" if percent >= 100 else f"{percent / 100:g}"
+
+
+def sub_once(pattern, repl, text, what):
+    out, n = re.subn(pattern, repl, text, count=1, flags=re.M)
+    if n != 1:
+        raise LookError(f"Fathom's theme has no {what} to change; is ~/.local/share/fathom/theme Fathom's?")
+    return out
+
+
+def base_colours(colors_toml):
+    """The accent and border Fathom's theme ships, which shell.toml repeats."""
+    accent = re.search(r'^accent = "(#[0-9a-fA-F]{6})"', colors_toml, re.M)
+    border = re.search(r'^hyprland_active_border = "([^"]*)"', colors_toml, re.M)
+    if not accent or not border:
+        raise LookError("Fathom's colors.toml has no accent or hyprland_active_border")
+    return accent.group(1), border.group(1)
+
+
+def make_colors(text, look):
+    text = sub_once(r'^accent = "#[0-9a-fA-F]{6}"', f'accent = "{look["accent"]}"', text, "accent")
+    return sub_once(r'^hyprland_active_border = "[^"]*"',
+                    f'hyprland_active_border = "{border_spec(look)}"', text, "window border")
+
+
+def make_hyprland(text, look):
+    text = sub_once(r"^local active_border_color = .*$",
+                    f"local active_border_color = {border_lua(look)}", text, "window border")
+    return sub_once(r"^(\s*rounding = )\d+", rf"\g<1>{look['corners']}", text, "rounding")
+
+
+def make_shell(text, look, base_accent, base_border):
+    # The border spec first: it holds the accent's hex too.
+    text = text.replace(base_border, border_spec(look))
+    text = re.sub(re.escape(base_accent), look["accent"], text, flags=re.I)
+    alpha = alpha_text(look["opacity"])
+    out, section = [], None
+    for line in text.split("\n"):
+        header = re.match(r"^\[([^\]]+)\]", line)
+        if header:
+            section = header.group(1)
+        elif section in PANEL_SECTIONS:
+            line = re.sub(r"^(background-alpha\s*=\s*)[0-9.]+", rf"\g<1>{alpha}", line)
+        out.append(line)
+    return "\n".join(out)
+
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def build(look):
+    """Make the theme folder from Fathom's theme and the look. Built beside
+    it and swapped in, so Omarchy never reads half a theme."""
+    if not os.path.isdir(BASE_DIR):
+        raise LookError(f"Fathom's theme isn't at {BASE_DIR}; run Fathom's ./install.sh --skin")
+    if os.path.isdir(THEME_DIR) and not os.path.islink(THEME_DIR) \
+            and not os.path.exists(os.path.join(THEME_DIR, MARKER)):
+        raise LookError(f"{THEME_DIR} wasn't made by Fathom, so it's left alone")
+
+    parent = os.path.dirname(THEME_DIR)
+    os.makedirs(parent, exist_ok=True)
+    tmp = tempfile.mkdtemp(dir=parent, prefix=".fathom-build.")
+    try:
+        staged = os.path.join(tmp, "fathom")
+        # Real files, not links: Omarchy copies the folder as it is, and a link
+        # in the copy would lead back here (to the repo, with --link).
+        shutil.copytree(BASE_DIR, staged, symlinks=False,
+                        ignore=shutil.ignore_patterns(MARKER, ".git", "__pycache__"))
+        colors = read(os.path.join(staged, "colors.toml"))
+        base_accent, base_border = base_colours(colors)
+        write(os.path.join(staged, "colors.toml"), make_colors(colors, look))
+        hypr = os.path.join(staged, "hyprland.lua")
+        write(hypr, make_hyprland(read(hypr), look))
+        shell = os.path.join(staged, "shell.toml")
+        write(shell, make_shell(read(shell), look, base_accent, base_border))
+        write(os.path.join(staged, MARKER), f"built by fathom-look from {os.path.realpath(BASE_DIR)}\n")
+
+        old = os.path.join(tmp, "old")
+        if os.path.islink(THEME_DIR):
+            os.unlink(THEME_DIR)
+        elif os.path.isdir(THEME_DIR):
+            os.rename(THEME_DIR, old)
+        os.rename(staged, THEME_DIR)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------- Omarchy
+
+
+def run(cmd, timeout=20):
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return p.returncode, p.stdout.strip(), p.stderr.strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 1, "", str(e)
+
+
+def fathom_is_on():
+    code, out, _ = run(["omarchy", "theme", "current"], 10)
+    return code == 0 and out.strip().lower() == "fathom"
+
+
+def apply(look):
+    build(look)
+    if not fathom_is_on():
+        return False
+    # Restages the theme from the folder just built and retints everything,
+    # keeping the wallpaper; it waits for every app to finish.
+    code, _, err = run(["omarchy", "theme", "refresh"], 120)
+    if code != 0:
+        raise LookError(f"omarchy theme refresh failed: {err[:300]}")
+    return True
+
+
+def bar_mode():
+    code, out, _ = run(["omarchy", "bar", "background"], 10)
+    return out if code == 0 and out in BAR_MODES else None
+
+
+def blur_on():
+    code, out, _ = run(["hyprctl", "getoption", "decoration:blur:enabled", "-j"], 5)
+    try:
+        o = json.loads(out)
+        return bool(o.get("bool", o.get("int")))
+    except (ValueError, AttributeError):
+        return None
+
+
+def images(folder):
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return []
+    return [os.path.join(folder, n) for n in names
+            if n.lower().endswith(IMAGE_TYPES) and os.path.isfile(os.path.join(folder, n))]
+
+
+def wallpapers(on):
+    """Fathom's wallpapers, from the applied copy when Fathom is on (as
+    Omarchy's own switcher sets them), and the user's own for Fathom."""
+    folder = os.path.join(CURRENT_THEME if on else THEME_DIR, "backgrounds")
+    out = []
+    for path in images(folder) + images(USER_BACKGROUNDS):
+        name = re.sub(r"^\d+-", "", os.path.splitext(os.path.basename(path))[0]).replace("-", " ")
+        out.append({"path": path, "name": name[:1].upper() + name[1:]})
+    return out
+
+
+def current_wallpaper():
+    try:
+        return os.path.realpath(CURRENT_BACKGROUND) if os.path.lexists(CURRENT_BACKGROUND) else None
+    except OSError:
+        return None
+
+
+def state():
+    on = fathom_is_on()
+    return {
+        "look": load(),
+        "defaults": DEFAULTS,
+        "limits": {"corners": list(CORNERS), "opacity": list(OPACITY)},
+        "fathomOn": on,
+        "built": os.path.exists(os.path.join(THEME_DIR, MARKER)) and not os.path.islink(THEME_DIR),
+        "bar": bar_mode(),
+        "blur": blur_on(),
+        "wallpapers": wallpapers(on),
+        "wallpaper": current_wallpaper(),
+    }
+
+
+# ---------------------------------------------------------------- commands
+
+
+def main(argv):
+    if not argv:
+        os.execvp("omarchy-shell", ["omarchy-shell", "shell", "summon", "fathom.deck", '{"page":"look"}'])
+    cmd, args = argv[0], argv[1:]
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return 0
+    try:
+        if cmd == "state":
+            print(json.dumps(state()))
+        elif cmd == "set":
+            if not args or len(args) % 2:
+                raise LookError("set takes pairs: fathom-look set accent '#ff6b81' corners 14")
+            look = load()
+            for key, value in zip(args[::2], args[1::2]):
+                field, v = parse_value(key, value)
+                look[field] = v
+            save(look)
+            print("Applied." if apply(look) else "Saved; it shows when the Fathom theme is on.")
+        elif cmd == "reset":
+            save(dict(DEFAULTS))
+            print("Fathom's own look is back." if apply(dict(DEFAULTS)) else "Saved; it shows when the Fathom theme is on.")
+        elif cmd == "build":
+            build(load())
+            print(f"Built {THEME_DIR}")
+        elif cmd == "apply":
+            print("Applied." if apply(load()) else f"Built {THEME_DIR}; the Fathom theme isn't on.")
+        elif cmd == "bar":
+            if len(args) != 1 or args[0] not in BAR_MODES:
+                raise LookError("bar takes glassy, opaque or none")
+            code, _, err = run(["omarchy", "bar", "background", args[0]], 30)
+            if code != 0:
+                raise LookError(f"omarchy bar background {args[0]} failed: {err[:300]}")
+        elif cmd == "wallpaper":
+            if len(args) != 1 or not os.path.isfile(args[0]):
+                raise LookError("wallpaper takes a picture file that exists")
+            code, _, err = run(["omarchy", "theme", "bg", "set", args[0]], 60)
+            if code != 0:
+                raise LookError(f"omarchy theme bg set failed: {err[:300]}")
+        else:
+            raise LookError(f"unknown command '{cmd}'; see fathom-look --help")
+    except LookError as e:
+        print(f"fathom-look: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -25,7 +25,9 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.pulseMs = pulseMs; this.pulseHealth = pulseHealth; this.pulseAskText = pulseAskText;
   this.pulseProblems = pulseProblems;
   this.agentsAxis = agentsAxis; this.agentsSegments = agentsSegments; this.agentsDuration = agentsDuration;
-  this.barSegments = barSegments; this.barPage = barPage;`, F);
+  this.barSegments = barSegments; this.barPage = barPage;
+  this.LOOK_DEFAULTS = LOOK_DEFAULTS; this.LOOK_SWATCHES = LOOK_SWATCHES; this.lookHex = lookHex;
+  this.lookClean = lookClean; this.lookSame = lookSame; this.lookArgs = lookArgs;`, F);
 const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
@@ -380,4 +382,39 @@ test("a click on the pill opens the page with the worst news", () => {
   assert.equal(F.barPage(F.barSegments({ care: { warnings: 1 }, sentinel: { attention: 1 } })), "care");
   assert.equal(F.barPage(F.barSegments({ docker: { state: "ok", bad: 1 }, care: { warnings: 1 } })), "deck");
   assert.equal(F.barPage(F.barSegments({ care: { diskPct: 88 }, agents: { working: 2 } })), "care");
+});
+
+test("Personalise reads colours however they're typed, and nothing else", () => {
+  assert.equal(F.lookHex("#ABC123"), "#abc123");
+  assert.equal(F.lookHex(" abc123 "), "#abc123");
+  assert.equal(F.lookHex("#abc12"), "");
+  assert.equal(F.lookHex("#abc1234"), "");
+  assert.equal(F.lookHex("red"), "");
+  assert.equal(F.lookHex(null), "");
+  for (const s of F.LOOK_SWATCHES) assert.equal(F.lookHex(s.hex), s.hex);
+});
+
+test("a look with missing or odd fields falls back to Fathom's own", () => {
+  const plain = (o) => JSON.parse(JSON.stringify(o));
+  assert.deepEqual(plain(F.lookClean(null)), plain(F.LOOK_DEFAULTS));
+  assert.deepEqual(plain(F.lookClean({ accent: "nope", corners: 99, opacity: 10, glow: "yes", frameStyle: "dots" })),
+    { ...plain(F.LOOK_DEFAULTS), corners: 30, opacity: 60 });
+  assert.equal(F.lookClean({ corners: true }).corners, 22);
+  assert.equal(F.lookClean({ corners: 13.6 }).corners, 14);
+  assert.ok(F.lookSame({ accent: "#4CC9F0" }, F.LOOK_DEFAULTS));
+  assert.ok(!F.lookSame({ glow: false }, F.LOOK_DEFAULTS));
+});
+
+test("Apply hands fathom-look every setting as text", () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(F.lookArgs({ accent: "#FF6B81", frameStyle: "solid", corners: 8, opacity: 75, glow: false }))),
+    ["set", "accent", "#ff6b81", "frame", "#9d8cff", "frame-style", "solid",
+     "corners", "8", "opacity", "75", "glow", "off"]);
+});
+
+test("the deck's Personalise defaults match fathom-look's", () => {
+  const look = readFileSync(new URL("../look/bin/fathom-look", import.meta.url), "utf8");
+  const block = look.match(/DEFAULTS = \{([\s\S]*?)\n\}/)[1];
+  const py = {};
+  for (const m of block.matchAll(/"(\w+)": ([^,\n]+),/g)) py[m[1]] = JSON.parse(m[2].replace(/^True$/, "true").replace(/^False$/, "false"));
+  assert.deepEqual(py, JSON.parse(JSON.stringify(F.LOOK_DEFAULTS)));
 });

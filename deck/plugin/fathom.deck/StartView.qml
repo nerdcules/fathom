@@ -39,7 +39,8 @@ Item {
     { id: "fathom:deck", name: Skin.t("start.deck"), glyph: "", page: "deck", keywords: "docker containers dotnet ai system" },
     { id: "fathom:care", name: Skin.t("start.care"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
     { id: "fathom:sentinel", name: Skin.t("start.sentinel"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices" },
-    { id: "fathom:pulse", name: Skin.t("start.pulse"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" }
+    { id: "fathom:pulse", name: Skin.t("start.pulse"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" },
+    { id: "fathom:look", name: Skin.t("start.look"), glyph: "\uf1fc", page: "look", keywords: "personalize theme colour color accent corners wallpaper transparency glass appearance" }
   ]
 
   readonly property var actions: [
@@ -47,6 +48,7 @@ Item {
     { id: "care", name: Skin.t("start.care"), detail: Skin.t("start.careDetail"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
     { id: "sentinel", name: Skin.t("start.sentinel"), detail: Skin.t("start.sentinelDetail"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices lockdown" },
     { id: "pulse", name: Skin.t("start.pulse"), detail: Skin.t("start.pulseDetail"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" },
+    { id: "look", name: Skin.t("start.look"), detail: Skin.t("start.lookDetail"), glyph: "\uf1fc", page: "look", keywords: "personalize theme colour color accent corners wallpaper transparency glass appearance" },
     { id: "focus", name: Skin.t("start.focusToggle"), detail: Skin.t("start.focusDetail"), glyph: "", keywords: "do not disturb dnd notifications quiet" },
     { id: "play", name: Skin.t("start.play"), detail: Skin.t("start.playDetail"), glyph: "", keywords: "youtube video mini player" },
     { id: "about", name: Skin.t("start.about"), detail: Skin.t("start.aboutDetail"), glyph: "\uf05a", keywords: "credits licence version who made" },
@@ -204,11 +206,11 @@ Item {
     height: Math.min(parent.height - 96 * Skin.u, column.implicitHeight + 56 * Skin.u)
     anchors.horizontalCenter: parent.horizontalCenter
     y: Math.max(32 * Skin.u, parent.height * 0.09)
-    // 22 px, not scaled: windows and Omarchy's panels share it (theme/hyprland.lua).
-    radius: 22
-    color: Skin.tint(Skin.bg, Skin.glass ? 0.9 : 1)
+    // The windows' corners, not scaled: Omarchy's panels share them too.
+    radius: Skin.radius
+    color: Skin.tint(Skin.bg, Skin.panelAlpha)
     border.width: 1
-    border.color: Skin.tint(Skin.accent, 0.25)
+    border.color: Skin.tint(Skin.accent, Skin.edgeAlpha)
     clip: true
     opacity: start.shown ? 1 : 0
     scale: start.shown ? 1 : 0.97
@@ -220,6 +222,7 @@ Item {
 
     // The gradient frame's glow, along the top edge.
     Rectangle {
+      visible: Skin.glow
       anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
       height: 90 * Skin.u
       radius: panel.radius

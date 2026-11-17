@@ -522,3 +522,58 @@ function barPage(segments) {
   }
   return "deck"
 }
+
+// ------------------------------------------------ Personalise
+
+// Fathom's own look, as fathom-look's DEFAULTS; Personalise starts from it
+// when fathom-look can't be read.
+var LOOK_DEFAULTS = { accent: "#4cc9f0", frame: "#9d8cff", frameStyle: "gradient", corners: 22, opacity: 90, glow: true }
+
+// The accent and frame colours Personalise offers: the theme's own palette.
+var LOOK_SWATCHES = [
+  { key: "cyan", hex: "#4cc9f0" }, { key: "violet", hex: "#9d8cff" },
+  { key: "blue", hex: "#5b8cff" }, { key: "green", hex: "#3ddc97" },
+  { key: "amber", hex: "#ffb547" }, { key: "coral", hex: "#ff8a5c" },
+  { key: "rose", hex: "#ff6b81" }, { key: "ice", hex: "#8be0f7" }
+]
+
+// "#ABC123", "abc123" or " #abc123 " -> "#abc123"; anything else -> "".
+function lookHex(text) {
+  var t = String(text === undefined || text === null ? "" : text).trim().toLowerCase()
+  if (t.charAt(0) !== "#") t = "#" + t
+  return /^#[0-9a-f]{6}$/.test(t) ? t : ""
+}
+
+function clampInt(v, lo, hi, fallback) {
+  var n = Number(v)
+  if (typeof v === "boolean" || !isFinite(n)) return fallback
+  return Math.max(lo, Math.min(hi, Math.round(n)))
+}
+
+// A whole look from whatever fathom-look said: missing or odd fields take
+// Fathom's own.
+function lookClean(look) {
+  var d = LOOK_DEFAULTS
+  var l = look && typeof look === "object" ? look : {}
+  return {
+    accent: lookHex(l.accent) || d.accent,
+    frame: lookHex(l.frame) || d.frame,
+    frameStyle: l.frameStyle === "solid" ? "solid" : "gradient",
+    corners: clampInt(l.corners, 0, 30, d.corners),
+    opacity: clampInt(l.opacity, 60, 100, d.opacity),
+    glow: typeof l.glow === "boolean" ? l.glow : d.glow
+  }
+}
+
+function lookSame(a, b) {
+  var x = lookClean(a), y = lookClean(b)
+  for (var k in x) if (x[k] !== y[k]) return false
+  return true
+}
+
+// The `fathom-look set` arguments for a look.
+function lookArgs(look) {
+  var l = lookClean(look)
+  return ["set", "accent", l.accent, "frame", l.frame, "frame-style", l.frameStyle,
+          "corners", String(l.corners), "opacity", String(l.opacity), "glow", l.glow ? "on" : "off"]
+}

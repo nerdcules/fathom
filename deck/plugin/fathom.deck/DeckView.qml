@@ -9,7 +9,7 @@ import "."
 Item {
   id: deck
 
-  // "deck", "care", "sentinel" or "pulse".
+  // "deck", "care", "sentinel", "pulse" or "look" (Personalise).
   property string page: "deck"
   // Status JSON from `fathom-deck status` and `fathom-care status`.
   property var info: null
@@ -19,6 +19,12 @@ Item {
   property string pulseRange: "15m"
   // `fathom-pulse agents`: Claude Code's day, for the Pulse page.
   property var agents: null
+  // `fathom-look state`, whether a change is being applied, and how the
+  // last one went.
+  property var look: null
+  property bool lookBusy: false
+  property string lookMessage: ""
+  property bool lookFailed: false
   property string error: ""
   // Container names and Care items with an action in flight.
   property var busy: ({})
@@ -45,8 +51,11 @@ Item {
   signal snitchRequested()
   signal pulseRangeRequested(string range)
   signal askRequested(string text)
+  signal lookApplyRequested(var args)
+  signal lookBarRequested(string mode)
+  signal lookWallpaperRequested(string path)
 
-  readonly property var pages: ["deck", "care", "sentinel", "pulse"]
+  readonly property var pages: ["deck", "care", "sentinel", "pulse", "look"]
   function switchPage(step) {
     var i = pages.indexOf(page)
     pageRequested(pages[(i + (step || 1) + pages.length) % pages.length])
@@ -143,6 +152,12 @@ Item {
               selected: deck.page === "pulse"
               onClicked: deck.pageRequested("pulse")
             }
+            Pill {
+              text: Skin.t("tab.look")
+              glyph: "\uf1fc"
+              selected: deck.page === "look"
+              onClicked: deck.pageRequested("look")
+            }
           }
         }
 
@@ -154,7 +169,8 @@ Item {
           Repeater {
             model: deck.page === "care" ? carePage.summary()
               : (deck.page === "sentinel" ? sentinelPage.summary()
-              : (deck.page === "pulse" ? pulsePage.summary() : deckPage.summary()))
+              : (deck.page === "pulse" ? pulsePage.summary()
+              : (deck.page === "look" ? lookPage.summary() : deckPage.summary())))
             delegate: RowLayout {
               required property var modelData
               spacing: 10 * Skin.u
@@ -235,6 +251,23 @@ Item {
         onAskRequested: function(text) { deck.askRequested(text) }
       }
 
+      LookPage {
+        id: lookPage
+        visible: deck.page === "look"
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: implicitHeight
+        Layout.maximumHeight: column.pageRoom
+        columns: stage.contentWidth >= 1100 * Skin.u ? 3 : 1
+        lookState: deck.look
+        busy: deck.lookBusy
+        message: deck.lookMessage
+        failed: deck.lookFailed
+        onApplyRequested: function(args) { deck.lookApplyRequested(args) }
+        onBarRequested: function(mode) { deck.lookBarRequested(mode) }
+        onWallpaperRequested: function(path) { deck.lookWallpaperRequested(path) }
+      }
+
       Item { Layout.fillHeight: true }
 
       // Footer.
@@ -249,7 +282,7 @@ Item {
         }
         Label {
           readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel
-            : (deck.page === "pulse" ? deck.pulse : deck.info))
+            : (deck.page === "pulse" ? deck.pulse : (deck.page === "look" ? null : deck.info)))
           visible: !!source
           text: source ? Skin.t("updated").arg(new Date(source.time * 1000).toLocaleTimeString(Skin.locale, "HH:mm:ss")) : ""
           color: Skin.dim
