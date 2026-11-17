@@ -1,6 +1,6 @@
 {
   "loading": "Reading…",
-  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care · Super+Alt+X Sentinel · Super+Alt+P Pulse · Super+Alt+I Personalise · tap Super for Start",
+  "hint": "Esc closes · Ctrl+Tab switches pages · Super+Alt+D Deck · Super+Alt+C Care · Super+Alt+X Sentinel · Super+Alt+P Pulse · Super+Alt+O Crumbs · Super+Alt+I Personalise · tap Super for Start",
   "updated": "Updated %1",
   "readFailed": "Couldn't read the machine's state: %1",
   "summary.containers": "%1 of %2 containers running",
@@ -520,5 +520,120 @@
   "look.summary.draft": "Changes not applied yet",
   "look.summary.accent": "Accent %1, %2 frame",
   "look.summary.shape": "%1 px corners, panels at %2%",
-  "look.summary.off": "The Fathom theme isn't on; changes show when it is"
+  "look.summary.off": "The Fathom theme isn't on; changes show when it is",
+  "tab.crumbs": "Crumbs",
+  "start.crumbs": "Crumbs",
+  "start.crumbsDetail": "Your browsers' cookies, the trackers among them, and blocking them",
+  "crumbs.missing": "Couldn't read your browsers' cookies. Crumbs needs: ./install.sh --crumbs",
+  "crumbs.summary.trackers": {
+    "one": "%1 tracker domain, %2 cookies",
+    "other": "%1 tracker domains, %2 cookies"
+  },
+  "crumbs.summary.cookies": {
+    "one": "%1 cookie from %2 domains in %3 browsers",
+    "other": "%1 cookies from %2 domains in %3 browsers"
+  },
+  "crumbs.summary.thirdBlocked": "Third-party cookies blocked",
+  "crumbs.summary.blocked": {
+    "one": "%1 domain blocked",
+    "other": "%1 domains blocked"
+  },
+  "crumbs.summary.noRules": "No cookie rules from Fathom",
+  "crumbs.summary.draft": "Rule changes not applied yet",
+  "crumbs.mapTitle": "Who follows you where",
+  "crumbs.mapSubtitle": "Sites you visited → cookies they led to",
+  "crumbs.mapEmpty": "No cookie has been linked to another site yet.",
+  "crumbs.keyLines": "Solid line: stored under that site · dashed: set within 5 s of a visit there (likely)",
+  "crumbs.cat.Advertising": "Advertising",
+  "crumbs.cat.Analytics": "Analytics",
+  "crumbs.cat.Social": "Social",
+  "crumbs.cat.Fingerprinting": "Fingerprinting",
+  "crumbs.cat.Cryptomining": "Cryptomining",
+  "crumbs.cat.Content": "Embedded content",
+  "crumbs.cat.none": "Not a known tracker",
+  "crumbs.linkedFrom": {
+    "one": "led to from %1 site",
+    "other": "led to from %1 sites"
+  },
+  "crumbs.neverVisited": "you never visited it",
+  "crumbs.blockedShort": "blocked",
+  "crumbs.rulesTitle": "Protection",
+  "crumbs.notApplied": "Not applied yet",
+  "crumbs.noHelper": "Showing only: blocking needs Crumbs' helper. Run ./install.sh --crumbs (asks for your password).",
+  "crumbs.browsers": "Browsers",
+  "crumbs.running": "running",
+  "crumbs.closed": "closed",
+  "crumbs.noRules": "doesn't take rules",
+  "crumbs.cookieCount": {
+    "one": "%1 cookie",
+    "other": "%1 cookies"
+  },
+  "crumbs.domainCount": {
+    "one": "%1 domain",
+    "other": "%1 domains"
+  },
+  "crumbs.thirdParty": "Third-party cookies",
+  "crumbs.allowed": "Allowed",
+  "crumbs.blocked": "Blocked",
+  "crumbs.thirdPartyDetail": "Blocked: sites can't set or read cookies while embedded in another site. A few sign-in and payment pages may need an exception.",
+  "crumbs.prevention": "Edge's tracking prevention",
+  "crumbs.level.default": "Edge's own choice",
+  "crumbs.level.basic": "Basic",
+  "crumbs.level.balanced": "Balanced",
+  "crumbs.level.strict": "Strict",
+  "crumbs.blockedList": {
+    "one": "%1 blocked domain",
+    "other": "%1 blocked domains"
+  },
+  "crumbs.blockedNone": "None. Block a domain from the list or its details.",
+  "crumbs.rulesDetail": "Applied as browser policy to Edge, Chromium, Chrome and Brave, which then say they're managed by your organisation. They take it up when they restart, or at once from edge://policy (Reload policies). Firefox's cookies are shown, not blocked.",
+  "crumbs.apply": "Apply",
+  "crumbs.applying": "Applying…",
+  "crumbs.applyTip": "Asks for your password; the deck closes for it",
+  "crumbs.undo": "Undo changes",
+  "crumbs.clear": "Remove rules",
+  "crumbs.clearTip": "Take all of Fathom's cookie rules out of every browser",
+  "crumbs.clearAsk": "Remove Fathom's cookie rules?",
+  "crumbs.clearAskBody": "Third-party cookies, tracking prevention and blocked domains go back to each browser's own settings. Asks for your password.",
+  "crumbs.domainsTitle": "Domains",
+  "crumbs.listSource.edge": "Trackers from Edge's lists",
+  "crumbs.listSource.fathom": "Trackers from Fathom's short list",
+  "crumbs.filter.trackers": "Trackers",
+  "crumbs.filter.all": "All",
+  "crumbs.filter.blocked": "Blocked",
+  "crumbs.empty.trackers": "No known trackers among your cookies.",
+  "crumbs.empty.all": "No cookies.",
+  "crumbs.empty.blocked": "Nothing blocked yet.",
+  "crumbs.block": "Block",
+  "crumbs.unblock": "Unblock",
+  "crumbs.detailTitle": "Cookies",
+  "crumbs.detailHint": "Pick a domain on the map or in the list to see each of its cookies.",
+  "crumbs.ledFrom": "Led to from: %1",
+  "crumbs.hosts": "Set by: %1",
+  "crumbs.partitioned": "kept only for %1",
+  "crumbs.expiry.session": "until the browser closes",
+  "crumbs.expiry.expired": "expired",
+  "crumbs.expiry.hours": {
+    "one": "expires in %1 hour",
+    "other": "expires in %1 hours"
+  },
+  "crumbs.expiry.days": {
+    "one": "expires in %1 day",
+    "other": "expires in %1 days"
+  },
+  "crumbs.expiry.months": {
+    "one": "expires in %1 month",
+    "other": "expires in %1 months"
+  },
+  "crumbs.expiry.years": {
+    "one": "expires in %1 year",
+    "other": "expires in %1 years"
+  },
+  "crumbs.valuesHidden": "Values stay encrypted by the browser; Crumbs never reads them.",
+  "crumbs.forget": "Forget in %1",
+  "crumbs.forgetShort": "Forget",
+  "crumbs.forgetTip": "Delete these cookies from this browser now",
+  "crumbs.forgetRunning": "Close %1 first: while it runs it keeps them and would write them back",
+  "crumbs.forgetAsk": "Forget %1's cookies?",
+  "crumbs.forgetAskBody": "Deletes them from %1. Sites you're signed in to under this domain will sign you out."
 }

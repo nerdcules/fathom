@@ -27,6 +27,7 @@ cd ~/Work/fathom
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
 | `--pulse` | Pulse, its key and its collector service. Asks for your password once if the firewall is on and Docker's bridge is up, so containers can reach it |
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
+| `--crumbs` | Crumbs, its key, and the helper that writes the browsers' cookie rules. Needs your password for the helper |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part (OpenSnitch only with `--opensnitch`) |
 | `--link` | Link the commands, their Hyprland files and the theme `fathom-look` builds from to this repo instead of copying, for working on them (theme edits show after `fathom-look apply`) |
@@ -103,6 +104,17 @@ sentinel/systemd/
                 and timer (system)
 sentinel/install-root.sh
                 Installs and removes the root parts
+crumbs/bin/fathom-crumbs
+                Crumbs' command: reads every browser's cookies and history
+                (from copies) as JSON, and forgets cookies
+crumbs/root/policy
+                The root part, run through pkexec: writes Fathom's cookie
+                rules into each browser's managed-policy folder
+crumbs/install-root.sh
+                Installs (or removes) that helper
+crumbs/hypr/    Its key
+crumbs/demo/    make-preview.sh, which draws crumbs/preview.jpg from made-up
+                browsing (make-demo.py) rendered by the real page (Preview.qml)
 pulse/bin/fathom-pulse
                 Pulse's command and collector
 pulse/fathom_pulse/
@@ -541,6 +553,65 @@ journalctl --user -u fathom-pulse    # where it's listening, or why it can't
 If something else already has 4317 or 4318 (the standalone Aspire dashboard,
 say), Pulse says so on its page and in its log, and tries again every minute.
 
+## Crumbs
+
+![Crumbs, showing made-up browsing](crumbs/preview.jpg)
+
+*Made-up browsing: invented `.example` sites and well-known tracker domains,
+put through the real `fathom-crumbs` and drawn by the real page
+(`crumbs/demo/make-preview.sh`). Nothing in it comes from a real browser.*
+
+Crumbs is the deck's page for cookies: **Super+Alt+O**, Ctrl+Tab from
+Pulse, or search Start for "cookies". It reads every browser here that
+keeps cookies: Microsoft Edge, Chromium, Chrome and Brave (each profile),
+and Firefox and LibreWolf.
+
+- **Who follows you where:** a map from sites you visited to the cookies
+  they led to, trackers first. A solid line is exact: the browser stored the
+  cookie under that site (a partitioned cookie). A dashed line is likely:
+  the cookie was set within 5 seconds of a visit to that site, when its own
+  site wasn't being visited. Another tab at the same moment can make a
+  dashed line that isn't real. Hover a box to light up its lines; click a
+  tracker for its cookies.
+- **Domains:** every domain with cookies, as the site's registrable domain
+  (ads.example.co.uk counts as example.co.uk), with the company behind it,
+  what kind of tracker it is, how many sites led to it, and whether you ever
+  visited it yourself. Which domains are trackers comes from Microsoft Edge's
+  own tracking prevention lists, read from Edge's folder when Edge is
+  installed (advertising, analytics, social, fingerprinting, cryptomining,
+  and embedded content, which Edge blocks only in its Strict mode), or else
+  from a short list in `fathom-crumbs`.
+- **Cookies:** each cookie of the chosen domain: its name, what well-known
+  ones are for (41 names, such as Google Analytics' `_ga`, Microsoft's
+  `MUID` and Meta's `_fbp`), where it's sent, which browser has it, when it
+  expires, its Secure, HttpOnly and SameSite flags, the site it's kept for
+  if partitioned, and its size. Values stay encrypted by the browser;
+  Crumbs never reads them. **Forget** deletes a domain's cookies from a
+  browser that's closed (a running one would write them back).
+- **Protection:** block third-party cookies, set Edge's tracking prevention
+  (Basic, Balanced or Strict), and block chosen domains. These wait until
+  **Apply**, which asks for your password: they're written as browser
+  policy (`fathom-crumbs.json` in `/etc/opt/edge/policies/managed`,
+  `/etc/chromium/policies/managed` and the like, for the browsers
+  installed). Browsers then say they're managed by your organisation, and
+  take the rules up when they restart, or at once from `edge://policy` or
+  `chrome://policy` (Reload policies). A rule that would only allow is never
+  written, so your browser's own settings stay yours. Firefox's cookies are
+  shown, not blocked: Firefox keeps all its policy in one shared file.
+
+It reads copies of the browsers' files when the page opens and 15 seconds
+after each reading while it stays open; on this laptop one reading of Edge (510 cookies) and Chromium (53)
+took 110 ms (2026-11-17, one run). Nothing is sent anywhere.
+
+```bash
+fathom-crumbs                               # open Crumbs
+fathom-crumbs status | jq .totals           # cookies, domains, trackers
+fathom-crumbs cookies doubleclick.net | jq  # one domain's cookies
+fathom-crumbs block doubleclick.net         # asks for your password
+fathom-crumbs apply --third-party on --prevention strict --block demdex.net
+fathom-crumbs clear                         # take Fathom's rules out
+```
+
 ## Mail
 
 Once an account is added (see below), new mail in your Outlook.com inbox
@@ -633,7 +704,7 @@ there.
 
 ![Fathom's Personalise page](look/preview.jpg)
 
-Personalise is the deck's fifth page: **Super+Alt+I**, Ctrl+Tab from Pulse,
+Personalise is the deck's last page: **Super+Alt+I**, Ctrl+Tab from Crumbs,
 or search Start for "personalise". It changes how Fathom looks:
 
 - **Accent:** one of eight colours from Fathom's palette, or any `#rrggbb`.
@@ -699,6 +770,7 @@ already.
 | 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
 | 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
+| 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 
 Parts that change system files (sign-in screen, face login, Sentinel) are
 opt-in flags on `install.sh`, back up what they replace, and are undone by

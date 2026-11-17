@@ -23,6 +23,7 @@ desk=false
 mail=false
 sentinel=false
 pulse=false
+crumbs=false
 opensnitch=false
 link=false
 apply=true
@@ -58,6 +59,10 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                Needs python-opentelemetry-proto, python-grpcio and
                python-protobuf. Asks for your password once if the firewall
                is on and Docker is installed, to let containers reach it
+  --crumbs     Crumbs: the cookies every browser here keeps, which are
+               trackers and which sites led to them (Super+Alt+O), and
+               blocking them. Needs your password for the helper that
+               writes the browsers' cookie rules
   --signin     The Fathom sign-in screen (SDDM). Needs your password, since
                it goes in /usr/share/sddm/themes and /etc/sddm.conf.d
   --all        Every part (OpenSnitch only if asked for)
@@ -88,6 +93,7 @@ while (($#)); do
     --mail) mail=true ;;
     --sentinel) sentinel=true ;;
     --pulse) pulse=true ;;
+    --crumbs) crumbs=true ;;
     --opensnitch) opensnitch=true ;;
     --all)
       skin=true
@@ -98,6 +104,7 @@ while (($#)); do
       mail=true
       sentinel=true
       pulse=true
+      crumbs=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -120,7 +127,7 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs; then
   skin=true
   player=true
   deck=true
@@ -486,6 +493,18 @@ install_pulse() {
   echo "Pulse is listening. Point an app's OpenTelemetry exporter at it (see the README), then press Super+Alt+P."
 }
 
+install_crumbs() {
+  command -v python3 >/dev/null || { echo "install.sh: Crumbs needs python3" >&2; return 1; }
+  place "$REPO/crumbs/bin/fathom-crumbs" "$BIN_DIR/fathom-crumbs"
+  chmod +x "$REPO/crumbs/bin/fathom-crumbs"
+  hypr_load fathom-crumbs "$REPO/crumbs/hypr/fathom-crumbs.lua" || return 1
+  # The helper that writes the browsers' cookie rules runs as root, so it's
+  # copied root-owned, never linked.
+  as_root bash "$REPO/crumbs/install-root.sh" install "$REPO/crumbs" ||
+    echo "install.sh: Crumbs shows your cookies, but can't block until this runs: sudo bash $REPO/crumbs/install-root.sh install $REPO/crumbs" >&2
+  echo "Crumbs installed. Press Super+Alt+O to see your browsers' cookies."
+}
+
 $skin && install_skin
 $player && install_player
 $deck && install_deck
@@ -493,6 +512,7 @@ $desk && install_desk
 $mail && install_mail
 $sentinel && install_sentinel
 $pulse && install_pulse
+$crumbs && install_crumbs
 $signin && install_signin
 if $restart_shell; then
   omarchy-restart-shell >/dev/null 2>&1 || echo "install.sh: restart the shell to load the update: omarchy-restart-shell" >&2

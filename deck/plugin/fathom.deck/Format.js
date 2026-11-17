@@ -577,3 +577,99 @@ function lookArgs(look) {
   return ["set", "accent", l.accent, "frame", l.frame, "frame-style", l.frameStyle,
           "corners", String(l.corners), "opacity", String(l.opacity), "glow", l.glow ? "on" : "off"]
 }
+
+// ------------------------------------------------ Crumbs
+
+// Edge's tracking prevention levels as fathom-crumbs names them; "default"
+// leaves Edge's own setting alone.
+var CRUMBS_LEVELS = ["default", "basic", "balanced", "strict"]
+
+// The worst kinds of tracker first, as fathom-crumbs ranks them.
+var CRUMBS_SEVERITY = { Fingerprinting: 0, Cryptomining: 0, Advertising: 1, Social: 1, Analytics: 2, Content: 3 }
+
+function crumbsSeverity(category) {
+  var s = CRUMBS_SEVERITY[category]
+  return s === undefined ? 4 : s
+}
+
+// The map: on the right, the domains most sites led to (trackers first), at
+// most maxDomains; on the left, the sites that led to them, at most
+// maxSites, each placed near the middle of what it links to so fewer lines
+// cross. Returns { sites: [name], domains: [domain object], links: [link] }.
+function crumbsMap(domains, links, maxDomains, maxSites) {
+  domains = Array.isArray(domains) ? domains : []
+  links = Array.isArray(links) ? links : []
+  var linked = domains.filter(function(d) { return d && Array.isArray(d.sites) && d.sites.length > 0 })
+  linked.sort(function(a, b) {
+    return crumbsSeverity(a.category) - crumbsSeverity(b.category)
+      || b.sites.length - a.sites.length || (b.cookies || 0) - (a.cookies || 0)
+      || (a.domain < b.domain ? -1 : 1)
+  })
+  var right = linked.slice(0, Math.max(0, maxDomains || 0))
+  var index = {}
+  for (var i = 0; i < right.length; i++) index[right[i].domain] = i
+  var bySite = {}
+  for (var j = 0; j < links.length; j++) {
+    var l = links[j]
+    if (!l || index[l.domain] === undefined || !l.site) continue
+    var s = bySite[l.site] || (bySite[l.site] = { site: l.site, n: 0, cookies: 0, sum: 0 })
+    s.n++
+    s.cookies += l.cookies || 0
+    s.sum += index[l.domain]
+  }
+  var sites = []
+  for (var k in bySite) sites.push(bySite[k])
+  sites.sort(function(a, b) { return b.n - a.n || b.cookies - a.cookies || (a.site < b.site ? -1 : 1) })
+  sites = sites.slice(0, Math.max(0, maxSites || 0))
+  sites.sort(function(a, b) { return a.sum / a.n - b.sum / b.n || (a.site < b.site ? -1 : 1) })
+  var kept = {}
+  for (var m = 0; m < sites.length; m++) kept[sites[m].site] = true
+  return {
+    sites: sites.map(function(s) { return s.site }),
+    domains: right,
+    links: links.filter(function(l) { return l && kept[l.site] && index[l.domain] !== undefined })
+  }
+}
+
+// Top edges of count boxes boxH tall, spread down a column height tall.
+function crumbsColumn(count, height, boxH) {
+  var out = []
+  if (count <= 0) return out
+  var gap = count > 1 ? Math.max(0, (height - count * boxH) / (count - 1)) : 0
+  gap = Math.min(gap, boxH)
+  var top = Math.max(0, (height - count * boxH - (count - 1) * gap) / 2)
+  for (var i = 0; i < count; i++) out.push(top + i * (boxH + gap))
+  return out
+}
+
+function crumbsRules(rules) {
+  var r = rules && typeof rules === "object" ? rules : {}
+  var level = CRUMBS_LEVELS.indexOf(r.prevention) > 0 || r.prevention === "off" ? r.prevention : "default"
+  var blocked = Array.isArray(r.blocked) ? r.blocked.filter(function(d) { return typeof d === "string" && d !== "" }) : []
+  blocked = blocked.filter(function(d, i) { return blocked.indexOf(d) === i }).sort()
+  return { thirdParty: r.thirdParty === true, prevention: level, blocked: blocked }
+}
+
+function crumbsRulesSame(a, b) {
+  var x = crumbsRules(a), y = crumbsRules(b)
+  return x.thirdParty === y.thirdParty && x.prevention === y.prevention && x.blocked.join(" ") === y.blocked.join(" ")
+}
+
+// The `fathom-crumbs apply` arguments for a set of rules. An empty --block
+// clears the blocked list.
+function crumbsArgs(rules) {
+  var r = crumbsRules(rules)
+  return ["apply", "--third-party", r.thirdParty ? "on" : "off", "--prevention", r.prevention, "--block"].concat(r.blocked)
+}
+
+// How long until a cookie runs out: { unit, n }, "session" for one that
+// goes when the browser closes, "expired" for one already past.
+function crumbsExpiry(expires, now) {
+  if (expires === null || expires === undefined || !isFinite(Number(expires))) return { unit: "session", n: 0 }
+  var s = Number(expires) - (Number(now) || 0)
+  if (s <= 0) return { unit: "expired", n: 0 }
+  if (s < 86400 * 2) return { unit: "hours", n: Math.max(1, Math.floor(s / 3600)) }
+  if (s < 86400 * 60) return { unit: "days", n: Math.floor(s / 86400) }
+  if (s < 86400 * 730) return { unit: "months", n: Math.floor(s / (86400 * 30)) }
+  return { unit: "years", n: Math.floor(s / (86400 * 365)) }
+}

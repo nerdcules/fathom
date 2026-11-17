@@ -141,6 +141,21 @@ if [[ -e $HOME/.local/bin/fathom-pulse || -f $UNITS/fathom-pulse.service ]]; the
   echo "Removed Pulse."
 fi
 
+# Crumbs: its command and key, then its helper and the cookie rules it
+# wrote (asks for your password).
+if [[ -e $HOME/.local/bin/fathom-crumbs || -d /usr/local/lib/fathom-crumbs ]]; then
+  rm -f "$HOME/.local/bin/fathom-crumbs" "$HYPR/fathom-crumbs.lua"
+  if [[ -d /usr/local/lib/fathom-crumbs ]]; then
+    if [[ -t 0 ]]; then
+      sudo bash "$REPO/crumbs/install-root.sh" uninstall
+    else
+      pkexec bash "$REPO/crumbs/install-root.sh" uninstall
+    fi
+  fi
+  hypr_changed=true
+  echo "Removed Crumbs and its cookie rules."
+fi
+
 # The block in hyprland.lua that loaded them.
 if $hypr_changed; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true

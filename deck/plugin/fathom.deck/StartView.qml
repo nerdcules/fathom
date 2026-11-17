@@ -40,6 +40,7 @@ Item {
     { id: "fathom:care", name: Skin.t("start.care"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
     { id: "fathom:sentinel", name: Skin.t("start.sentinel"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices" },
     { id: "fathom:pulse", name: Skin.t("start.pulse"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" },
+    { id: "fathom:crumbs", name: Skin.t("start.crumbs"), glyph: "\uf1e0", page: "crumbs", keywords: "cookies trackers tracking privacy browser edge chromium block" },
     { id: "fathom:look", name: Skin.t("start.look"), glyph: "\uf1fc", page: "look", keywords: "personalize theme colour color accent corners wallpaper transparency glass appearance" }
   ]
 
@@ -48,6 +49,7 @@ Item {
     { id: "care", name: Skin.t("start.care"), detail: Skin.t("start.careDetail"), glyph: "", page: "care", keywords: "disk updates warnings clean space" },
     { id: "sentinel", name: Skin.t("start.sentinel"), detail: Skin.t("start.sentinelDetail"), glyph: "\uf132", page: "sentinel", keywords: "security firewall network devices lockdown" },
     { id: "pulse", name: Skin.t("start.pulse"), detail: Skin.t("start.pulseDetail"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" },
+    { id: "crumbs", name: Skin.t("start.crumbs"), detail: Skin.t("start.crumbsDetail"), glyph: "\uf1e0", page: "crumbs", keywords: "cookies trackers tracking privacy browser edge chromium block" },
     { id: "look", name: Skin.t("start.look"), detail: Skin.t("start.lookDetail"), glyph: "\uf1fc", page: "look", keywords: "personalize theme colour color accent corners wallpaper transparency glass appearance" },
     { id: "focus", name: Skin.t("start.focusToggle"), detail: Skin.t("start.focusDetail"), glyph: "", keywords: "do not disturb dnd notifications quiet" },
     { id: "play", name: Skin.t("start.play"), detail: Skin.t("start.playDetail"), glyph: "", keywords: "youtube video mini player" },

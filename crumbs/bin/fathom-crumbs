@@ -1,0 +1,719 @@
+#!/usr/bin/env python3
+"""Crumbs: the cookies your browsers keep, who they belong to, which sites
+led to them, and blocking the ones you don't want.
+
+  fathom-crumbs                     open Crumbs (the Command Deck's page)
+  fathom-crumbs status              browsers, cookie domains and links, as JSON
+  fathom-crumbs cookies <domain>    every cookie under a domain, as JSON
+  fathom-crumbs apply [--third-party on|off] [--prevention default|off|basic|balanced|strict]
+                      [--block <domain>...]
+                                    set Fathom's cookie rules in every browser
+                                    that takes them (asks for your password)
+  fathom-crumbs block <domain>...   add domains to the blocked ones
+  fathom-crumbs unblock <domain>...
+  fathom-crumbs clear               take Fathom's rules out again
+  fathom-crumbs forget <domain> [<browser>]
+                                    delete a domain's cookies now, from
+                                    browsers that aren't running
+
+  --notify (before the command) also says how it went in a notification,
+  for when it's run from the deck, which steps aside for the password.
+
+It reads copies of each browser's cookie and history files and changes them
+only for `forget`. Cookie values stay encrypted: Crumbs never reads them.
+Which domains are trackers comes from Microsoft Edge's tracking prevention
+lists when Edge is installed, else a short list of Fathom's. Nothing is sent
+anywhere.
+"""
+
+import bisect
+import glob
+import json
+import os
+import re
+import shutil
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.parse
+
+HOME = os.path.expanduser("~")
+CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+# Where the root helper writes, and the helper itself. Tests point these elsewhere.
+ETC = os.environ.get("FATHOM_CRUMBS_ETC", "/etc")
+HELPER = os.environ.get("FATHOM_CRUMBS_HELPER", "/usr/local/lib/fathom-crumbs/policy")
+POLICY_FILE = "fathom-crumbs.json"
+
+# Chromium counts microseconds from 1601; Unix seconds from 1970.
+CHROMIUM_EPOCH = 11644473600
+# A cookie created this close to a visit to another site was probably set by
+# that site's page.
+LINK_WINDOW_S = 5
+
+# Chromium-family browsers: profile folder under ~/.config, the name people
+# know, and the policy family whose /etc folder it reads.
+CHROMIUM_BROWSERS = [
+    ("microsoft-edge", "Microsoft Edge", "edge"),
+    ("microsoft-edge-beta", "Microsoft Edge Beta", "edge"),
+    ("microsoft-edge-dev", "Microsoft Edge Dev", "edge"),
+    ("chromium", "Chromium", "chromium"),
+    ("google-chrome", "Google Chrome", "chrome"),
+    ("google-chrome-beta", "Google Chrome Beta", "chrome"),
+    ("BraveSoftware/Brave-Browser", "Brave", "brave"),
+]
+FIREFOX_BROWSERS = [
+    (".mozilla/firefox", "Firefox"),
+    (".librewolf", "LibreWolf"),
+]
+POLICY_DIRS = {
+    "edge": "opt/edge/policies/managed",
+    "chromium": "chromium/policies/managed",
+    "chrome": "opt/chrome/policies/managed",
+    "brave": "brave/policies/managed",
+}
+PREVENTION = {"off": 0, "basic": 1, "balanced": 2, "strict": 3}
+
+# Second-level labels under which the registrable domain takes three parts
+# (example.co.uk). No public suffix list is installed here; this covers the
+# common ones.
+SECOND_LEVEL = {"co", "com", "org", "net", "ac", "gov", "edu", "ne", "or", "go", "gob", "nic", "ltd", "plc", "sch"}
+
+# Fathom's own short list, used when Edge's lists aren't installed:
+# well-known tracking domains, their category and company.
+FALLBACK_TRACKERS = {
+    "doubleclick.net": ("Advertising", "Google"),
+    "googlesyndication.com": ("Advertising", "Google"),
+    "googleadservices.com": ("Advertising", "Google"),
+    "google-analytics.com": ("Analytics", "Google"),
+    "googletagmanager.com": ("Analytics", "Google"),
+    "facebook.net": ("Social", "Meta"),
+    "facebook.com": ("Social", "Meta"),
+    "clarity.ms": ("Analytics", "Microsoft"),
+    "bat.bing.com": ("Advertising", "Microsoft"),
+    "demdex.net": ("Advertising", "Adobe"),
+    "omtrdc.net": ("Analytics", "Adobe"),
+    "hotjar.com": ("Analytics", "Hotjar"),
+    "scorecardresearch.com": ("Analytics", "Comscore"),
+    "adnxs.com": ("Advertising", "Xandr"),
+    "criteo.com": ("Advertising", "Criteo"),
+    "taboola.com": ("Advertising", "Taboola"),
+    "outbrain.com": ("Advertising", "Outbrain"),
+    "ads.linkedin.com": ("Advertising", "LinkedIn"),
+    "analytics.tiktok.com": ("Analytics", "TikTok"),
+    "quantserve.com": ("Analytics", "Quantcast"),
+}
+CATEGORIES = ("Advertising", "Analytics", "Social", "Fingerprinting", "Cryptomining", "Content")
+
+# What well-known cookies are for, by name (a trailing * matches a prefix).
+KNOWN_COOKIES = [
+    ("_ga", "Google Analytics: a random ID that tells your visits apart"),
+    ("_ga_*", "Google Analytics: keeps your session on this site"),
+    ("_gid", "Google Analytics: an ID for 24 hours"),
+    ("_gat*", "Google Analytics: slows down how often it reports"),
+    ("_gcl_*", "Google Ads: links an ad you clicked to what you did after"),
+    ("IDE", "Google ads (DoubleClick): targets and measures ads across sites"),
+    ("DSID", "Google ads (DoubleClick): ties ads to your Google account"),
+    ("test_cookie", "Google ads (DoubleClick): checks whether cookies work"),
+    ("NID", "Google: your preferences, also used for ads"),
+    ("__Secure-3P*", "Google: your sign-in carried to other sites, used for ads"),
+    ("_fbp", "Meta: follows you across sites for Facebook and Instagram ads"),
+    ("fr", "Meta: ad targeting and measurement"),
+    ("MUID", "Microsoft: an ID for this browser across Microsoft's sites and Bing ads"),
+    ("_uetsid", "Microsoft Advertising: links ad clicks to visits"),
+    ("_uetvid", "Microsoft Advertising: links ad clicks to visits"),
+    ("_clck", "Microsoft Clarity: an ID for recording how you use the site"),
+    ("_clsk", "Microsoft Clarity: joins page views into one recording"),
+    ("CLID", "Microsoft Clarity: an ID for recording how you use the site"),
+    ("bcookie", "LinkedIn: an ID for this browser"),
+    ("lidc", "LinkedIn: picks a data centre"),
+    ("li_gc", "LinkedIn: your cookie consent choice"),
+    ("UserMatchHistory", "LinkedIn ads: matches you with ad partners"),
+    ("AnalyticsSyncHistory", "LinkedIn: syncs analytics with partners"),
+    ("_hjSessionUser_*", "Hotjar: an ID for recording how you use the site"),
+    ("_hjSession_*", "Hotjar: the current recording session"),
+    ("__cf_bm", "Cloudflare: tells people from bots; the site needs it"),
+    ("cf_clearance", "Cloudflare: you passed its bot check; the site needs it"),
+    ("__cflb", "Cloudflare: load balancing; the site needs it"),
+    ("VISITOR_INFO1_LIVE", "YouTube: estimates your bandwidth, also used for recommendations"),
+    ("YSC", "YouTube: counts views of embedded videos"),
+    ("VISITOR_PRIVACY_METADATA", "YouTube: your cookie consent state"),
+    ("demdex", "Adobe Audience Manager: an ID for ad audiences"),
+    ("dextp", "Adobe Audience Manager: when it last synced with partners"),
+    ("AMCV_*", "Adobe Analytics: a visitor ID"),
+    ("_ttp", "TikTok: follows you across sites for TikTok ads"),
+    ("_tt_enable_cookie", "TikTok: checks whether cookies work"),
+    ("__stripe_mid", "Stripe: fraud prevention for payments"),
+    ("__stripe_sid", "Stripe: fraud prevention for payments"),
+    ("OptanonConsent", "OneTrust: your cookie consent choices"),
+    ("OptanonAlertBoxClosed", "OneTrust: when you answered the cookie banner"),
+    ("CookieConsent", "Cookiebot: your cookie consent choices"),
+]
+
+DOMAIN = re.compile(r"^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
+
+
+class CrumbsError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- domains
+
+
+def site_of(host):
+    """The registrable domain: ads.example.co.uk -> example.co.uk."""
+    h = (host or "").strip().lstrip(".").lower().rstrip(".")
+    parts = [p for p in h.split(".") if p]
+    if len(parts) <= 2:
+        return ".".join(parts)
+    if parts[-2] in SECOND_LEVEL and len(parts[-1]) == 2:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
+def url_site(url):
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return ""
+    if parts.scheme not in ("http", "https"):
+        return ""
+    return site_of(parts.hostname or "")
+
+
+def clean_domain(text):
+    d = (text or "").strip().lower().lstrip(".")
+    if d.startswith("[*.]"):
+        d = d[4:]
+    if not DOMAIN.match(d):
+        raise CrumbsError(f"'{text}' isn't a domain like example.com")
+    return d
+
+
+def known_purpose(name):
+    for pattern, purpose in KNOWN_COOKIES:
+        if pattern.endswith("*") and name.startswith(pattern[:-1]):
+            return purpose
+        if name == pattern:
+            return purpose
+    return None
+
+
+# ---------------------------------------------------------------- trackers
+
+
+def tracker_lists():
+    """{domain: (category, company)}, and where it came from. Edge keeps two
+    sets (Mu, Sigma) of the same categories, plus who owns each domain."""
+    found = sorted(glob.glob(os.path.join(CONFIG, "microsoft-edge*", "Trust Protection Lists", "*")))
+    for folder in reversed(found):
+        table, owners = {}, {}
+        for part in ("Mu", "Sigma"):
+            for line in _lines(os.path.join(folder, part, "Entities")):
+                if "^" in line:
+                    dom, company = line.split("^", 1)
+                    owners.setdefault(dom.strip().lower(), company.strip())
+            for category in CATEGORIES:
+                for line in _lines(os.path.join(folder, part, category)):
+                    dom = line.strip().rstrip("/").lower()
+                    if not dom or "^" in dom or "/" in dom or dom.endswith(".example"):
+                        continue
+                    table.setdefault(dom, category)
+        if table:
+            out = {d: (c, owners.get(d) or owners.get(site_of(d))) for d, c in table.items()}
+            return out, {"source": "edge", "version": os.path.basename(folder), "domains": len(out)}
+    return dict(FALLBACK_TRACKERS), {"source": "fathom", "version": None, "domains": len(FALLBACK_TRACKERS)}
+
+
+def _lines(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read().splitlines()
+    except OSError:
+        return []
+
+
+def classify(host, trackers):
+    """The tracker entry for a host or any domain above it."""
+    parts = host.lstrip(".").lower().split(".")
+    for i in range(len(parts) - 1):
+        hit = trackers.get(".".join(parts[i:]))
+        if hit:
+            return hit
+    return None
+
+
+# ---------------------------------------------------------------- browsers
+
+
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def chromium_running(base):
+    # SingletonLock links to "<host>-<pid>" while the browser runs.
+    try:
+        target = os.readlink(os.path.join(base, "SingletonLock"))
+    except OSError:
+        return False
+    m = re.search(r"-(\d+)$", target)
+    return bool(m) and pid_alive(int(m.group(1)))
+
+
+def firefox_running(profile):
+    # "lock" links to "<ip>:+<pid>" while Firefox runs.
+    try:
+        target = os.readlink(os.path.join(profile, "lock"))
+    except OSError:
+        return False
+    m = re.search(r"\+(\d+)$", target)
+    return bool(m) and pid_alive(int(m.group(1)))
+
+
+def find_browsers():
+    out = []
+    for folder, name, family in CHROMIUM_BROWSERS:
+        base = os.path.join(CONFIG, folder)
+        profiles = sorted(glob.glob(os.path.join(base, "Default")) + glob.glob(os.path.join(base, "Profile *")))
+        for prof in profiles:
+            cookies = next((p for p in (os.path.join(prof, "Network", "Cookies"), os.path.join(prof, "Cookies"))
+                            if os.path.isfile(p)), None)
+            if not cookies:
+                continue
+            label = os.path.basename(prof)
+            out.append({
+                "id": re.sub(r"[^a-z0-9]+", "-", f"{folder.split('/')[-1]}-{label}".lower()).strip("-"),
+                "name": name, "profile": label, "kind": "chromium", "family": family,
+                "cookies_path": cookies, "history_path": os.path.join(prof, "History"),
+                "running": chromium_running(base),
+            })
+    for folder, name in FIREFOX_BROWSERS:
+        for prof in sorted(glob.glob(os.path.join(HOME, folder, "*"))):
+            cookies = os.path.join(prof, "cookies.sqlite")
+            if not os.path.isfile(cookies):
+                continue
+            label = os.path.basename(prof).split(".", 1)[-1]
+            out.append({
+                "id": re.sub(r"[^a-z0-9]+", "-", f"{name}-{label}".lower()).strip("-"),
+                "name": name, "profile": label, "kind": "firefox", "family": None,
+                "cookies_path": cookies, "history_path": os.path.join(prof, "places.sqlite"),
+                "running": firefox_running(prof),
+            })
+    return out
+
+
+def copy_db(path, into):
+    """A private copy (with its journal or WAL) to read while the browser
+    keeps writing the real one."""
+    if not os.path.isfile(path):
+        return None
+    dest = os.path.join(into, f"{len(os.listdir(into))}-{os.path.basename(path)}")
+    shutil.copyfile(path, dest)
+    for extra in ("-wal", "-journal"):
+        if os.path.isfile(path + extra):
+            shutil.copyfile(path + extra, dest + extra)
+    return dest
+
+
+def open_db(path):
+    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def chromium_time(us):
+    return None if not us else int(us / 1_000_000 - CHROMIUM_EPOCH)
+
+
+SAMESITE = {-1: "unspecified", 0: "none", 1: "lax", 2: "strict"}
+
+
+def read_cookies(browser, tmp):
+    """Rows as plain dicts, the same shape for every browser."""
+    path = copy_db(browser["cookies_path"], tmp)
+    if not path:
+        return []
+    out = []
+    with open_db(path) as db:
+        if browser["kind"] == "chromium":
+            cols = {r[1] for r in db.execute("PRAGMA table_info(cookies)")}
+            top = "top_frame_site_key" if "top_frame_site_key" in cols else "''"
+            for r in db.execute(f"SELECT host_key, name, path, creation_utc, expires_utc, last_access_utc, "
+                                f"is_secure, is_httponly, samesite, is_persistent, {top} AS top, "
+                                f"length(encrypted_value) AS elen, length(value) AS vlen FROM cookies"):
+                partition = url_site(r["top"]) if r["top"] else None
+                out.append({
+                    "host": r["host_key"], "name": r["name"], "path": r["path"],
+                    "created": chromium_time(r["creation_utc"]),
+                    "expires": chromium_time(r["expires_utc"]) if r["is_persistent"] else None,
+                    "lastUsed": chromium_time(r["last_access_utc"]),
+                    "secure": bool(r["is_secure"]), "httpOnly": bool(r["is_httponly"]),
+                    "sameSite": SAMESITE.get(r["samesite"], "unspecified"),
+                    "partition": partition or None,
+                    "size": (r["elen"] or 0) if (r["elen"] or 0) > 0 else (r["vlen"] or 0),
+                    "encrypted": (r["elen"] or 0) > 0,
+                })
+        else:
+            for r in db.execute("SELECT host, name, path, creationTime, expiry, lastAccessed, isSecure, "
+                                "isHttpOnly, sameSite, originAttributes, length(value) AS vlen FROM moz_cookies"):
+                m = re.search(r"partitionKey=\(https?,([^,)]+)", r["originAttributes"] or "")
+                out.append({
+                    "host": r["host"], "name": r["name"], "path": r["path"],
+                    "created": int(r["creationTime"] / 1_000_000) if r["creationTime"] else None,
+                    "expires": int(r["expiry"]) if r["expiry"] else None,
+                    "lastUsed": int(r["lastAccessed"] / 1_000_000) if r["lastAccessed"] else None,
+                    "secure": bool(r["isSecure"]), "httpOnly": bool(r["isHttpOnly"]),
+                    "sameSite": {0: "none", 1: "lax", 2: "strict", 256: "unspecified"}.get(r["sameSite"], "unspecified"),
+                    "partition": site_of(m.group(1)) if m else None,
+                    "size": r["vlen"] or 0, "encrypted": False,
+                })
+    return out
+
+
+def read_visits(browser, tmp):
+    """[(unix time, site)], oldest first, for linking cookies to pages."""
+    path = copy_db(browser["history_path"], tmp)
+    if not path:
+        return []
+    try:
+        with open_db(path) as db:
+            if browser["kind"] == "chromium":
+                rows = db.execute("SELECT v.visit_time AS t, u.url AS url FROM visits v JOIN urls u ON u.id = v.url")
+                visits = [(chromium_time(r["t"]), url_site(r["url"])) for r in rows]
+            else:
+                rows = db.execute("SELECT v.visit_date AS t, p.url AS url FROM moz_historyvisits v "
+                                  "JOIN moz_places p ON p.id = v.place_id")
+                visits = [(int(r["t"] / 1_000_000), url_site(r["url"])) for r in rows]
+    except sqlite3.DatabaseError:
+        return []
+    return sorted((t, s) for t, s in visits if t and s)
+
+
+def link_sites(cookie, visits, times):
+    """Sites this cookie was set from: the site it's partitioned under, else
+    the other sites visited within LINK_WINDOW_S of its creation when its own
+    site wasn't. Returns [(site, how)]."""
+    own = site_of(cookie["host"])
+    if cookie["partition"]:
+        return [(cookie["partition"], "partition")] if cookie["partition"] != own else []
+    t = cookie["created"]
+    if not t:
+        return []
+    lo = bisect.bisect_left(times, t - LINK_WINDOW_S)
+    hi = bisect.bisect_right(times, t + LINK_WINDOW_S)
+    near = {visits[i][1] for i in range(lo, hi)}
+    if own in near:
+        return []
+    return [(s, "time") for s in sorted(near)]
+
+
+# ---------------------------------------------------------------- policies
+
+
+def read_policy(family):
+    """Fathom's rules as one browser family has them, or None."""
+    path = os.path.join(ETC, POLICY_DIRS[family], POLICY_FILE)
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    blocked = [p[4:] if p.startswith("[*.]") else p for p in data.get("CookiesBlockedForUrls", [])
+               if isinstance(p, str)]
+    level = data.get("TrackingPrevention")
+    return {
+        "thirdParty": data.get("BlockThirdPartyCookies") is True,
+        "prevention": next((k for k, v in PREVENTION.items() if v == level), None),
+        "blocked": sorted(set(blocked)),
+    }
+
+
+def applied_rules(browsers):
+    """The rules as the browsers here have them: the first family that has
+    Fathom's file speaks for all (apply writes the same rules to each)."""
+    families = []
+    for b in browsers:
+        if b["family"] and b["family"] not in families:
+            families.append(b["family"])
+    for fam in families:
+        rules = read_policy(fam)
+        if rules:
+            if fam != "edge":
+                edge = read_policy("edge")
+                rules["prevention"] = edge["prevention"] if edge else None
+            return rules
+    return {"thirdParty": False, "prevention": None, "blocked": []}
+
+
+def run_helper(args):
+    if not os.path.isfile(HELPER):
+        raise CrumbsError("blocking needs Crumbs' helper; run Fathom's ./install.sh --crumbs")
+    cmd = [HELPER, *args] if os.environ.get("FATHOM_CRUMBS_HELPER") else ["pkexec", HELPER, *args]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        msg = (r.stderr or "").strip() or f"exit {r.returncode}"
+        if r.returncode in (126, 127) and not os.environ.get("FATHOM_CRUMBS_HELPER"):
+            msg = "the password prompt was cancelled"
+        raise CrumbsError(msg[:300])
+
+
+def apply_rules(third_party, prevention, blocked):
+    args = ["set", "--third-party", "on" if third_party else "off",
+            "--prevention", prevention or "default"]
+    if blocked:
+        args += ["--block", *sorted(set(blocked))]
+    run_helper(args)
+
+
+# ---------------------------------------------------------------- reading
+
+
+def gather(domain_filter=None):
+    browsers = find_browsers()
+    trackers, list_info = tracker_lists()
+    rules = applied_rules(browsers)
+    blocked = set(rules["blocked"])
+    domains, links, details = {}, {}, []
+    visited = set()
+    run_dir = os.environ.get("XDG_RUNTIME_DIR") or None
+    with tempfile.TemporaryDirectory(prefix="fathom-crumbs.", dir=run_dir) as tmp:
+        for b in browsers:
+            try:
+                cookies = read_cookies(b, tmp)
+                visits = read_visits(b, tmp)
+            except (OSError, sqlite3.DatabaseError) as e:
+                b["error"] = str(e)[:200]
+                cookies, visits = [], []
+            times = [t for t, _ in visits]
+            visited.update(s for _, s in visits)
+            b["cookies"] = len(cookies)
+            b["domains"] = len({site_of(c["host"]) for c in cookies})
+            for c in cookies:
+                d = site_of(c["host"])
+                if not d:
+                    continue
+                if domain_filter and d != domain_filter:
+                    continue
+                entry = domains.get(d)
+                if entry is None:
+                    hit = classify(d, trackers)
+                    entry = domains[d] = {
+                        "domain": d, "category": hit[0] if hit else None, "company": hit[1] if hit else None,
+                        "cookies": 0, "browsers": [], "hosts": [], "sites": [],
+                        "firstSeen": None, "lastUsed": None, "expires": None, "blocked": d in blocked,
+                    }
+                hit = classify(c["host"], trackers)
+                if hit and not entry["category"]:
+                    entry["category"], entry["company"] = hit
+                entry["cookies"] += 1
+                if b["id"] not in entry["browsers"]:
+                    entry["browsers"].append(b["id"])
+                host = c["host"].lstrip(".")
+                if host not in entry["hosts"] and len(entry["hosts"]) < 6:
+                    entry["hosts"].append(host)
+                if c["created"]:
+                    entry["firstSeen"] = min(entry["firstSeen"] or c["created"], c["created"])
+                if c["lastUsed"]:
+                    entry["lastUsed"] = max(entry["lastUsed"] or 0, c["lastUsed"])
+                if c["expires"]:
+                    entry["expires"] = max(entry["expires"] or 0, c["expires"])
+                for site, how in link_sites(c, visits, times):
+                    key = (site, d)
+                    link = links.get(key)
+                    if link is None:
+                        link = links[key] = {"site": site, "domain": d, "how": how, "cookies": 0, "browsers": []}
+                    if how == "partition":
+                        link["how"] = "partition"
+                    link["cookies"] += 1
+                    if b["id"] not in link["browsers"]:
+                        link["browsers"].append(b["id"])
+                    if site not in entry["sites"]:
+                        entry["sites"].append(site)
+                if domain_filter:
+                    details.append(dict(c, browser=b["id"], purpose=known_purpose(c["name"]),
+                                        tracker=bool(hit)))
+    for d in domains.values():
+        d["visited"] = d["domain"] in visited
+        d["sites"] = sorted(d["sites"])
+    for b in browsers:
+        for k in ("cookies_path", "history_path"):
+            b.pop(k)
+        b.setdefault("cookies", 0)
+        b.setdefault("domains", 0)
+        b["takesRules"] = b["family"] is not None
+    return browsers, list_info, rules, domains, links, details
+
+
+# How much a category follows you: Edge's Content list (embedded videos,
+# maps, sign-in widgets) is blocked only in its Strict mode.
+SEVERITY = {"Fingerprinting": 0, "Cryptomining": 0, "Advertising": 1, "Social": 1, "Analytics": 2, "Content": 3}
+
+
+def rank(d):
+    # Trackers first, the worst kinds first, the most widely linked first.
+    return (SEVERITY.get(d["category"], 4), -len(d["sites"]), -d["cookies"], d["domain"])
+
+
+def status():
+    browsers, list_info, rules, domains, links, _ = gather()
+    ordered = sorted(domains.values(), key=rank)
+    return {
+        "time": int(time.time()),
+        "browsers": browsers,
+        "trackerList": list_info,
+        "rules": rules,
+        "helper": os.path.isfile(HELPER),
+        "domains": ordered,
+        "links": sorted(links.values(), key=lambda l: (-l["cookies"], l["site"], l["domain"]))[:600],
+        "totals": {
+            "cookies": sum(b["cookies"] for b in browsers),
+            "domains": len(domains),
+            "trackers": sum(1 for d in domains.values() if d["category"]),
+            "trackerCookies": sum(d["cookies"] for d in domains.values() if d["category"]),
+            "linked": sum(1 for d in domains.values() if d["sites"]),
+        },
+    }
+
+
+def cookies_of(domain):
+    browsers, _, rules, domains, links, details = gather(domain)
+    details.sort(key=lambda c: (c["browser"], c["host"], c["name"]))
+    return {
+        "time": int(time.time()),
+        "domain": domains.get(domain) or {"domain": domain, "cookies": 0, "sites": [], "browsers": []},
+        "cookies": details,
+        "links": [l for l in links.values() if l["domain"] == domain],
+        "browsers": [{"id": b["id"], "name": b["name"], "profile": b["profile"], "running": b["running"]}
+                     for b in browsers],
+    }
+
+
+# ---------------------------------------------------------------- forgetting
+
+
+def forget(domain, only=None):
+    """Delete a domain's cookies from browsers that aren't running. A running
+    browser keeps them in memory and would write them back."""
+    done, skipped = [], []
+    for b in find_browsers():
+        if only and b["id"] != only:
+            continue
+        if b["running"]:
+            skipped.append(b["name"])
+            continue
+        table, col = ("cookies", "host_key") if b["kind"] == "chromium" else ("moz_cookies", "host")
+        with sqlite3.connect(b["cookies_path"], timeout=5) as db:
+            rows = db.execute(f"SELECT rowid, {col} FROM {table}").fetchall()
+            ids = [r[0] for r in rows if site_of(r[1]) == domain]
+            db.executemany(f"DELETE FROM {table} WHERE rowid = ?", [(i,) for i in ids])
+        done.append((b["name"], len(ids)))
+    return done, skipped
+
+
+# ---------------------------------------------------------------- commands
+
+
+def parse_apply(args):
+    third_party, prevention, blocked = None, None, None
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--third-party" and i + 1 < len(args) and args[i + 1] in ("on", "off"):
+            third_party = args[i + 1] == "on"
+            i += 2
+        elif a == "--prevention" and i + 1 < len(args) and args[i + 1] in ("default", *PREVENTION):
+            prevention = args[i + 1]
+            i += 2
+        elif a == "--block":
+            blocked = []
+            i += 1
+            while i < len(args) and not args[i].startswith("--"):
+                blocked.append(clean_domain(args[i]))
+                i += 1
+        else:
+            raise CrumbsError(f"don't know '{a}'; see fathom-crumbs --help")
+    return third_party, prevention, blocked
+
+
+def notify(text, urgent=False):
+    if shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-a", "Fathom", "-u", "critical" if urgent else "normal",
+                        "Crumbs", text], capture_output=True)
+
+
+def main(argv):
+    notifying = bool(argv) and argv[0] == "--notify"
+    if notifying:
+        argv = argv[1:]
+    if not argv:
+        os.execvp("omarchy-shell", ["omarchy-shell", "shell", "summon", "fathom.deck", '{"page":"crumbs"}'])
+    cmd, args = argv[0], argv[1:]
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return 0
+    try:
+        if cmd == "status":
+            print(json.dumps(status()))
+        elif cmd == "cookies":
+            if len(args) != 1:
+                raise CrumbsError("cookies takes one domain")
+            print(json.dumps(cookies_of(clean_domain(args[0]))))
+        elif cmd in ("apply", "block", "unblock", "clear"):
+            current = applied_rules(find_browsers())
+            third_party, prevention, blocked = current["thirdParty"], current["prevention"], list(current["blocked"])
+            if cmd == "apply":
+                tp, pv, bl = parse_apply(args)
+                third_party = third_party if tp is None else tp
+                prevention = prevention if pv is None else (None if pv == "default" else pv)
+                blocked = blocked if bl is None else bl
+            elif cmd == "block":
+                if not args:
+                    raise CrumbsError("block takes one or more domains")
+                blocked += [clean_domain(a) for a in args]
+            elif cmd == "unblock":
+                if not args:
+                    raise CrumbsError("unblock takes one or more domains")
+                gone = {clean_domain(a) for a in args}
+                blocked = [d for d in blocked if d not in gone]
+            if cmd == "clear":
+                run_helper(["clear"])
+                done = "Fathom's cookie rules are off."
+            else:
+                apply_rules(third_party, prevention, blocked)
+                done = ("Rules set. Browsers pick them up when they restart or reload policies "
+                        "(edge://policy or chrome://policy, Reload policies).")
+            print(done)
+            if notifying:
+                notify(done)
+        elif cmd == "forget":
+            if not 1 <= len(args) <= 2:
+                raise CrumbsError("forget takes a domain and, if you like, a browser id")
+            done, skipped = forget(clean_domain(args[0]), args[1] if len(args) == 2 else None)
+            for name, n in done:
+                if n:
+                    print(f"{name}: deleted {n} cookie{'s' if n != 1 else ''}")
+            if not any(n for _, n in done) and not skipped:
+                print("No cookies under that domain in a closed browser.")
+            for name in skipped:
+                print(f"{name} is running; close it first", file=sys.stderr)
+            if skipped:
+                return 1
+        else:
+            raise CrumbsError(f"unknown command '{cmd}'; see fathom-crumbs --help")
+    except CrumbsError as e:
+        print(f"fathom-crumbs: {e}", file=sys.stderr)
+        if notifying:
+            notify(f"Couldn't change the cookie rules: {e}", urgent=True)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

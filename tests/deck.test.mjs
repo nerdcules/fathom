@@ -27,7 +27,10 @@ vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.agentsAxis = agentsAxis; this.agentsSegments = agentsSegments; this.agentsDuration = agentsDuration;
   this.barSegments = barSegments; this.barPage = barPage;
   this.LOOK_DEFAULTS = LOOK_DEFAULTS; this.LOOK_SWATCHES = LOOK_SWATCHES; this.lookHex = lookHex;
-  this.lookClean = lookClean; this.lookSame = lookSame; this.lookArgs = lookArgs;`, F);
+  this.lookClean = lookClean; this.lookSame = lookSame; this.lookArgs = lookArgs;
+  this.CRUMBS_LEVELS = CRUMBS_LEVELS; this.crumbsMap = crumbsMap; this.crumbsColumn = crumbsColumn;
+  this.crumbsRules = crumbsRules; this.crumbsRulesSame = crumbsRulesSame; this.crumbsArgs = crumbsArgs;
+  this.crumbsExpiry = crumbsExpiry;`, F);
 const qmlFiles = readdirSync(dir).filter((f) => f.endsWith(".qml"));
 
 test("sizes read like people write them", () => {
@@ -417,4 +420,57 @@ test("the deck's Personalise defaults match fathom-look's", () => {
   const py = {};
   for (const m of block.matchAll(/"(\w+)": ([^,\n]+),/g)) py[m[1]] = JSON.parse(m[2].replace(/^True$/, "true").replace(/^False$/, "false"));
   assert.deepEqual(py, JSON.parse(JSON.stringify(F.LOOK_DEFAULTS)));
+});
+
+const plainJSON = (o) => JSON.parse(JSON.stringify(o));
+
+test("Crumbs' map puts the worst, most widely linked trackers first, within its limits", () => {
+  const domains = [
+    { domain: "youtube.com", category: "Content", sites: ["a.com", "b.com", "c.com"], cookies: 9 },
+    { domain: "doubleclick.net", category: "Advertising", sites: ["a.com"], cookies: 1 },
+    { domain: "clarity.ms", category: "Analytics", sites: ["a.com", "b.com"], cookies: 2 },
+    { domain: "plain.com", category: null, sites: ["c.com"], cookies: 3 },
+    { domain: "lonely.com", category: "Advertising", sites: [], cookies: 1 },
+  ];
+  const links = [
+    { site: "a.com", domain: "doubleclick.net", cookies: 1 }, { site: "a.com", domain: "clarity.ms", cookies: 1 },
+    { site: "b.com", domain: "clarity.ms", cookies: 1 }, { site: "a.com", domain: "youtube.com", cookies: 3 },
+    { site: "b.com", domain: "youtube.com", cookies: 3 }, { site: "c.com", domain: "youtube.com", cookies: 3 },
+    { site: "c.com", domain: "plain.com", cookies: 3 },
+  ];
+  const map = F.crumbsMap(domains, links, 3, 2);
+  assert.deepEqual(map.domains.map((d) => d.domain), ["doubleclick.net", "clarity.ms", "youtube.com"]);
+  // a.com links to all three, b.com to two; c.com is left out.
+  assert.deepEqual(plainJSON(map.sites), ["a.com", "b.com"]);
+  assert.ok(map.links.every((l) => l.site !== "c.com" && l.domain !== "plain.com"));
+  assert.equal(map.links.length, 5);
+  assert.deepEqual(plainJSON(F.crumbsMap(null, null, 5, 5)), { sites: [], domains: [], links: [] });
+});
+
+test("Crumbs' columns spread boxes down the map without overlapping", () => {
+  assert.deepEqual(plainJSON(F.crumbsColumn(0, 100, 20)), []);
+  assert.deepEqual(plainJSON(F.crumbsColumn(1, 100, 20)), [40]);
+  const ys = F.crumbsColumn(4, 400, 20);
+  for (let i = 1; i < ys.length; i++) assert.ok(ys[i] - ys[i - 1] >= 20);
+  assert.ok(ys[3] + 20 <= 400);
+});
+
+test("cookie rules compare and become fathom-crumbs arguments", () => {
+  const rules = F.crumbsRules({ thirdParty: true, prevention: null, blocked: ["b.com", "a.com", "a.com", ""] });
+  assert.deepEqual(plainJSON(rules), { thirdParty: true, prevention: "default", blocked: ["a.com", "b.com"] });
+  assert.ok(F.crumbsRulesSame({ blocked: ["b.com", "a.com"] }, { blocked: ["a.com", "b.com"], prevention: "nonsense" }));
+  assert.ok(!F.crumbsRulesSame({ prevention: "strict" }, {}));
+  assert.deepEqual(plainJSON(F.crumbsArgs(rules)),
+    ["apply", "--third-party", "on", "--prevention", "default", "--block", "a.com", "b.com"]);
+  // No blocked domains still sends --block, which clears the list.
+  assert.deepEqual(plainJSON(F.crumbsArgs({})).slice(-1), ["--block"]);
+});
+
+test("a cookie's expiry reads in the largest whole unit", () => {
+  assert.equal(F.crumbsExpiry(null, 0).unit, "session");
+  assert.equal(F.crumbsExpiry(50, 100).unit, "expired");
+  assert.deepEqual(plainJSON(F.crumbsExpiry(3600 * 5, 0)), { unit: "hours", n: 5 });
+  assert.deepEqual(plainJSON(F.crumbsExpiry(86400 * 30, 0)), { unit: "days", n: 30 });
+  assert.deepEqual(plainJSON(F.crumbsExpiry(86400 * 400, 0)), { unit: "months", n: 13 });
+  assert.deepEqual(plainJSON(F.crumbsExpiry(86400 * 800, 0)), { unit: "years", n: 2 });
 });

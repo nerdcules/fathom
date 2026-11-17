@@ -1,0 +1,121 @@
+#!/usr/bin/python3 -I
+"""Fathom Crumbs' cookie rules. Installed root-owned to
+/usr/local/lib/fathom-crumbs/policy and run through pkexec, so it takes only
+these exact commands, checks every argument, and writes only its own file,
+fathom-crumbs.json, in the managed-policy folder of each Chromium-family
+browser installed here.
+
+  policy set --third-party on|off --prevention default|off|basic|balanced|strict
+             [--block <domain>...]
+  policy clear
+"""
+
+import json
+import os
+import re
+import sys
+import tempfile
+
+# Tests point these at a scratch folder; pkexec clears the environment.
+ETC = os.environ.get("FATHOM_CRUMBS_ETC", "/etc")
+PREFIX = os.environ.get("FATHOM_CRUMBS_PREFIX", "/")
+FILE = "fathom-crumbs.json"
+MAX_BLOCKED = 1000
+
+# Policy folder for each browser family, and where its program lives.
+FAMILIES = {
+    "edge": ("opt/edge/policies/managed",
+             ("opt/microsoft/msedge", "opt/microsoft/msedge-beta", "opt/microsoft/msedge-dev")),
+    "chromium": ("chromium/policies/managed", ("usr/lib/chromium", "usr/bin/chromium")),
+    "chrome": ("opt/chrome/policies/managed", ("opt/google/chrome", "opt/google/chrome-beta")),
+    "brave": ("brave/policies/managed", ("opt/brave.com/brave", "opt/brave-bin", "usr/lib/brave-browser")),
+}
+PREVENTION = {"off": 0, "basic": 1, "balanced": 2, "strict": 3}
+DOMAIN = re.compile(r"^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
+
+
+def die(msg):
+    print(f"fathom-crumbs policy: {msg}", file=sys.stderr)
+    sys.exit(2)
+
+
+def installed():
+    for family, (folder, programs) in FAMILIES.items():
+        if any(os.path.exists(os.path.join(PREFIX, p)) for p in programs):
+            yield family, os.path.join(ETC, folder)
+
+
+def write(folder, data):
+    os.makedirs(folder, mode=0o755, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=folder, prefix=".fathom-crumbs.")
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, os.path.join(folder, FILE))
+
+
+def parse_set(args):
+    opts = {"third": None, "prevention": None, "blocked": []}
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--third-party" and i + 1 < len(args) and args[i + 1] in ("on", "off"):
+            opts["third"] = args[i + 1] == "on"
+            i += 2
+        elif a == "--prevention" and i + 1 < len(args) and (args[i + 1] == "default" or args[i + 1] in PREVENTION):
+            opts["prevention"] = args[i + 1]
+            i += 2
+        elif a == "--block":
+            i += 1
+            while i < len(args) and not args[i].startswith("--"):
+                if not DOMAIN.match(args[i]):
+                    die(f"'{args[i]}' is not a domain")
+                opts["blocked"].append(args[i])
+                i += 1
+        else:
+            die(f"don't know '{a}'")
+    if opts["third"] is None or opts["prevention"] is None:
+        die("set needs --third-party and --prevention")
+    if len(opts["blocked"]) > MAX_BLOCKED:
+        die(f"at most {MAX_BLOCKED} blocked domains")
+    return opts
+
+
+def main(argv):
+    if os.geteuid() != 0 and "FATHOM_CRUMBS_ETC" not in os.environ:
+        die("run as root (through pkexec)")
+    if not argv:
+        die("set or clear")
+    cmd, args = argv[0], argv[1:]
+    if cmd == "set":
+        opts = parse_set(args)
+        wrote = 0
+        for family, folder in installed():
+            data = {}
+            # Only rules that are on: a policy set to "allow" would stop you
+            # changing the browser's own setting.
+            if opts["third"]:
+                data["BlockThirdPartyCookies"] = True
+            if opts["blocked"]:
+                data["CookiesBlockedForUrls"] = ["[*.]" + d for d in sorted(set(opts["blocked"]))]
+            if family == "edge" and opts["prevention"] != "default":
+                data["TrackingPrevention"] = PREVENTION[opts["prevention"]]
+            path = os.path.join(folder, FILE)
+            if data:
+                write(folder, data)
+                wrote += 1
+            elif os.path.exists(path):
+                os.remove(path)
+        print(f"{wrote} browser famil{'y' if wrote == 1 else 'ies'} given Fathom's rules")
+    elif cmd == "clear" and not args:
+        for family, (folder, _) in FAMILIES.items():
+            path = os.path.join(ETC, folder, FILE)
+            if os.path.exists(path):
+                os.remove(path)
+    else:
+        die(f"don't know '{cmd}'")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

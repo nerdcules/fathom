@@ -9,7 +9,7 @@ import "."
 Item {
   id: deck
 
-  // "deck", "care", "sentinel", "pulse" or "look" (Personalise).
+  // "deck", "care", "sentinel", "pulse", "crumbs" or "look" (Personalise).
   property string page: "deck"
   // Status JSON from `fathom-deck status` and `fathom-care status`.
   property var info: null
@@ -25,6 +25,13 @@ Item {
   property bool lookBusy: false
   property string lookMessage: ""
   property bool lookFailed: false
+  // `fathom-crumbs status`, the chosen domain and its cookies.
+  property var crumbs: null
+  property var crumbsDetail: null
+  property string crumbsSelected: ""
+  property bool crumbsBusy: false
+  property string crumbsMessage: ""
+  property bool crumbsFailed: false
   property string error: ""
   // Container names and Care items with an action in flight.
   property var busy: ({})
@@ -54,8 +61,12 @@ Item {
   signal lookApplyRequested(var args)
   signal lookBarRequested(string mode)
   signal lookWallpaperRequested(string path)
+  signal crumbsSelectRequested(string domain)
+  signal crumbsApplyRequested(var args)
+  signal crumbsClearRequested()
+  signal crumbsForgetRequested(string domain, string browser)
 
-  readonly property var pages: ["deck", "care", "sentinel", "pulse", "look"]
+  readonly property var pages: ["deck", "care", "sentinel", "pulse", "crumbs", "look"]
   function switchPage(step) {
     var i = pages.indexOf(page)
     pageRequested(pages[(i + (step || 1) + pages.length) % pages.length])
@@ -153,6 +164,12 @@ Item {
               onClicked: deck.pageRequested("pulse")
             }
             Pill {
+              text: Skin.t("tab.crumbs")
+              glyph: "\uf1e0"
+              selected: deck.page === "crumbs"
+              onClicked: deck.pageRequested("crumbs")
+            }
+            Pill {
               text: Skin.t("tab.look")
               glyph: "\uf1fc"
               selected: deck.page === "look"
@@ -170,7 +187,8 @@ Item {
             model: deck.page === "care" ? carePage.summary()
               : (deck.page === "sentinel" ? sentinelPage.summary()
               : (deck.page === "pulse" ? pulsePage.summary()
-              : (deck.page === "look" ? lookPage.summary() : deckPage.summary())))
+              : (deck.page === "look" ? lookPage.summary()
+              : (deck.page === "crumbs" ? crumbsPage.summary() : deckPage.summary()))))
             delegate: RowLayout {
               required property var modelData
               spacing: 10 * Skin.u
@@ -251,6 +269,26 @@ Item {
         onAskRequested: function(text) { deck.askRequested(text) }
       }
 
+      CrumbsPage {
+        id: crumbsPage
+        visible: deck.page === "crumbs"
+        Layout.fillWidth: true
+        Layout.fillHeight: false
+        Layout.preferredHeight: implicitHeight
+        Layout.maximumHeight: column.pageRoom
+        wide: stage.contentWidth >= 1100 * Skin.u
+        crumbs: deck.crumbs
+        detail: deck.crumbsDetail
+        selected: deck.crumbsSelected
+        busy: deck.crumbsBusy
+        message: deck.crumbsMessage
+        failed: deck.crumbsFailed
+        onSelectRequested: function(domain) { deck.crumbsSelectRequested(domain) }
+        onApplyRequested: function(args) { deck.crumbsApplyRequested(args) }
+        onClearRequested: deck.crumbsClearRequested()
+        onForgetRequested: function(domain, browser) { deck.crumbsForgetRequested(domain, browser) }
+      }
+
       LookPage {
         id: lookPage
         visible: deck.page === "look"
@@ -282,7 +320,8 @@ Item {
         }
         Label {
           readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel
-            : (deck.page === "pulse" ? deck.pulse : (deck.page === "look" ? null : deck.info)))
+            : (deck.page === "pulse" ? deck.pulse : (deck.page === "crumbs" ? deck.crumbs
+            : (deck.page === "look" ? null : deck.info))))
           visible: !!source
           text: source ? Skin.t("updated").arg(new Date(source.time * 1000).toLocaleTimeString(Skin.locale, "HH:mm:ss")) : ""
           color: Skin.dim

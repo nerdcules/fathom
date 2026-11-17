@@ -33,6 +33,13 @@ Item {
   property bool lookBusy: false
   property string lookMessage: ""
   property bool lookFailed: false
+  // Crumbs: `fathom-crumbs status`, the chosen domain and its cookies.
+  property var crumbs: null
+  property var crumbsDetail: null
+  property string crumbsSelected: ""
+  property bool crumbsBusy: false
+  property string crumbsMessage: ""
+  property bool crumbsFailed: false
   property var apps: []
   property string error: ""
   property var busy: ({})
@@ -46,6 +53,7 @@ Item {
   readonly property string sentinelTool: home + "/.local/bin/fathom-sentinel"
   readonly property string pulseTool: home + "/.local/bin/fathom-pulse"
   readonly property string lookTool: home + "/.local/bin/fathom-look"
+  readonly property string crumbsTool: home + "/.local/bin/fathom-crumbs"
   readonly property string pluginId: (manifest && manifest.id) || "fathom.deck"
   // Care runs its own check when it's this stale (the timer may be off).
   readonly property int staleSeconds: 3 * 3600
@@ -83,14 +91,21 @@ Item {
   Component.onCompleted: Skin.fmt = function(v, d) { return Commons.I18n.formatNumber(v, d) }
 
   // `shell summon fathom.deck '{"page":"care"}'` (or "deck", "start",
-  // "sentinel", "pulse", "look").
+  // "sentinel", "pulse", "crumbs", "look").
   // Asking for the page that is already showing closes it, so one key opens
   // and closes it.
   function open(payloadJson) {
     var wanted = "deck"
     try {
       var payload = JSON.parse(payloadJson || "{}")
-      if (payload && ["care", "start", "sentinel", "pulse", "look"].indexOf(payload.page) !== -1) wanted = payload.page
+      if (payload && ["care", "start", "sentinel", "pulse", "crumbs", "look"].indexOf(payload.page) !== -1) wanted = payload.page
+      // Crumbs can open on one domain's cookies.
+      if (wanted === "crumbs" && payload && typeof payload.domain === "string" && /^[a-z0-9.-]{1,253}$/.test(payload.domain)) {
+        crumbsSelected = payload.domain
+        crumbsDetailProc.running = false
+        crumbsDetailProc.running = true
+        if (opened && page === wanted) { refresh(); return }
+      }
     } catch (e) {}
     if (opened && page === wanted) {
       dismiss()
@@ -124,6 +139,9 @@ Item {
       if (!deckProc.running) deckProc.running = true
     } else if (page === "sentinel") {
       if (!sentinelProc.running) sentinelProc.running = true
+    } else if (page === "crumbs") {
+      if (!crumbsProc.running) crumbsProc.running = true
+      if (crumbsSelected !== "" && !crumbsDetailProc.running) crumbsDetailProc.running = true
     } else if (page === "look") {
       // Read when it opens and after each change, not on a timer.
       if (!lookProc.running) lookProc.running = true
@@ -261,6 +279,27 @@ Item {
     lookActProc.running = true
   }
 
+  // ------------------------------------------------ Crumbs
+
+  function crumbsSelect(domain) {
+    crumbsSelected = crumbsSelected === domain ? "" : domain
+    if (crumbsSelected !== "") {
+      crumbsDetailProc.running = false
+      crumbsDetailProc.running = true
+    }
+  }
+
+  // Forgetting runs as you; changing the rules asks for your password, so
+  // the deck steps aside and the result comes as a notification.
+  function crumbsForget(domain, browser) {
+    if (crumbsBusy) return
+    crumbsBusy = true
+    crumbsFailed = false
+    crumbsMessage = ""
+    crumbsActProc.command = [crumbsTool, "forget", domain, browser]
+    crumbsActProc.running = true
+  }
+
   function check() {
     if (!checkProc.running) checkProc.running = true
   }
@@ -390,6 +429,53 @@ Item {
   }
 
   Process {
+    id: crumbsProc
+    command: [root.crumbsTool, "status"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(text)
+          if (parsed && Array.isArray(parsed.domains)) { root.crumbs = parsed; root.crumbsFailed = false; return }
+        } catch (e) {}
+      }
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0 && !root.crumbsBusy) {
+        root.crumbsFailed = true
+        root.crumbsMessage = catalog.t("crumbs.missing")
+      }
+      if (root.opened && root.page === "crumbs") pause.restart()
+    }
+  }
+
+  Process {
+    id: crumbsDetailProc
+    command: [root.crumbsTool, "cookies", root.crumbsSelected]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(text)
+          if (parsed && Array.isArray(parsed.cookies)) root.crumbsDetail = parsed
+        } catch (e) {}
+      }
+    }
+  }
+
+  Process {
+    id: crumbsActProc
+    stdout: StdioCollector { id: crumbsOut }
+    stderr: StdioCollector { id: crumbsErr }
+    onExited: function(exitCode) {
+      root.crumbsBusy = false
+      root.crumbsFailed = exitCode !== 0
+      var said = exitCode === 0 ? crumbsOut.text : crumbsErr.text
+      root.crumbsMessage = String(said || "").trim().replace(/^fathom-crumbs: /, "").split("\n").join(" · ").slice(0, 240)
+      if (!crumbsProc.running) crumbsProc.running = true
+      if (root.crumbsSelected !== "" && !crumbsDetailProc.running) crumbsDetailProc.running = true
+    }
+  }
+
+  Process {
     id: lookProc
     command: [root.lookTool, "state"]
     stdout: StdioCollector {
@@ -432,8 +518,9 @@ Item {
   // doesn't poll.
   Timer {
     id: pause
-    interval: root.page === "deck" ? 2500 : 5000
     onTriggered: if (root.page !== "start" && root.page !== "look") root.refresh()
+    // Crumbs copies the browsers' files each time, so less often.
+    interval: root.page === "deck" ? 2500 : (root.page === "crumbs" ? 15000 : 5000)
   }
 
   Component {
@@ -504,6 +591,16 @@ Item {
         onLookApplyRequested: function(args) { root.lookRun(args, catalog.t("look.applied")) }
         onLookBarRequested: function(mode) { root.lookRun(["bar", mode], catalog.t("look.barDone")) }
         onLookWallpaperRequested: function(path) { root.lookRun(["wallpaper", path], catalog.t("look.wallpaperDone")) }
+        crumbs: root.crumbs
+        crumbsDetail: root.crumbsDetail
+        crumbsSelected: root.crumbsSelected
+        crumbsBusy: root.crumbsBusy
+        crumbsMessage: root.crumbsMessage
+        crumbsFailed: root.crumbsFailed
+        onCrumbsSelectRequested: function(domain) { root.crumbsSelect(domain) }
+        onCrumbsApplyRequested: function(args) { root.handOff([root.crumbsTool, "--notify"].concat(args)) }
+        onCrumbsClearRequested: root.handOff([root.crumbsTool, "--notify", "clear"])
+        onCrumbsForgetRequested: function(domain, browser) { root.crumbsForget(domain, browser) }
       }
 
       StartView {
