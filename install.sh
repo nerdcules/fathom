@@ -6,6 +6,10 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEMES_DIR="$HOME/.config/omarchy/themes"
 THEME_DIR="$THEMES_DIR/fathom"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fathom"
+# Copies being checked, and what they replace, until a part is in place.
+STAGE="$STATE_DIR/staging"
+# The parts that finished installing, one per line.
+INSTALLED="$STATE_DIR/installed"
 MARKER=".fathom-install"
 
 BIN_DIR="$HOME/.local/bin"
@@ -142,8 +146,27 @@ if ! command -v omarchy >/dev/null; then
   exit 1
 fi
 
+# Put back what install_skin moved aside, after a failed build or apply.
+skin_restore() {
+  local base=$1 backup=$2
+  rm -rf "$base"
+  if [[ -e $STAGE/theme-base || -L $STAGE/theme-base ]]; then
+    mv "$STAGE/theme-base" "$base"
+  fi
+  # Only a folder Fathom built (or an older install's link) is taken out.
+  if [[ -L $THEME_DIR || -f $THEME_DIR/$MARKER ]]; then
+    rm -rf "$THEME_DIR"
+  fi
+  if [[ -e $STAGE/theme-dir || -L $STAGE/theme-dir ]]; then
+    mv "$STAGE/theme-dir" "$THEME_DIR"
+  fi
+  if [[ -n $backup ]]; then
+    mv "$backup" "$THEME_DIR"
+  fi
+}
+
 install_skin() {
-  mkdir -p "$THEMES_DIR" "$STATE_DIR"
+  mkdir -p "$THEMES_DIR" "$STATE_DIR" "$SHARE_DIR" "$STAGE"
 
   # Remember the theme to go back to on uninstall, unless Fathom is already on.
   local current
@@ -152,31 +175,52 @@ install_skin() {
     printf '%s\n' "$current" >"$STATE_DIR/previous-theme"
   fi
 
-  # A fathom theme folder this script did not make is the user's: keep it.
-  if [[ -d $THEME_DIR && ! -L $THEME_DIR && ! -f $THEME_DIR/$MARKER ]]; then
-    local backup
-    backup="$THEME_DIR.bak.$(date +%s)"
-    mv "$THEME_DIR" "$backup"
-    echo "Kept your existing fathom theme at $backup"
-  fi
-  rm -rf "$THEME_DIR"
-
   # Fathom's theme as shipped goes in ~/.local/share/fathom/theme (linked to
   # the repo with --link). fathom-look builds the folder Omarchy reads from
-  # it, with your look from Personalise (~/.config/fathom/look.json).
-  mkdir -p "$SHARE_DIR"
-  rm -rf "$SHARE_DIR/theme"
-  if $link; then
-    ln -s "$REPO/theme" "$SHARE_DIR/theme"
-  else
-    cp -r "$REPO/theme" "$SHARE_DIR/theme"
+  # it, with your look from Personalise (~/.config/fathom/look.json). The
+  # theme installed now, its built folder and fathom-look stay until the new
+  # theme has built and, unless --no-apply, Omarchy has switched to it.
+  local base="$SHARE_DIR/theme" backup=""
+  rm -rf "$STAGE/theme-base" "$STAGE/theme-dir"
+  if [[ -e $base || -L $base ]]; then
+    mv "$base" "$STAGE/theme-base"
   fi
-  place "$REPO/look/bin/fathom-look" "$BIN_DIR/fathom-look"
+  if $link; then
+    ln -s "$REPO/theme" "$base"
+  else
+    cp -r "$REPO/theme" "$base"
+  fi
+  if [[ -L $THEME_DIR || -f $THEME_DIR/$MARKER ]]; then
+    cp -a "$THEME_DIR" "$STAGE/theme-dir"
+  elif [[ -d $THEME_DIR ]]; then
+    # A fathom theme folder this script did not make is the user's: keep it.
+    backup="$THEME_DIR.bak.$(date +%s)"
+    mv "$THEME_DIR" "$backup"
+  fi
+
+  # The new fathom-look builds (beside the old folder, swapped in whole).
   chmod +x "$REPO/look/bin/fathom-look"
-  "$BIN_DIR/fathom-look" build
+  if ! "$REPO/look/bin/fathom-look" build >/dev/null; then
+    skin_restore "$base" "$backup"
+    echo "install.sh: Fathom's theme didn't build, so the theme you had is back as it was." >&2
+    return 1
+  fi
+
+  if $apply && ! omarchy theme set fathom; then
+    skin_restore "$base" "$backup"
+    if [[ -n $current ]] && omarchy theme set "$current"; then
+      echo "install.sh: Omarchy couldn't switch to Fathom's theme, so $current is back as it was." >&2
+    else
+      echo "install.sh: Omarchy couldn't switch to Fathom's theme; the theme folders are back as they were." >&2
+      [[ -n $current ]] && echo "  Switch back with: omarchy theme set \"$current\"" >&2
+    fi
+    return 1
+  fi
+  rm -rf "$STAGE/theme-base" "$STAGE/theme-dir"
+  [[ -n $backup ]] && echo "Kept your existing fathom theme at $backup"
+  place "$REPO/look/bin/fathom-look" "$BIN_DIR/fathom-look"
 
   if $apply; then
-    omarchy theme set fathom
     # Fathom's bar and popups are glass, which needs the glassy bar: Hyprland
     # blurs behind it (and turns blur on desktop-wide). Remember the bar's
     # own look to go back to on uninstall.
@@ -273,31 +317,57 @@ hypr_load() {
   fi
 }
 
-# Copy a shell plugin into place and turn it on. Always a copy: Omarchy
-# refuses plugin folders with symlinks. Extra arguments go to
+# Copy a shell plugin into the staging folder and check it there, before
+# anything of its part changes. Always a copy: Omarchy refuses plugin
+# folders with symlinks.
+stage_plugin() {
+  local id=$1
+  rm -rf "${STAGE:?}/$id"
+  mkdir -p "$STAGE"
+  cp -r "$REPO/${id#fathom.}/plugin/$id" "$STAGE/$id"
+  if ! omarchy plugin validate "$STAGE/$id" >/dev/null; then
+    rm -rf "${STAGE:?}/$id"
+    echo "install.sh: Omarchy found a problem with the new $id (above); the one you had is unchanged." >&2
+    return 1
+  fi
+}
+
+# Swap the staged plugin in and turn it on; if Omarchy won't turn it on,
+# put the one that was there back. Extra arguments go to
 # `omarchy plugin enable` (bar placement).
 install_plugin() {
   local id=$1
   shift
-  local plugin="$PLUGINS_DIR/$id"
-  # Updating a plugin the shell already loaded: the running shell can keep
-  # parts of the old version (seen with fathom.deck's Skin.qml), so restart
-  # it once at the end.
-  [[ -d $plugin ]] && restart_shell=true
-  rm -rf "$plugin"
+  local plugin="$PLUGINS_DIR/$id" prev="$STAGE/$id.prev"
+  [[ -d $STAGE/$id ]] || stage_plugin "$id" || return 1
+  rm -rf "$prev"
   mkdir -p "$PLUGINS_DIR"
-  cp -r "$REPO/${id#fathom.}/plugin/$id" "$plugin"
-  omarchy plugin validate "$plugin" >/dev/null
+  if [[ -d $plugin ]]; then
+    # Updating a plugin the shell already loaded: the running shell can
+    # keep parts of the old version (seen with fathom.deck's Skin.qml), so
+    # restart it once at the end.
+    restart_shell=true
+    mv "$plugin" "$prev"
+  fi
+  mv "$STAGE/$id" "$plugin"
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
   # The shell finds the new plugin a moment after the rescan, so retry briefly.
   local tries=0
   until omarchy plugin enable "$id" "$@" >/dev/null 2>&1; do
     if ((++tries >= 10)); then
-      echo "install.sh: couldn't turn on $id; try: omarchy plugin enable $id" >&2
+      rm -rf "$plugin"
+      if [[ -d $prev ]]; then
+        mv "$prev" "$plugin"
+        echo "install.sh: couldn't turn on the new $id, so the one you had is back; try: omarchy plugin enable $id" >&2
+      else
+        echo "install.sh: couldn't turn on $id; try: ./install.sh again, or omarchy plugin enable $id" >&2
+      fi
+      omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
       return 1
     fi
     sleep 0.5
   done
+  rm -rf "$prev"
 }
 
 install_player() {
@@ -310,6 +380,7 @@ install_player() {
     echo "  Install them with: omarchy pkg add mpv yt-dlp socat jq wl-clipboard" >&2
     return 1
   fi
+  stage_plugin fathom.player || return 1
 
   place "$REPO/player/bin/fathom-player" "$BIN_DIR/fathom-player"
   chmod +x "$REPO/player/bin/fathom-player"
@@ -329,6 +400,7 @@ install_deck() {
     return 1
   fi
   command -v docker >/dev/null || echo "Docker isn't installed; the deck's Containers card will say so."
+  stage_plugin fathom.deck || return 1
 
   place "$REPO/deck/bin/fathom-deck" "$BIN_DIR/fathom-deck"
   place "$REPO/care/bin/fathom-care" "$BIN_DIR/fathom-care"
@@ -359,6 +431,7 @@ install_desk() {
     echo "install.sh: the desk needs: ${missing[*]}" >&2
     return 1
   fi
+  stage_plugin fathom.desk || return 1
 
   place "$REPO/desk/bin/fathom-desk" "$BIN_DIR/fathom-desk"
   chmod +x "$REPO/desk/bin/fathom-desk"
@@ -531,15 +604,84 @@ install_crumbs() {
   echo "Crumbs installed. Press Super+Alt+O to see your browsers' cookies."
 }
 
-$skin && install_skin
-$player && install_player
-$deck && install_deck
-$desk && install_desk
-$mail && install_mail
-$sentinel && install_sentinel
-$pulse && install_pulse
-$crumbs && install_crumbs
-$signin && install_signin
+# Put back whatever an unfinished install moved aside: the theme and the
+# plugins as they were before it. Copies that were only being checked go.
+# Runs when a part fails, and first thing, in case an install was killed.
+restore_staged() {
+  [[ -d $STAGE ]] || return 0
+  local prev id
+  if [[ -e $STAGE/theme-base || -L $STAGE/theme-base ]]; then
+    rm -rf "$SHARE_DIR/theme"
+    mv "$STAGE/theme-base" "$SHARE_DIR/theme"
+  fi
+  if [[ -e $STAGE/theme-dir || -L $STAGE/theme-dir ]] &&
+    [[ -L $THEME_DIR || -f $THEME_DIR/$MARKER || ! -e $THEME_DIR ]]; then
+    rm -rf "$THEME_DIR"
+    mv "$STAGE/theme-dir" "$THEME_DIR"
+  fi
+  for prev in "$STAGE"/*.prev; do
+    [[ -d $prev ]] || continue
+    id=$(basename "$prev" .prev)
+    rm -rf "${PLUGINS_DIR:?}/$id"
+    mv "$prev" "$PLUGINS_DIR/$id"
+  done
+  rm -rf "$STAGE"
+}
+
+# The parts asked for, in the order they're installed.
+parts=()
+for part in skin player deck desk mail sentinel pulse crumbs signin; do
+  ${!part} && parts+=("$part")
+done
+done_parts=()
+current_part=""
+
+# Each part that finishes is added to $INSTALLED, so you can see what is in
+# place after an install that stopped. If a part fails, say what finished,
+# what didn't, and the command that carries on from there.
+report_failure() {
+  local code=$?
+  [[ -n $current_part ]] || return 0
+  restore_staged
+  local rest=() flags=() p seen=false
+  for p in "${parts[@]}"; do
+    [[ $p == "$current_part" ]] && seen=true
+    $seen && rest+=("--$p")
+  done
+  $link && flags+=(--link)
+  $apply || flags+=(--no-apply)
+  $opensnitch && [[ " ${rest[*]} " == *" --sentinel "* ]] && flags+=(--opensnitch)
+  {
+    echo
+    echo "install.sh: --$current_part failed (see above), so the install stopped there."
+    if ((${#done_parts[@]})); then
+      echo "  Installed in this run: ${done_parts[*]/#/--}"
+    else
+      echo "  Nothing was installed in this run."
+    fi
+    echo "  Not done in this run: ${rest[*]}"
+    echo "  A plugin or theme that didn't validate, build or switch on was put back as it"
+    echo "  was; other files of --$current_part may be in place. Parts that finished, in any"
+    echo "  run, are listed in $INSTALLED."
+    echo "To carry on once the problem is fixed (finished parts are kept; rerunning a part is safe):"
+    echo "  $REPO/install.sh ${rest[*]}${flags[*]:+ ${flags[*]}}"
+    echo "To remove everything Fathom installed instead: $REPO/uninstall.sh"
+  } >&2
+  exit "$code"
+}
+trap report_failure EXIT
+
+mkdir -p "$STATE_DIR"
+restore_staged
+for part in "${parts[@]}"; do
+  current_part=$part
+  "install_$part"
+  done_parts+=("$part")
+  { grep -vxF -- "$part" "$INSTALLED" 2>/dev/null || true; echo "$part"; } >"$INSTALLED.new"
+  mv "$INSTALLED.new" "$INSTALLED"
+done
+current_part=""
+rm -rf "$STAGE"
 if $restart_shell; then
   omarchy-restart-shell >/dev/null 2>&1 || echo "install.sh: restart the shell to load the update: omarchy-restart-shell" >&2
 fi

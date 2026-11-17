@@ -8,7 +8,8 @@ pkexec, ufw, ...) is a stand-in that records its arguments and changes
 nothing, so sudo and pkexec never run what they are given.
 
 STUB_FAIL lists shell patterns, one per line; a call matching one, as
-"name arg arg...", fails.
+"name arg arg...", fails. STUB_FAIL_LOOK_BUILD=1 makes 'fathom-look build'
+fail before it starts (python3 is a wrapper that checks for it).
 """
 
 import os
@@ -19,7 +20,7 @@ import tempfile
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Real tools the scripts may use: they only read and write files.
-TOOLS = ("bash", "sh", "env", "python3", "jq", "od", "tr", "cp", "rm", "mkdir", "ln", "sed", "grep", "find",
+TOOLS = ("bash", "sh", "env", "jq", "od", "tr", "cp", "rm", "mkdir", "ln", "sed", "grep", "find",
          "chmod", "mv", "date", "dirname", "basename", "tail", "head", "wc", "cat", "sleep", "touch",
          "readlink", "realpath", "mktemp", "sort", "uniq", "cmp", "diff", "ls", "printf", "true", "false",
          "stat", "id", "rmdir", "tee", "cut")
@@ -92,6 +93,13 @@ class Sandbox:
             with open(path, "w") as f:
                 f.write(STUB)
             os.chmod(path, 0o755)
+        python = os.path.join(self.bin, "python3")
+        with open(python, "w") as f:
+            f.write('#!/bin/sh\ncase "$1" in */fathom-look)\n'
+                    '  if [ "$2" = build ] && [ -n "$STUB_FAIL_LOOK_BUILD" ]; then\n'
+                    '    echo "fathom-look: told to fail" >&2; exit 1\n  fi ;;\nesac\n'
+                    'exec /usr/bin/python3 "$@"\n')
+        os.chmod(python, 0o755)
         self.env = {
             "HOME": self.home, "PATH": self.bin, "LANG": "C.UTF-8",
             "XDG_CONFIG_HOME": self.config, "XDG_DATA_HOME": self.data, "XDG_STATE_HOME": self.state,

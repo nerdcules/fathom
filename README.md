@@ -54,6 +54,22 @@ Running it again updates what's installed. If that replaces a shell plugin
 (the mini-player's bar widget, the deck or the desk), it restarts the Omarchy shell at
 the end so the new version loads; the bar blinks once.
 
+What you have stays until its replacement works. A shell plugin is copied
+to `~/.local/state/fathom/staging` and checked with `omarchy plugin
+validate` before anything of its part changes, and if Omarchy then won't
+turn it on, the plugin you had goes back. The theme is built beside the one
+you had; if the build fails, or Omarchy won't switch to it, the shipped
+theme, the built theme folder and `fathom-look` you had go back, and so does
+the theme that was on. Each part that finishes is added to
+`~/.local/state/fathom/installed`. If a part fails, the install stops there
+and says which parts finished in this run, which weren't done, and the
+command that carries on: the parts left, with the same options. Parts that
+finished stay, and running a part again is safe. Other files of the part
+that failed, such as its command or Hyprland file, may already be in place;
+that command finishes them, and `./uninstall.sh` removes them. If an install
+is killed part-way, the next run first puts back the plugin or theme it had
+moved aside.
+
 `./uninstall.sh` switches back to the theme that was on before, puts the
 bar back to how it looked before Fathom made it glassy, removes
 what the installer added (OpenSnitch only if Fathom installed it), and puts
