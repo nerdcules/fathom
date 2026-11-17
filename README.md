@@ -27,8 +27,8 @@ from; `promo/make.sh` builds it again.
 ```bash
 git clone <this repo> ~/Work/fathom
 cd ~/Work/fathom
-./install.sh            # the desktop theme, the mini-player and the Command Deck
-./install.sh --signin   # adds the sign-in screen (asks for your password)
+./install.sh            # the theme, mini-player, Command Deck, desk and Mail
+./install.sh --signin   # the sign-in screen (asks for your password)
 ```
 
 | Option | What it does |
@@ -37,9 +37,9 @@ cd ~/Work/fathom
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
-| `--mail` | New-mail notifications and their background service (then add your account; see [Mail](#mail)) |
+| `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
-| `--pulse` | Pulse, its key and its collector service. Asks for your password once if the firewall is on and Docker's bridge is up, so containers can reach it |
+| `--pulse` | Pulse, its key and its collector service. Asks for your password once if `ufw` is installed and Docker's bridge (`docker0`) has an address, so containers can reach it |
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--crumbs` | Crumbs, its key, and the helper that writes the browsers' cookie rules. Needs your password for the helper |
 | `--signin` | The sign-in screen. Needs your password |
@@ -49,6 +49,13 @@ cd ~/Work/fathom
 
 With no part named, it installs the parts that need no password: `--skin`,
 `--player`, `--deck`, `--desk` and `--mail`.
+
+Mail is in that set, but adding an Outlook.com account needs a Microsoft
+app registration, which personal accounts can't make any more (see
+[Mail](#mail)). Until an account is added, the `fathom-mail` service starts
+at each sign-in, logs "No mail accounts; nothing to watch." and stops; it
+contacts nothing, and the deck shows no mail line. To leave Mail out, name
+the other parts: `./install.sh --skin --player --deck --desk`.
 
 Running it again updates what's installed. If that replaces a shell plugin
 (the mini-player's bar widget, the deck or the desk), it restarts the Omarchy shell at
@@ -70,11 +77,88 @@ that command finishes them, and `./uninstall.sh` removes them. If an install
 is killed part-way, the next run first puts back the plugin or theme it had
 moved aside.
 
-`./uninstall.sh` switches back to the theme that was on before, puts the
-bar back to how it looked before Fathom made it glassy, removes
-what the installer added (OpenSnitch only if Fathom installed it), and puts
-Omarchy's sign-in screen back. It leaves
-alone any `fathom` theme it did not make.
+### What needs your password
+
+Everything not listed here runs as you. `install.sh`, `uninstall.sh` and
+Care run a command as root with `sudo` when started from a terminal and
+with `pkexec` (a polkit password prompt) otherwise; Sentinel and Crumbs use
+`pkexec`.
+
+| Part | When | What runs as root, and what it does |
+|---|---|---|
+| `--skin`, `--player`, `--desk`, `--mail` | Never | Nothing |
+| `--sentinel` | `install.sh` | `sentinel/install-root.sh install`: copies `admin` and `check-files` to `/usr/local/lib/fathom-sentinel/`, and `fathom-sentinel-files.service` and `.timer` to `/etc/systemd/system/`; runs `systemctl daemon-reload`, enables and starts the timer, and starts the first file check |
+| | `install.sh --opensnitch` | Also `pacman -S --needed --noconfirm opensnitch` if OpenSnitch isn't installed (noting that Fathom installed it), then `systemctl enable --now opensnitchd.service` whether or not it was |
+| | Daily, from the timer | `check-files`: `pacman -Qkk`, read-only and offline (see [Sentinel](#sentinel)); writes `/var/lib/fathom-sentinel/integrity.json` |
+| | **Lockdown**, **Block**, **Unblock** | `pkexec /usr/local/lib/fathom-sentinel/admin`: `ufw prepend` or `ufw delete` of Fathom's own rules only |
+| | **Check files now** | `systemctl start fathom-sentinel-files.service`, a system service, which systemd authorises through polkit |
+| | `uninstall.sh` | `sentinel/install-root.sh uninstall`: stops and disables the timer, deletes its two units and runs `systemctl daemon-reload`; removes Fathom's firewall rules; if Fathom installed OpenSnitch, stops it and runs `pacman -Rns --noconfirm opensnitch`; deletes `/usr/local/lib/fathom-sentinel` and `/var/lib/fathom-sentinel` |
+| `--pulse` | `install.sh` | `ufw allow proto tcp from 172.16.0.0/12 to <docker0's address> port 4317,4318 comment fathom-pulse`, only if `ufw` is installed, `docker0` has an IPv4 address and no rule for this is there already (Fathom's or yours) |
+| | `uninstall.sh` | `ufw delete` of that rule, with its comment, if `install.sh` recorded its address |
+| `--crumbs` | `install.sh` | `crumbs/install-root.sh install`: copies `policy` to `/usr/local/lib/fathom-crumbs/`. If this fails, Crumbs is installed anyway and can't block |
+| | **Apply**, and `fathom-crumbs apply`, `block`, `unblock` and `clear` | `pkexec /usr/local/lib/fathom-crumbs/policy`: writes or deletes `fathom-crumbs.json` in each installed browser's managed-policy folder under `/etc`, creating the folder if needed |
+| | `uninstall.sh` | `crumbs/install-root.sh uninstall`: `policy clear`, then deletes `/usr/local/lib/fathom-crumbs` |
+| `--deck` | `install.sh`, `uninstall.sh` | Nothing |
+| | Care: freeing old package downloads | `paccache -rk1` |
+| | Care: freeing system logs | `journalctl --vacuum-size=200M` |
+| | Care: restarting a failed system service | `systemctl restart <that unit>` |
+| `--signin` | `install.sh` | `signin/install-root.sh install`: copies the theme to `/usr/share/sddm/themes/fathom` (owned by root) and writes `/etc/sddm.conf.d/99-zz-fathom.conf`, which selects it |
+| | `uninstall.sh` | `signin/install-root.sh uninstall`: deletes both |
+
+`uninstall.sh` runs each root step only when it finds that part installed
+(the folder in `/usr/local/lib`, the SDDM theme or its file, or Pulse's
+recorded address).
+
+### Uninstall
+
+`./uninstall.sh` takes out what `install.sh` added, part by part, for each
+part it finds:
+
+- **Theme:** if Fathom's theme is on, it switches to the theme `install.sh`
+  recorded as on before Fathom's (Tokyo Night if none was recorded). If the
+  bar is still glassy and `install.sh` recorded it as `opaque` or `none`
+  before, it goes back to that.
+  It deletes `~/.config/omarchy/themes/fathom` if Fathom built it (a
+  `fathom` theme it didn't make is left), `~/.local/share/fathom/theme` and
+  `~/.local/bin/fathom-look`.
+- **Each part:** stops it, turns its shell plugin off, and deletes its
+  command in `~/.local/bin`, its file in `~/.config/hypr`, its plugin in
+  `~/.config/omarchy/plugins`, its user services and timer, its files in
+  `~/.local/share/fathom`, and Fathom's block in `hyprland.lua`, then reloads
+  Hyprland. The root parts go as in the table above.
+
+These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
+
+- `~/.config/fathom/look.json`: your look from Personalise (always, even if
+  `--skin` wasn't installed).
+- `~/.config/fathom/start.json`: Start's pins (with the deck).
+- `~/.config/fathom/mail.json`: Mail's accounts and client IDs, and every
+  keyring entry Fathom Mail saved (`secret-tool clear application
+  fathom-mail`), which are its sign-ins (with Mail).
+- `~/.config/fathom/sentinel.json`: the devices you marked as yours (with
+  Sentinel).
+- `~/.local/state/fathom`, all of it: Care's measurements and disk history,
+  Sentinel's events and the devices it has seen, Pulse's saved map, Mail's
+  recent messages, and what `install.sh` recorded (the theme and bar to go
+  back to, the parts installed, Pulse's address).
+
+It leaves:
+
+- The backups `install.sh` made: `hyprland.lua.bak.<time>` in
+  `~/.config/hypr`, and `fathom.bak.<time>` in `~/.config/omarchy/themes` if
+  a `fathom` theme of yours was moved aside.
+- Packages you installed for Fathom (mpv, the Pulse Python packages and so
+  on), and OpenSnitch if it was installed before Fathom; if `--opensnitch`
+  turned its service on, it stays on.
+- The browser policy folders Crumbs created under `/etc`: only its own file
+  in them is deleted.
+- Firewall rules that aren't Fathom's, including one with a Fathom comment
+  but another shape, which it names.
+- What you did with Fathom: cookies **Forget** deleted, what Care freed,
+  restarted or updated, settings changed in Quick settings, the bar and
+  wallpaper chosen in Personalise (Omarchy's own settings), containers
+  started or stopped, and the boot unlock logo if you chose Fathom's in
+  Omarchy's menu (*Default* there puts Omarchy's back).
 
 ## What's here
 
@@ -84,8 +168,8 @@ theme/          The Omarchy desktop theme: colours, window corners,
                 preview
 signin/fathom/  The sign-in screen, an SDDM theme in QML
 signin/install-root.sh
-                The only part that runs as root: copies the sign-in theme
-                and selects it
+                Run as root: copies the sign-in theme and selects it (every
+                root step is in "What needs your password", above)
 player/bin/fathom-player
                 The mini-player command (plays and controls mpv)
 player/hypr/    Its window rules and keys
@@ -161,7 +245,7 @@ pulse/hypr/     Its key
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/ && python3 -m unittest discover -s tests
 install.sh      Installer
-uninstall.sh    Undo the installer
+uninstall.sh    Remove what the installer added (see "Uninstall", above)
 ```
 
 ## Mini-player
@@ -821,6 +905,11 @@ already.
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 
-Parts that change system files (sign-in screen, face login, Sentinel) are
-opt-in flags on `install.sh`, back up what they replace, and are undone by
-`uninstall.sh`. Secrets such as mail tokens and API keys never go in this repo.
+Parts that change system files or the firewall (the sign-in screen,
+Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on
+`install.sh`. They write only files and firewall rules of their own, apart
+from OpenSnitch (with `--opensnitch`) and the browser policy folders Crumbs
+creates, and `uninstall.sh` removes those files and rules; what it leaves is
+listed under
+[Uninstall](#uninstall). Secrets such as mail tokens and API keys never go
+in this repo.
