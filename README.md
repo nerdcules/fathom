@@ -8,6 +8,20 @@ windows framed in a cyan-to-violet gradient.
 
 ![Fathom theme preview](theme/preview.png)
 
+## Promo
+
+[![Personalise changing Fathom's accent and corners, from the promo](promo/video/preview.gif)](promo/video/fathom-promo.mp4)
+
+A 92.83-second tour: [with voiceover](promo/video/fathom-promo.mp4) or
+[captions only](promo/video/fathom-promo-captions.mp4). The desktop, the desk
+(Alt+Tab, Task view, Snap layouts, Quick settings) and Personalise are live
+recordings from a laptop running Fathom, made on 17 November 2026. Start, the
+Command Deck, Care, Sentinel, Pulse and Crumbs are the real pages drawn from
+made-up data (`promo/demo-data.py`), and say so on screen. The voice is
+[Kokoro](https://github.com/thewh1teagle/kokoro-onnx) (`af_heart`), run on
+the same laptop. `promo/script.md` lists each line with where its claim comes
+from; `promo/make.sh` builds it again.
+
 ## Install
 
 ```bash
@@ -113,6 +127,11 @@ crumbs/root/policy
 crumbs/install-root.sh
                 Installs (or removes) that helper
 crumbs/hypr/    Its key
+promo/          The promo: script.md (shots, voiceover and their sources),
+                take.sh (records the live takes; it takes over the screen
+                for about a minute and puts everything back), demo-data.py,
+                Scene.qml and Card.qml (the rendered shots), voice.py,
+                assemble.py and make.sh; video/ holds the two cuts
 crumbs/demo/    make-preview.sh, which draws crumbs/preview.jpg from made-up
                 browsing (make-demo.py) rendered by the real page (Preview.qml)
 pulse/bin/fathom-pulse
