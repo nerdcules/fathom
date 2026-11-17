@@ -252,8 +252,21 @@ install_signin() {
     return 1
   fi
   as_root bash "$REPO/signin/install-root.sh" install "$REPO/signin/fathom"
-  echo "You will see it the next time you sign out. This laptop signs in"
-  echo "automatically at boot, so it does not appear when you start up."
+  # SDDM reads /etc/sddm.conf, then sddm.conf.d in name order; the last
+  # [Autologin] User= wins.
+  local auto="" conf files=()
+  for conf in /etc/sddm.conf /etc/sddm.conf.d/*.conf; do
+    [[ -f $conf ]] && files+=("$conf")
+  done
+  if ((${#files[@]})); then
+    auto=$(awk 'FNR==1{s=0} /^\[/{s=($0=="[Autologin]")} s && /^User=/{u=substr($0,6)} END{print u}' "${files[@]}")
+  fi
+  if [[ -n $auto && $auto == "$USER" ]]; then
+    echo "You will see it the next time you sign out. This machine signs you in"
+    echo "automatically at boot, so it does not appear when you start up."
+  else
+    echo "You will see it the next time you start up or sign out."
+  fi
 }
 
 # Copy a file into place, or link it to the repo with --link.
