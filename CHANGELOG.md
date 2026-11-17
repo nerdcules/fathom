@@ -18,6 +18,14 @@ Each line names its commit.
   certificate, pairing by QR code (one-time secret, 2 minutes, 5 tries),
   a token per phone kept as its SHA-256, and read-only access to what the
   deck shows; `devices` and `unpair`.
+- `fathom-phone` alerts and actions: `/v1/alerts` works out what needs a
+  look (a failed service, disk, a restart, a container in trouble, Sentinel's
+  warnings from the last day, Pulse errors, Claude Code waiting, a Fathom
+  update), each with an id that stays the same while it's true. A phone can
+  take only the actions an alert offers (trust a device, restart a failed
+  service, block an address), with the arguments from the laptop's own copy
+  of that alert; those needing root ask for the password on the laptop.
+  `fathom-phone alerts` and `fathom-phone test-alert`.
 
 ## [0.1.0] - 2026-11-17
 

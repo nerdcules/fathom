@@ -8,20 +8,30 @@ pairs with it once, then reads what the Command Deck shows.
   fathom-phone devices          the phones paired, and when each last called
   fathom-phone unpair <id>|all  forget a phone (its token stops working)
   fathom-phone status           the service, its fingerprint and devices, as JSON
+  fathom-phone alerts           what the phone would be told about now, as JSON
+  fathom-phone test-alert       a test alert for the next 10 minutes, so the
+                                phone shows a notification
 
 HTTPS on port 4920 with a self-signed certificate, which the phone pins:
 the pairing QR code carries its fingerprint, the laptop's addresses and a
 one-time secret. A paired phone gets its own token; only its SHA-256 is
-kept. Phase 1 is read-only: the phone can read, not change, anything.
-Nothing is sent anywhere; the phone asks, the laptop answers.
+kept. The phone reads what the deck shows and the alerts worked out from
+it, and can take only the actions an alert offers (trust a device, restart a
+failed service, block an address); it names the alert and the action, and
+every argument comes from the laptop's own copy of that alert. Actions that
+need root ask for the password on the laptop. Each action is logged to the
+service's journal. Nothing is sent anywhere; the phone asks, the laptop
+answers.
 """
 
 import datetime
 import hashlib
 import hmac
 import http.server
+import ipaddress
 import json
 import os
+import re
 import secrets
 import shutil
 import signal
@@ -40,6 +50,7 @@ DIR = os.path.join(STATE, "phone")
 KEY = os.path.join(DIR, "key.pem")
 CERT = os.path.join(DIR, "cert.pem")
 PAIRING = os.path.join(DIR, "pairing.json")
+TEST_ALERT = os.path.join(DIR, "test-alert.json")
 DEVICES = os.path.join(CONFIG, "phone.json")
 PORT = int(os.environ.get("FATHOM_PHONE_PORT", "4920"))
 BIND = os.environ.get("FATHOM_PHONE_BIND", "0.0.0.0")
@@ -186,6 +197,138 @@ class Reader:
 READER = Reader()
 
 
+# ---------------------------------------------------------------- alerts
+
+MAC = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
+UNIT = re.compile(r"^[A-Za-z0-9@._:\\-]{1,200}\.(service|timer|socket|mount|path)$")
+DAY = 86400
+
+
+def alerts(read=None, now=None):
+    """What needs a look on the laptop, each with an id that stays the same
+    while it's true, so the phone tells you about it once. Worked out from
+    the parts' own status; the actions it offers carry their arguments."""
+    read = read or READER.part
+    now = int(now or time.time())
+    out = []
+
+    def add(id_, part, category, level, title, detail="", when=None, actions=()):
+        out.append({"id": id_, "part": part, "category": category, "level": level, "title": title,
+                     "detail": detail, "time": int(when or now), "actions": list(actions)})
+
+    deck = read("deck") or {}
+    for c in (deck.get("docker") or {}).get("containers") or []:
+        status = str(c.get("status", ""))
+        if c.get("state") == "restarting" or "unhealthy" in status:
+            add(f"deck:{c.get('name')}:{c.get('state')}", "Deck", "deck.containers", "bad",
+                f"{c.get('name')} is in trouble", status)
+
+    care = read("care") or {}
+    for w in care.get("warnings") or []:
+        kind = w.get("kind")
+        if kind == "unit" and UNIT.match(str(w.get("unit", ""))) and w.get("scope") in ("user", "system"):
+            scope, unit = w["scope"], w["unit"]
+            add(f"care:unit:{scope}:{unit}", "Care", "care.services", "bad",
+                f"{w.get('description') or unit} failed", f"{scope} service {unit}",
+                actions=[{"id": "restart", "label": "Restart it", "onLaptop": scope == "system",
+                          "args": [scope, unit]}])
+        elif kind == "disk":
+            add(f"care:disk:{w.get('level')}", "Care", "care.disk", "bad" if w.get("level") == "bad" else "warn",
+                f"Disk {int(w.get('pct', 0))}% full")
+        elif kind == "reboot":
+            add("care:reboot", "Care", "care.reboot", "warn", "Restart to finish an update")
+
+    sentinel = read("sentinel") or {}
+    trusted = {d.get("mac"): d.get("trusted") for d in (sentinel.get("network") or {}).get("devices") or []}
+    for e in sentinel.get("events") or []:
+        if e.get("level") not in ("warn", "bad") or now - int(e.get("time", 0)) > DAY:
+            continue
+        data = e.get("data") or {}
+        kind, actions = e.get("kind"), []
+        if kind == "device":
+            mac, ip = str(data.get("mac", "")).lower(), data.get("ip")
+            if trusted.get(mac):
+                continue  # trusted since: nothing to say
+            category = "sentinel.devices"
+            if MAC.match(mac):
+                actions.append({"id": "trust", "label": "Trust", "onLaptop": False, "args": [mac]})
+        elif kind == "scan":
+            category, ip = "sentinel.attacks", data.get("src")
+        elif kind == "auth":
+            category, ip = "sentinel.signins", data.get("src")
+        else:
+            category, ip = f"sentinel.{kind}", None
+        try:
+            if ip and not ipaddress.ip_address(ip).is_loopback:
+                actions.append({"id": "block", "label": "Block…", "onLaptop": True, "args": [str(ipaddress.ip_address(ip))]})
+        except ValueError:
+            pass
+        add(f"sentinel:{e.get('id')}", "Sentinel", category, e.get("level"), e.get("title", ""), e.get("detail", ""),
+            e.get("time"), actions)
+
+    pulse = read("pulse") or {}
+    for n in pulse.get("nodes") or []:
+        if int(n.get("errors") or 0) > 0:
+            # One alert an hour per service, not one per check.
+            add(f"pulse:{n.get('id') or n.get('name')}:{now // 3600}", "Pulse", "pulse.errors", "warn",
+                f"{n.get('errors')} errors on {n.get('name')}", f"in the last {pulse.get('range') or '15m'}")
+
+    agents = read("agents") or {}
+    for p in agents.get("projects") or []:
+        if p.get("waitingSince"):
+            add(f"claude:{p.get('id')}:{p.get('waitingSince')}", "Claude Code", "claude.waiting", "warn",
+                f"Claude Code is waiting for you in {p.get('name')}", "", p.get("waitingSince"))
+
+    update = read("update") or {}
+    if update.get("available") and update.get("target"):
+        add(f"update:{update['target']}", "Fathom", "fathom.update", "info",
+            f"Fathom {update['target']} is ready to install", "On the laptop: fathom-update apply")
+
+    test = read_json(TEST_ALERT, None)
+    if test and now < test.get("expires", 0):
+        add(f"test:{test.get('time')}", "Fathom", "test", "info", "A test from Fathom",
+            "If you can read this, alerts reach this phone.", test.get("time"))
+    return out
+
+
+# What each action runs, with the arguments its alert carries.
+ACTIONS = {
+    "trust": lambda a: ["fathom-sentinel", "trust", a[0]] if MAC.match(a[0]) else None,
+    "restart": lambda a: ["fathom-care", "restart", a[0], a[1]] if a[0] in ("user", "system") and UNIT.match(a[1]) else None,
+    "block": lambda a: ["fathom-sentinel", "block", str(ipaddress.ip_address(a[0]))],
+}
+
+
+def act(alert_id, action_id, device):
+    """Run an action the current alert offers. Returns (http code, reply)."""
+    alert = next((a for a in alerts() if a["id"] == alert_id), None)
+    if alert is None:
+        return 404, {"error": "that alert has gone"}
+    action = next((x for x in alert["actions"] if x["id"] == action_id), None)
+    if action is None or action_id not in ACTIONS:
+        return 400, {"error": "that alert doesn't offer that"}
+    try:
+        cmd = ACTIONS[action_id](action["args"])
+    except (ValueError, IndexError):
+        cmd = None
+    if cmd is None:
+        return 400, {"error": "that alert's details don't check out"}
+    path = os.path.join(BIN, cmd[0])
+    if not os.access(path, os.X_OK):
+        return 501, {"error": f"{cmd[0]} isn't installed"}
+    print(f"fathom-phone: {device.get('name')} ({device.get('id')}): {action_id} {' '.join(cmd[2:])} "
+          f"for {alert_id}", flush=True)
+    READER.cache.clear()
+    if action["onLaptop"]:
+        # Asks for the password on the laptop; don't hold the phone waiting.
+        subprocess.Popen([path, *cmd[1:]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        return 202, {"started": True, "note": "Confirm it on the laptop: it asks for your password there."}
+    r = subprocess.run([path, *cmd[1:]], capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        return 500, {"error": (r.stderr or r.stdout).strip()[:200] or f"exit {r.returncode}"}
+    return 200, {"done": True}
+
+
 # ---------------------------------------------------------------- the service
 
 
@@ -231,8 +374,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.reply(401, {"error": "not paired"})
         if self.path == "/v1/status":
             data = {name: READER.part(name) for name in SOURCES}
-            data.update(time=int(time.time()), host=socket.gethostname(), api=API)
+            data.update(time=int(time.time()), host=socket.gethostname(), api=API, alerts=alerts())
             return self.reply(200, data)
+        if self.path == "/v1/alerts":
+            return self.reply(200, {"time": int(time.time()), "host": socket.gethostname(), "alerts": alerts()})
         if self.path.startswith("/v1/part/"):
             name = self.path[len("/v1/part/"):]
             if name in SOURCES:
@@ -240,11 +385,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self.reply(404, {"error": "no such thing"})
 
     def do_POST(self):
-        if self.path != "/v1/pair":
+        if self.path not in ("/v1/pair", "/v1/action"):
             return self.reply(404, {"error": "no such thing"})
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY:
             return self.reply(413, {"error": "too large"})
+        if self.path == "/v1/action":
+            dev = self.device()
+            if dev is None:
+                return self.reply(401, {"error": "not paired"})
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+                code, reply = act(str(body.get("alert", "")), str(body.get("action", "")), dev)
+            except (ValueError, AttributeError):
+                code, reply = 400, {"error": "bad request"}
+            except subprocess.TimeoutExpired:
+                code, reply = 504, {"error": "it took too long"}
+            return self.reply(code, reply)
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
             secret = str(body.get("secret", ""))
@@ -395,6 +552,13 @@ def main(argv):
                     raise PhoneError(f"no paired device {args[0]}")
                 save_devices(keep)
             print(f"Forgot {len(devs) - len(keep)} device{'s' if len(devs) - len(keep) != 1 else ''}.")
+        elif cmd == "alerts":
+            print(json.dumps(alerts()))
+        elif cmd == "test-alert":
+            private_dir(DIR)
+            t = int(time.time())
+            write_private(TEST_ALERT, {"time": t, "expires": t + 600})
+            print("A test alert is up for 10 minutes; the phone shows it at its next check (up to about 15 minutes).")
         elif cmd == "status":
             ensure_cert()
             print(json.dumps({"running": service_up(), "port": PORT, "fingerprint": fingerprint(),

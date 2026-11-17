@@ -815,6 +815,8 @@ a home screen for your phone in Fathom's look. Install it with
 fathom-phone pair        # shows a QR code for 2 minutes; scan it in the app
 fathom-phone devices     # the phones paired
 fathom-phone unpair <id> # forget one; its token stops working
+fathom-phone alerts      # what a phone would be told about now, as JSON
+fathom-phone test-alert  # a test alert for 10 minutes, to check notifications
 ```
 
 `fathom-phone` runs as a user service and answers HTTPS on port 4920 with a
@@ -828,8 +830,23 @@ you alone). A 6-digit code isn't used: on a network someone else can watch,
 all million codes could be tried against what they saw.
 
 A paired phone can read what the deck shows: Deck, Care, Sentinel, Pulse
-and Claude Code's day, Crumbs, the Fathom update and your look. In this first
-version it can read and not change anything. The laptop announces itself on
+and Claude Code's day, Crumbs, the Fathom update and your look. It also reads
+the alerts `fathom-phone` works out from those: a failed service, a disk
+filling up, a restart to finish an update, a container restarting or
+unhealthy, Sentinel's warnings from the last 24 hours (minus devices you've
+since trusted), errors in Pulse, Claude Code waiting for you and a Fathom
+update. Each alert keeps the same id while it's true, so the phone notifies
+once. The phone checks about every 15 minutes, the shortest Android allows
+an app in the background.
+
+Some alerts offer an action, and those are the only changes a phone can
+make: trust a new device (`fathom-sentinel trust`), restart a failed service
+(`fathom-care restart`), block an address (`fathom-sentinel block`). The
+phone names the alert and the action; the arguments come from the laptop's
+own copy of that alert, so a phone can't pass its own. Blocking and
+restarting a system service need root, so they ask for your password on the
+laptop. Each action is written to the service's journal (`journalctl --user
+-u fathom-phone`). The laptop announces itself on
 the home network as `_fathom._tcp` (Avahi) so the phone can find it when its
 address changes. The firewall rule lets in only the private address ranges
 home networks use, and Tailscale; Sentinel's lockdown blocks the phone like
@@ -998,7 +1015,7 @@ already.
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
-| 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, read-only) | first version |
+| 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, alerts, actions) | first version |
 
 Parts that change system files or the firewall (the sign-in screen,
 Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on
