@@ -44,6 +44,18 @@ HYPR="$HOME/.config/hypr"
 PLUGINS="$HOME/.config/omarchy/plugins"
 hypr_changed=false
 
+# First take Fathom's block out of hyprland.lua and reload, while every file
+# it requires is still there. Hyprland reloads by itself when a file changes,
+# and a reload that finds a required file gone can freeze it: in the test VM
+# (tests/vm) uninstall froze Hyprland twice in seven runs when the files went
+# first; with a dummy module, deleting the file first froze it once in three
+# rounds, removing the require first never in twelve.
+main="$HYPR/hyprland.lua"
+if [[ -f $main ]] && grep -q "^-- fathom: begin" "$main"; then
+  sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
+  hyprctl reload >/dev/null 2>&1 || true
+fi
+
 # Mini-player: stop it, then remove the bar widget, keys, rules and command.
 if [[ -e $HOME/.local/bin/fathom-player || -d $PLUGINS/fathom.player ]]; then
   "$HOME/.local/bin/fathom-player" stop >/dev/null 2>&1 || true
@@ -158,12 +170,10 @@ if [[ -e $HOME/.local/bin/fathom-crumbs || -d /usr/local/lib/fathom-crumbs ]]; t
   echo "Removed Crumbs and its cookie rules."
 fi
 
-# The block in hyprland.lua that loaded them.
+# The shell forgets the plugins removed above. (Their Hyprland block went
+# first, at the top.)
 if $hypr_changed; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-  main="$HYPR/hyprland.lua"
-  [[ -f $main ]] && sed -i "/^-- fathom: begin/,/^-- fathom: end\$/d" "$main"
-  hyprctl reload >/dev/null 2>&1 || true
 fi
 
 if [[ -d /usr/share/sddm/themes/fathom || -f /etc/sddm.conf.d/99-zz-fathom.conf ]]; then
