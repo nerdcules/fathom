@@ -163,7 +163,8 @@ works as before. Tap Super again or press Esc to close it.
   for uncommitted changes) and when. Click one to open it in your editor, or
   hover for a terminal there, Claude Code there, or Files.
 - **Along the bottom:** whether Docker is running (click for the deck),
-  **Focus** (Omarchy's do-not-disturb), and power: lock, sleep, sign out,
+  **Focus** (Omarchy's do-not-disturb), **About Fathom** (the ⓘ button, or
+  search "about"; Esc closes it), and power: lock, sleep, sign out,
   restart, shut down. The last three ask first.
 
 Pins and suggestions are kept in `~/.config/fathom/start.json`.

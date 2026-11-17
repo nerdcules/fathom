@@ -49,6 +49,7 @@ Item {
     { id: "pulse", name: Skin.t("start.pulse"), detail: Skin.t("start.pulseDetail"), glyph: "\uf0e7", page: "pulse", keywords: "opentelemetry traces services map latency errors" },
     { id: "focus", name: Skin.t("start.focusToggle"), detail: Skin.t("start.focusDetail"), glyph: "", keywords: "do not disturb dnd notifications quiet" },
     { id: "play", name: Skin.t("start.play"), detail: Skin.t("start.playDetail"), glyph: "", keywords: "youtube video mini player" },
+    { id: "about", name: Skin.t("start.about"), detail: Skin.t("start.aboutDetail"), glyph: "\uf05a", keywords: "credits licence version who made" },
     { id: "lock", name: Skin.t("start.lock"), glyph: "", keywords: "screen" },
     { id: "suspend", name: Skin.t("start.suspend"), glyph: "", keywords: "sleep" },
     { id: "logout", name: Skin.t("start.logout"), glyph: "", keywords: "sign out", confirm: true },
@@ -94,6 +95,7 @@ Item {
   }
 
   function runAction(a) {
+    if (a.id === "about") { aboutCard.visible = true; return }
     if (a.page) { start.openPage(a.page); return }
     if (a.confirm) {
       Skin.ask(Skin.t("start.confirm." + a.id), Skin.t("start.confirmBody"), a.name,
@@ -275,7 +277,8 @@ Item {
               Keys.onReturnPressed: start.run(start.results[start.selected])
               Keys.onEnterPressed: start.run(start.results[start.selected])
               Keys.onEscapePressed: {
-                if (text !== "") text = ""
+                if (aboutCard.visible) aboutCard.visible = false
+                else if (text !== "") text = ""
                 else if (start.allApps) start.allApps = false
                 else start.closeRequested()
               }
@@ -464,6 +467,11 @@ Item {
           onClicked: start.actionRequested("focus")
         }
         Pill {
+          glyph: "\uf05a"
+          tip: Skin.t("start.about")
+          onClicked: aboutCard.visible = !aboutCard.visible
+        }
+        Pill {
           id: powerButton
           glyph: ""
           tip: Skin.t("start.power")
@@ -505,6 +513,129 @@ Item {
           onClicked: {
             powerMenu.visible = false
             for (var i = 0; i < start.actions.length; i++) if (start.actions[i].id === modelData) start.runAction(start.actions[i])
+          }
+        }
+      }
+    }
+  }
+
+  // About Fathom: the hexagon logo, the wordmark and whose idea it was.
+  // A click anywhere closes it, as does Esc in the search field.
+  Rectangle {
+    id: aboutCard
+    visible: false
+    z: 60
+    anchors.fill: parent
+    color: Qt.rgba(0, 0, 0, 0.55)
+    radius: 14 * Skin.u
+    MouseArea { anchors.fill: parent; onClicked: aboutCard.visible = false }
+
+    Rectangle {
+      id: aboutEdge
+      anchors.centerIn: parent
+      width: Math.min(parent.width - 48 * Skin.u, 440 * Skin.u)
+      height: aboutColumn.implicitHeight + 60 * Skin.u
+      radius: 16 * Skin.u
+      gradient: Gradient {
+        orientation: Gradient.Horizontal
+        GradientStop { position: 0; color: Skin.accent }
+        GradientStop { position: 1; color: Skin.violet }
+      }
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: 1.5
+        radius: aboutEdge.radius - 1.5
+        color: Skin.tint(Skin.bg, 0.98)
+
+        Column {
+          id: aboutColumn
+          anchors.centerIn: parent
+          width: parent.width - 56 * Skin.u
+          spacing: 10 * Skin.u
+
+          // The logo as art/make-art.py draws it: a hexagon inside a
+          // hexagon, pointed at the top.
+          Canvas {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 84 * Skin.u
+            height: width
+            onPaint: {
+              var c = getContext("2d")
+              c.reset()
+              c.strokeStyle = Skin.accent
+              c.lineJoin = "round"
+              c.lineWidth = width * 0.075
+              var sizes = [0.44, 0.19]
+              for (var k = 0; k < sizes.length; k++) {
+                c.beginPath()
+                for (var i = 0; i < 6; i++) {
+                  var a = (-90 + 60 * i) * Math.PI / 180
+                  var x = width / 2 + width * sizes[k] * Math.cos(a)
+                  var y = height / 2 + width * sizes[k] * Math.sin(a)
+                  if (i === 0) c.moveTo(x, y); else c.lineTo(x, y)
+                }
+                c.closePath()
+                c.stroke()
+              }
+            }
+          }
+          Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "FATHOM"
+            color: Skin.accent
+            font.pixelSize: 30 * Skin.u
+            font.weight: Font.Medium
+            font.letterSpacing: 10 * Skin.u
+            leftPadding: font.letterSpacing
+          }
+          Label {
+            width: parent.width
+            text: Skin.t("start.aboutPurpose")
+            color: Skin.fg
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: 14 * Skin.u
+            lineHeight: 1.15
+          }
+          Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width * 0.6
+            height: 1
+            gradient: Gradient {
+              orientation: Gradient.Horizontal
+              GradientStop { position: 0; color: "transparent" }
+              GradientStop { position: 0.3; color: Skin.accent }
+              GradientStop { position: 0.7; color: Skin.violet }
+              GradientStop { position: 1; color: "transparent" }
+            }
+          }
+          Label {
+            width: parent.width
+            text: Skin.t("start.aboutCredit")
+            color: Skin.fg
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: 13 * Skin.u
+            font.weight: Font.DemiBold
+          }
+          Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Skin.t("start.aboutLicence")
+            color: Skin.dim
+            font.pixelSize: 12 * Skin.u
+          }
+          Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "github.com/nerdcules/fathom"
+            color: Skin.accent
+            font.pixelSize: 12 * Skin.u
+          }
+          Item { width: 1; height: 4 * Skin.u }
+          Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Skin.t("start.aboutClose")
+            color: Skin.dim
+            font.pixelSize: 11 * Skin.u
           }
         }
       }

@@ -457,5 +457,11 @@
   "bar.working": "working",
   "bar.idle": "idle",
   "bar.quiet": "Nothing needs you",
-  "bar.hint": "Click: the page with the news · Right-click: the deck · Middle-click: Start"
+  "bar.hint": "Click: the page with the news · Right-click: the deck · Middle-click: Start",
+  "start.about": "About Fathom",
+  "start.aboutDetail": "Who made it, and the licence",
+  "start.aboutPurpose": "A futuristic, Windows-inspired desktop layer for Omarchy, built for Docker, .NET and AI work.",
+  "start.aboutCredit": "An idea by Alan Seunarayan, developed with AI",
+  "start.aboutLicence": "MIT licence",
+  "start.aboutClose": "Press Esc or click anywhere to close"
 }
