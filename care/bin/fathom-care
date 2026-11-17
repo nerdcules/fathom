@@ -7,8 +7,10 @@
 #   fathom-care check [--notify]
 #                               the slow part: look for updates, measure what
 #                               uses the disk and what can be freed. Runs
-#                               hourly from a systemd user timer; --notify
-#                               sends a notification for each new warning
+#                               every 3 hours from a systemd user timer;
+#                               --notify sends a notification for each new
+#                               warning. Also looks for a Fathom update if
+#                               you turned that on (fathom-update auto on)
 #   fathom-care clean [--notify] <item>...
 #                               free these (see `status` for the list); the
 #                               system journal and package cache ask for
@@ -20,7 +22,8 @@
 #   fathom-care update          run Omarchy's update in a terminal
 #
 # Everything is measured on this machine. The update check asks the package
-# mirrors, the AUR and fwupd what's new, as Omarchy's own update check does.
+# mirrors, the AUR and fwupd what's new, as Omarchy's own update check does;
+# with fathom-update auto on, Fathom's git remote too.
 set -euo pipefail
 
 STATE="${XDG_STATE_HOME:-$HOME/.local/state}/fathom"
@@ -33,7 +36,7 @@ BAD_PCT=95
 JOURNAL_KEEP=200M
 
 usage() {
-  sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 notify() {
@@ -235,6 +238,12 @@ check() {
     '{checkedAt: (now | floor), breakdown: $b, reclaim: $r, updates: $u}' >"$CACHE.new"
   mv "$CACHE.new" "$CACHE"
 
+  # Fathom's own updates, only if you turned that on (fathom-update auto on):
+  # it fetches from Fathom's git remote.
+  if [[ -x $HOME/.local/bin/fathom-update ]]; then
+    "$HOME/.local/bin/fathom-update" check --auto >/dev/null 2>&1 || true
+  fi
+
   $notify_new && notify_warnings
   return 0
 }
@@ -290,14 +299,17 @@ status() {
   local snapshots=false
   [[ -f /etc/snapper/configs/root ]] && command -v snapper >/dev/null && snapshots=true
 
-  local units cache='null'
+  local units cache='null' fathom='null'
   units=$({ failed_units system; failed_units user; } | jq -sc '.[0:20]')
   [[ -s $CACHE ]] && cache=$(jq -c 'objects' "$CACHE" 2>/dev/null || echo null)
   [[ -n $cache ]] || cache=null
+  # fathom-update's last check, as it saved it; nothing is fetched here.
+  [[ -s $STATE/update.json ]] && fathom=$(jq -c 'objects' "$STATE/update.json" 2>/dev/null || echo null)
+  [[ -n $fathom ]] || fathom=null
 
   jq -n \
     --argjson size "$size" --argjson used "$used" --argjson free "$avail" \
-    --arg model "${model:0:64}" --argjson units "$units" --argjson cache "$cache" \
+    --arg model "${model:0:64}" --argjson units "$units" --argjson cache "$cache" --argjson fathom "$fathom" \
     --argjson battery "$bat_health" --argjson cycles "$cycles" --argjson temp "$temp" \
     --argjson lastUpdate "$last_update" --argjson reboot "$reboot" --argjson snapshots "$snapshots" \
     --argjson forecast "$(forecast)" \
@@ -312,6 +324,7 @@ status() {
              breakdown: ($cache.breakdown // null), forecastDays: $forecast},
       reclaim: ($cache.reclaim // []),
       updates: ($cache.updates // null),
+      fathom: $fathom,
       warnings: (
         [$units[] | {kind: "unit"} + .]
         + (if $pct >= $warnPct then [{kind: "disk", pct: $pct, level: (if $pct >= $badPct then "bad" else "warn" end)}] else [] end)

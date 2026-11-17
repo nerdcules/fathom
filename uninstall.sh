@@ -36,6 +36,9 @@ elif [[ -d $THEME_DIR ]]; then
   echo "Left $THEME_DIR alone: Fathom's installer did not make it."
 fi
 
+# fathom-update and its settings (what it recorded goes with ~/.local/state/fathom).
+rm -f "$HOME/.local/bin/fathom-update" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/update.json"
+
 # What fathom-look builds the theme from, the command, and your look.
 rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/fathom/theme"
 rm -f "$HOME/.local/bin/fathom-look" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/look.json"

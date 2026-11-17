@@ -77,6 +77,42 @@ that command finishes them, and `./uninstall.sh` removes them. If an install
 is killed part-way, the next run first puts back the plugin or theme it had
 moved aside.
 
+Each install records where it came from in `~/.local/state/fathom/source`:
+the clone, its commit and branch, the options and the parts installed, for
+[updating](#updating).
+
+### Updating
+
+```bash
+fathom-update                 # is there a newer Fathom, and what's in it
+fathom-update apply           # install it
+fathom-update rollback        # go back to the version before
+```
+
+Fathom updates from the git clone you installed it from. Versions are
+releases: git tags named for [semantic versions](https://semver.org),
+`vMAJOR.MINOR.PATCH`, with what changed in [CHANGELOG.md](CHANGELOG.md).
+`fathom-update` follows releases and never offers a pre-release such as
+`v0.2.0-rc1`; `fathom-update channel main` follows every commit on the
+branch instead (`channel releases` goes back).
+
+`fathom-update` (or `check`) fetches from the clone's remote and says what's
+new: the commits, the parts they touch, and whether reinstalling them needs
+your password. That `git fetch` is the only thing it sends; `fathom-update
+status` shows the last answer without going online. `apply` fetches again,
+moves the clone forward only if it can do so cleanly (`git merge
+--ff-only`), and runs `install.sh` again, with your options, for the parts
+whose files changed (all of them if `install.sh` changed), so a password is
+asked for only when a part that installs something as root changed. Your
+own uncommitted changes or commits in the clone stop it, and it says so.
+`rollback` moves the clone back to the version before the last `apply` and
+reinstalls the parts that differ.
+
+Care can look for you: `fathom-update auto on` adds the check to Care's
+3-hourly one (off unless you turn it on, since it contacts the remote), and
+Care's Updates card then shows Fathom's version and changes with an
+**Update Fathom** button. Its settings are in `~/.config/fathom/update.json`.
+
 ### What needs your password
 
 Everything not listed here runs as you. `install.sh`, `uninstall.sh` and
@@ -102,6 +138,7 @@ with `pkexec` (a polkit password prompt) otherwise; Sentinel and Crumbs use
 | | Care: freeing old package downloads | `paccache -rk1` |
 | | Care: freeing system logs | `journalctl --vacuum-size=200M` |
 | | Care: restarting a failed system service | `systemctl restart <that unit>` |
+| Any | `fathom-update apply` and `rollback` | Whatever `install.sh` runs as root for the parts being reinstalled, as above; nothing else |
 | `--signin` | `install.sh` | `signin/install-root.sh install`: copies the theme to `/usr/share/sddm/themes/fathom` (owned by root) and writes `/etc/sddm.conf.d/99-zz-fathom.conf`, which selects it |
 | | `uninstall.sh` | `signin/install-root.sh uninstall`: deletes both |
 
@@ -130,6 +167,9 @@ part it finds:
   `~/.local/share/fathom`. The root parts go as in the table above.
 
 These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
+
+- `~/.config/fathom/update.json`: `fathom-update`'s channel and whether
+  Care looks for updates (always), with `~/.local/bin/fathom-update`.
 
 - `~/.config/fathom/look.json`: your look from Personalise (always, even if
   `--skin` wasn't installed).
@@ -195,6 +235,10 @@ desk/plugin/fathom.desk/
 look/bin/fathom-look
                 Personalise's command: keeps your look and builds the theme
                 folder Omarchy reads from theme/ with it
+update/bin/fathom-update
+                Checks for, installs and rolls back Fathom updates; comes
+                with every install
+CHANGELOG.md    What changed in each release
 start/bin/fathom-start
                 The Start menu's command: recent projects, pins, asking
                 Claude Code, Focus mode and power
@@ -474,7 +518,8 @@ is open. It looks after the machine so you don't have to.
 A systemd user timer runs Care's check every 3 hours, and you get a
 notification when something new needs you: a service fails or the disk passes
 85% or 95%. The check asks the package mirrors, the AUR and fwupd what's new,
-as Omarchy's own update check does; nothing else leaves the machine. To turn
+as Omarchy's own update check does, and with `fathom-update auto on` Fathom's
+git remote what's new in Fathom; nothing else leaves the machine. To turn
 the timer off: `systemctl --user disable --now fathom-care.timer`.
 
 ```bash
@@ -912,6 +957,7 @@ already.
 | 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
+| 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
 
 Parts that change system files or the firewall (the sign-in screen,
 Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on

@@ -684,8 +684,37 @@ report_failure() {
 }
 trap report_failure EXIT
 
+# Where this install came from, for fathom-update: the clone, its commit and
+# branch, the options and every part installed so far.
+record_source() {
+  local commit="" branch="" dirty=false
+  if git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+    commit=$(git -C "$REPO" rev-parse HEAD)
+    branch=$(git -C "$REPO" symbolic-ref --short -q HEAD || true)
+    [[ -n $(git -C "$REPO" status --porcelain --untracked-files=no) ]] && dirty=true
+  fi
+  python3 -I - "$STATE_DIR/source" "$REPO" "$commit" "$branch" "$dirty" "$link" "$apply" "$opensnitch" "$INSTALLED" <<'PY'
+import json, os, sys, time
+out, repo, commit, branch, dirty, link, apply_, snitch, installed = sys.argv[1:]
+try:
+    parts = [l.strip() for l in open(installed) if l.strip()]
+except OSError:
+    parts = []
+data = {"repo": repo, "commit": commit or None, "branch": branch or None, "dirty": dirty == "true",
+        "link": link == "true", "apply": apply_ == "true", "opensnitch": snitch == "true",
+        "parts": parts}
+with open(out + ".new", "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+os.replace(out + ".new", out)
+PY
+}
+
 mkdir -p "$STATE_DIR"
 restore_staged
+# fathom-update comes with every install, whichever parts.
+place "$REPO/update/bin/fathom-update" "$BIN_DIR/fathom-update"
+chmod +x "$REPO/update/bin/fathom-update"
 for part in "${parts[@]}"; do
   current_part=$part
   "install_$part"
@@ -695,6 +724,7 @@ for part in "${parts[@]}"; do
 done
 current_part=""
 rm -rf "$STAGE"
+record_source
 if $restart_shell; then
   omarchy-restart-shell >/dev/null 2>&1 || echo "install.sh: restart the shell to load the update: omarchy-restart-shell" >&2
 fi

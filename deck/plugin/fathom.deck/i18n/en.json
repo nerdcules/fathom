@@ -635,5 +635,11 @@
   "crumbs.forgetTip": "Delete these cookies from this browser now",
   "crumbs.forgetRunning": "Close %1 first: while it runs it keeps them and would write them back",
   "crumbs.forgetAsk": "Forget %1's cookies?",
-  "crumbs.forgetAskBody": "Deletes them from %1. Sites you're signed in to under this domain will sign you out."
+  "crumbs.forgetAskBody": "Deletes them from %1. Sites you're signed in to under this domain will sign you out.",
+  "care.summary.fathom": "Fathom %1 is ready to install",
+  "care.fathomChanges": {
+    "one": "%1 change",
+    "other": "%1 changes"
+  },
+  "care.updateFathom": "Update Fathom"
 }

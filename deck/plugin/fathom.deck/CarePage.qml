@@ -18,6 +18,7 @@ GridLayout {
   signal restartRequested(string scope, string unit)
   signal logRequested(string scope, string unit)
   signal updateRequested()
+  signal fathomUpdateRequested()
   signal checkRequested()
 
   readonly property var disk: care ? care.disk : null
@@ -27,6 +28,9 @@ GridLayout {
   readonly property var info: care ? care.info : null
   readonly property bool busyChecking: checking || (!!care && care.checking === true)
   readonly property int updateCount: F.updateCount(updates)
+  // fathom-update's last check (Care only reads it; nothing is fetched).
+  readonly property var fathomUpdate: care && care.fathom ? care.fathom : null
+  readonly property bool fathomReady: !!fathomUpdate && fathomUpdate.available === true
 
   columns: 3
   columnSpacing: 20 * Skin.u
@@ -68,6 +72,7 @@ GridLayout {
     var need = 0
     for (var i = 0; i < warnings.length; i++) if (warnings[i].kind !== "disk") need++
     if (need > 0) out.push({ tone: "bad", text: Skin.tn("care.summary.warnings", need).arg(Skin.n(need)) })
+    if (fathomReady) out.push({ tone: "warn", text: Skin.t("care.summary.fathom").arg(fathomUpdate.target) })
     if (updates) {
       out.push(updateCount > 0
         ? { tone: "warn", text: Skin.tn("care.summary.updates", updateCount).arg(Skin.n(updateCount)) }
@@ -307,6 +312,16 @@ GridLayout {
       right1: page.updates && page.updates.firmware > 0 ? Skin.n(page.updates.firmware) : Skin.t("care.firmwareCurrent")
     }
     ListRow {
+      visible: page.fathomReady || (!!page.fathomUpdate && !!page.fathomUpdate.blocked)
+      tone: page.fathomReady ? Skin.accent : Skin.warn
+      name: "Fathom"
+      detail: !page.fathomUpdate ? "" : (page.fathomReady
+        ? Skin.tn("care.fathomChanges", page.fathomUpdate.commits.length).arg(Skin.n(page.fathomUpdate.commits.length))
+          + (page.fathomUpdate.needsPassword ? " · " + Skin.t("care.needsPassword") : "")
+        : page.fathomUpdate.blocked)
+      right1: page.fathomReady ? String(page.fathomUpdate.target) : ""
+    }
+    ListRow {
       visible: !!page.updates && !!page.updates.omarchy
       tone: Skin.violet
       name: "Omarchy"
@@ -354,6 +369,13 @@ GridLayout {
         glyph: ""
         text: Skin.t("care.updateAll")
         onClicked: page.updateRequested()
+      },
+      Pill {
+        visible: page.fathomReady
+        primary: page.updateCount === 0
+        text: Skin.t("care.updateFathom")
+        tip: page.fathomReady && page.fathomUpdate.needsPassword ? Skin.t("care.needsPassword") : ""
+        onClicked: page.fathomUpdateRequested()
       },
       Item { Layout.fillWidth: true },
       Label {

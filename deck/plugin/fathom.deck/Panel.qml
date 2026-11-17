@@ -54,6 +54,7 @@ Item {
   readonly property string pulseTool: home + "/.local/bin/fathom-pulse"
   readonly property string lookTool: home + "/.local/bin/fathom-look"
   readonly property string crumbsTool: home + "/.local/bin/fathom-crumbs"
+  readonly property string updateTool: home + "/.local/bin/fathom-update"
   readonly property string pluginId: (manifest && manifest.id) || "fathom.deck"
   // Care runs its own check when it's this stale (the timer may be off).
   readonly property int staleSeconds: 3 * 3600
@@ -565,6 +566,9 @@ Item {
         onRestartRequested: function(scope, unit) { root.restartUnit(scope, unit) }
         onUnitLogRequested: function(scope, unit) { root.handOff([root.careTool, "log", scope, unit]) }
         onUpdateRequested: root.handOff([root.careTool, "update"])
+        // Reinstalling restarts the shell (and may ask for a password), so
+        // the deck steps aside; a notification says how it went.
+        onFathomUpdateRequested: root.handOff([root.updateTool, "--notify", "apply"])
         onCheckRequested: root.check()
         sentinel: root.sentinel
         // Firewall changes ask for your password, so the deck steps aside.

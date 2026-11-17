@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Fathom's updates: is there a newer Fathom, what's in it, and install it.
+
+  fathom-update                 the same as check
+  fathom-update check [--auto]  fetch from Fathom's git remote and compare;
+                                --auto does nothing unless `auto on` (Care's
+                                timer uses it)
+  fathom-update status          the last check, as JSON, without going online
+  fathom-update apply           update the repo (fast-forward only) and
+                                re-run install.sh for the parts that changed
+  fathom-update rollback        go back to the version before the last apply
+  fathom-update channel releases|main
+                                follow releases (the default): tags named for
+                                semantic versions, vMAJOR.MINOR.PATCH, never
+                                pre-releases like v1.2.0-rc1; or every commit
+                                on the branch
+  fathom-update auto on|off     let Care's 3-hourly check look for updates
+                                (it contacts the git remote; off by default)
+
+  --notify (before the command) also says how it went in a notification.
+  --json (with check) prints the result as JSON.
+
+Fathom updates from the git clone it was installed from, recorded by
+install.sh in ~/.local/state/fathom/source. `check` and `apply` are the only
+commands that contact anything: a `git fetch` from that clone's remote.
+"""
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+HOME = os.path.expanduser("~")
+CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local", "state"), "fathom")
+BIN = os.path.join(HOME, ".local", "bin")
+SOURCE = os.path.join(STATE, "source")
+RESULT = os.path.join(STATE, "update.json")
+PREVIOUS = os.path.join(STATE, "update-previous")
+SETTINGS = os.path.join(CONFIG, "fathom", "update.json")
+DEFAULTS = {"channel": "releases", "auto": False}
+
+# Which folders each part installs from; install.sh itself touches them all.
+PARTS = {
+    "skin": ("theme/", "look/"),
+    "player": ("player/",),
+    "deck": ("deck/", "care/", "start/"),
+    "desk": ("desk/",),
+    "mail": ("mail/",),
+    "sentinel": ("sentinel/",),
+    "pulse": ("pulse/",),
+    "crumbs": ("crumbs/",),
+    "signin": ("signin/",),
+}
+ORDER = list(PARTS)
+# Parts whose install runs something as root: re-running them asks for the
+# password (sudo in a terminal, else a polkit prompt).
+ROOT_PARTS = ("sentinel", "crumbs", "signin")
+# What shows a part is installed, for installs from before install.sh
+# recorded its parts.
+EVIDENCE = {
+    "skin": os.path.join(BIN, "fathom-look"),
+    "player": os.path.join(BIN, "fathom-player"),
+    "deck": os.path.join(BIN, "fathom-deck"),
+    "desk": os.path.join(BIN, "fathom-desk"),
+    "mail": os.path.join(BIN, "fathom-mail"),
+    "sentinel": os.path.join(BIN, "fathom-sentinel"),
+    "pulse": os.path.join(BIN, "fathom-pulse"),
+    "crumbs": os.path.join(BIN, "fathom-crumbs"),
+    "signin": os.environ.get("FATHOM_UPDATE_SDDM_THEME", "/usr/share/sddm/themes/fathom"),
+}
+# A release: a semantic version tag. Pre-releases (v1.2.0-rc1) and other
+# tags are never offered on the releases channel.
+TAG = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+
+
+class UpdateError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- records
+
+
+def read_json(path, default):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else default
+    except (OSError, ValueError):
+        return default
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".new"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def settings():
+    s = dict(DEFAULTS)
+    s.update({k: v for k, v in read_json(SETTINGS, {}).items() if k in DEFAULTS})
+    if s["channel"] not in ("releases", "main"):
+        s["channel"] = DEFAULTS["channel"]
+    s["auto"] = s["auto"] is True
+    return s
+
+
+def installed_parts(source):
+    """The parts recorded by install.sh, plus any whose files are here (an
+    install from before parts were recorded)."""
+    parts = [p for p in source.get("parts", []) if p in PARTS]
+    for p, path in EVIDENCE.items():
+        if p not in parts and os.path.exists(path):
+            parts.append(p)
+    return [p for p in ORDER if p in parts]
+
+
+def find_source():
+    """Where Fathom was installed from. Recorded by install.sh since it
+    learned to; before that, a --link install still shows the repo through
+    its links."""
+    source = read_json(SOURCE, {})
+    if source.get("repo"):
+        return source
+    for name in ("fathom-deck", "fathom-look", "fathom-desk", "fathom-player", "fathom-sentinel"):
+        path = os.path.join(BIN, name)
+        if os.path.islink(path):
+            target = os.path.realpath(path)
+            repo = target.split(os.sep + name.replace("fathom-", "") + os.sep)[0]
+            if os.path.isfile(os.path.join(repo, "install.sh")):
+                return {"repo": repo, "link": True, "commit": None, "guessed": True}
+    raise UpdateError("Fathom's installer didn't record where it was installed from. "
+                      "Run ./install.sh once more from your Fathom clone, then try again.")
+
+
+# ---------------------------------------------------------------- git
+
+
+def git(repo, *args, check=True):
+    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True)
+    if check and r.returncode != 0:
+        raise UpdateError(f"git {' '.join(args)} failed: {(r.stderr or r.stdout).strip()[:300]}")
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def is_ancestor(repo, a, b):
+    return subprocess.run(["git", "-C", repo, "merge-base", "--is-ancestor", a, b],
+                          capture_output=True).returncode == 0
+
+
+def target_of(repo, channel, branch):
+    """(ref, label) of what to update to, or (None, reason)."""
+    if channel == "main":
+        ref = f"origin/{branch or 'main'}"
+        if git(repo, "rev-parse", "--verify", "-q", ref, check=False) is None:
+            return None, f"the remote has no branch {branch or 'main'}"
+        return ref, ref
+    tags = [t for t in (git(repo, "tag", "-l", "v*") or "").splitlines() if TAG.match(t)]
+    tags.sort(key=lambda t: tuple(int(n) for n in t[1:].split(".")), reverse=True)
+    if not tags:
+        return None, ("no release has been published yet; follow every commit instead with: "
+                      "fathom-update channel main")
+    return tags[0], tags[0]
+
+
+def parts_changed(repo, old, new, installed):
+    """The installed parts with files changed between old and new; all of
+    them when install.sh changed."""
+    names = (git(repo, "diff", "--name-only", f"{old}..{new}") or "").splitlines()
+    if "install.sh" in names:
+        return list(installed), names
+    hit = [p for p in installed if any(n.startswith(pre) for n in names for pre in PARTS[p])]
+    return hit, names
+
+
+def check(fetch=True):
+    source = find_source()
+    repo = source["repo"]
+    s = settings()
+    if git(repo, "rev-parse", "--git-dir", check=False) is None:
+        raise UpdateError(f"{repo} isn't a git clone, so Fathom can't update it. "
+                          "Install from a clone of the repository to get updates.")
+    if git(repo, "remote", "get-url", "origin", check=False) is None:
+        raise UpdateError(f"{repo} has no remote called origin to update from.")
+    if fetch:
+        git(repo, "fetch", "--quiet", "--tags", "origin")
+    head = git(repo, "rev-parse", "HEAD")
+    installed = source.get("commit") or head
+    branch = source.get("branch") or git(repo, "symbolic-ref", "--short", "-q", "HEAD", check=False) or "main"
+    ref, label = target_of(repo, s["channel"], branch)
+    parts = installed_parts(source)
+    result = {
+        "time": int(time.time()), "channel": s["channel"], "auto": s["auto"], "repo": repo,
+        "installed": installed[:12], "head": head[:12], "target": None, "available": False,
+        "version": git(repo, "describe", "--tags", "--always", installed, check=False),
+        "behind": 0, "commits": [], "parts": [], "needsPassword": False, "blocked": None,
+        "note": None, "installedParts": parts,
+    }
+    if ref is None:
+        result["note"] = label
+        return result
+    target = git(repo, "rev-parse", f"{ref}^{{commit}}")
+    result["target"] = label
+    if git(repo, "status", "--porcelain", "--untracked-files=no"):
+        result["blocked"] = f"{repo} has changes of yours that aren't committed; commit or undo them first"
+    elif is_ancestor(repo, target, head) and target != head:
+        result["note"] = f"this clone is ahead of {label}"
+    elif not is_ancestor(repo, head, target):
+        result["blocked"] = f"{repo} has commits that {label} doesn't; update it by hand (git pull)"
+    behind = int(git(repo, "rev-list", "--count", f"{head}..{target}") or 0)
+    result["behind"] = behind
+    log = git(repo, "log", "--format=%h %s", f"{installed}..{target}", "-n", "20", check=False) or ""
+    result["commits"] = [line for line in log.splitlines() if line]
+    changed, _ = parts_changed(repo, installed, target, parts) if installed != target else ([], [])
+    result["parts"] = changed
+    result["needsPassword"] = any(p in ROOT_PARTS for p in changed)
+    result["available"] = not result["blocked"] and installed != target and is_ancestor(repo, installed, target)
+    return result
+
+
+# ---------------------------------------------------------------- doing it
+
+
+def run_install(repo, source, parts):
+    flags = []
+    if source.get("link"):
+        flags.append("--link")
+    if source.get("apply") is False:
+        flags.append("--no-apply")
+    if source.get("opensnitch") and "sentinel" in parts:
+        flags.append("--opensnitch")
+    cmd = [os.path.join(repo, "install.sh"), *[f"--{p}" for p in parts], *flags]
+    print("Running:", " ".join(cmd), flush=True)
+    return subprocess.run(cmd).returncode
+
+
+def apply():
+    result = check()
+    write_json(RESULT, result)
+    if result["blocked"]:
+        raise UpdateError(result["blocked"])
+    if not result["available"]:
+        return "Fathom is up to date" + (f" ({result['note']})." if result["note"] else ".")
+    source = find_source()
+    repo = source["repo"]
+    old = git(repo, "rev-parse", "HEAD") if not source.get("commit") else source["commit"]
+    target = git(repo, "rev-parse", f"{result['target']}^{{commit}}")
+    with open(PREVIOUS, "w") as f:
+        f.write(old + "\n")
+    if result["behind"]:
+        git(repo, "merge", "--ff-only", "--quiet", target)
+    parts = result["parts"]
+    if parts:
+        code = run_install(repo, source, parts)
+        if code != 0:
+            raise UpdateError(f"install.sh failed (exit {code}); what it changed is listed above. "
+                              "To go back: fathom-update rollback")
+    else:
+        record_commit(target)
+    write_json(RESULT, check(fetch=False))
+    return f"Updated Fathom to {result['target']}" + (f" ({', '.join(parts)})." if parts else ".")
+
+
+def record_commit(commit):
+    """When no part needed reinstalling, install.sh doesn't run, so note the
+    new version here."""
+    source = read_json(SOURCE, {})
+    if source.get("repo"):
+        source["commit"] = commit
+        write_json(SOURCE, source)
+
+
+def rollback():
+    try:
+        with open(PREVIOUS) as f:
+            previous = f.read().strip()
+    except OSError:
+        raise UpdateError("there's no earlier version to go back to (no update has been applied)")
+    source = find_source()
+    repo = source["repo"]
+    current = source.get("commit") or git(repo, "rev-parse", "HEAD")
+    if git(repo, "status", "--porcelain", "--untracked-files=no"):
+        raise UpdateError(f"{repo} has changes of yours that aren't committed; commit or undo them first")
+    git(repo, "reset", "--keep", "--quiet", previous)
+    parts, _ = parts_changed(repo, previous, current, installed_parts(source))
+    if parts:
+        code = run_install(repo, source, parts)
+        if code != 0:
+            raise UpdateError(f"install.sh failed (exit {code}); what it changed is listed above")
+    else:
+        record_commit(previous)
+    os.remove(PREVIOUS)
+    write_json(RESULT, check(fetch=False))
+    return f"Fathom is back at {previous[:12]}."
+
+
+# ---------------------------------------------------------------- commands
+
+
+def describe(r):
+    lines = []
+    if r["blocked"]:
+        lines.append(f"Can't update: {r['blocked']}.")
+    elif r["available"]:
+        lines.append(f"An update is ready: {r['target']} ({len(r['commits'])} change"
+                     f"{'s' if len(r['commits']) != 1 else ''}), on the {r['channel']} channel.")
+        lines += [f"  {c}" for c in r["commits"]]
+        if r["parts"]:
+            lines.append("Reinstalls: " + ", ".join(r["parts"]) +
+                         (" (asks for your password)" if r["needsPassword"] else ""))
+        lines.append("Install it with: fathom-update apply")
+    else:
+        lines.append(f"Fathom is up to date ({r.get('version') or r['installed']}, {r['channel']} channel)." +
+                     (f" Note: {r['note']}." if r["note"] else ""))
+    return "\n".join(lines)
+
+
+def notify(text, urgent=False):
+    if shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-a", "Fathom", "-u", "critical" if urgent else "normal",
+                        "Fathom update", text], capture_output=True)
+
+
+def main(argv):
+    notifying = "--notify" in argv
+    as_json = "--json" in argv
+    argv = [a for a in argv if a not in ("--notify", "--json")]
+    cmd, args = (argv[0], argv[1:]) if argv else ("check", [])
+    if cmd in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return 0
+    try:
+        if cmd == "check":
+            if args == ["--auto"] and not settings()["auto"]:
+                return 0
+            if args not in ([], ["--auto"]):
+                raise UpdateError("check takes only --auto")
+            r = check()
+            write_json(RESULT, r)
+            print(json.dumps(r) if as_json else describe(r))
+            if notifying and r["available"]:
+                notify(describe(r).splitlines()[0])
+        elif cmd == "status":
+            print(json.dumps(read_json(RESULT, None)))
+        elif cmd == "apply":
+            done = apply()
+            print(done)
+            if notifying:
+                notify(done)
+        elif cmd == "rollback":
+            done = rollback()
+            print(done)
+            if notifying:
+                notify(done)
+        elif cmd == "channel":
+            if len(args) != 1 or args[0] not in ("releases", "main"):
+                raise UpdateError("channel takes releases or main")
+            s = settings()
+            s["channel"] = args[0]
+            write_json(SETTINGS, s)
+            print(f"Following {'tagged releases' if args[0] == 'releases' else 'every commit'} from now on.")
+        elif cmd == "auto":
+            if len(args) != 1 or args[0] not in ("on", "off"):
+                raise UpdateError("auto takes on or off")
+            s = settings()
+            s["auto"] = args[0] == "on"
+            write_json(SETTINGS, s)
+            print("Care's check will look for Fathom updates (it contacts the git remote)."
+                  if s["auto"] else "Care's check won't look for Fathom updates.")
+        else:
+            raise UpdateError(f"unknown command '{cmd}'; see fathom-update --help")
+    except UpdateError as e:
+        print(f"fathom-update: {e}", file=sys.stderr)
+        if notifying:
+            notify(f"Couldn't update Fathom: {e}", urgent=True)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

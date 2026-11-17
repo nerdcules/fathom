@@ -48,6 +48,7 @@ Item {
   signal restartRequested(string scope, string unit)
   signal unitLogRequested(string scope, string unit)
   signal updateRequested()
+  signal fathomUpdateRequested()
   signal checkRequested()
   signal lockdownRequested(bool on)
   signal blockRequested(string ip)
@@ -233,6 +234,7 @@ Item {
         onRestartRequested: function(scope, unit) { deck.restartRequested(scope, unit) }
         onLogRequested: function(scope, unit) { deck.unitLogRequested(scope, unit) }
         onUpdateRequested: deck.updateRequested()
+        onFathomUpdateRequested: deck.fathomUpdateRequested()
         onCheckRequested: deck.checkRequested()
       }
 

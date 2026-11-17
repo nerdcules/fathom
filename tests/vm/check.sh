@@ -102,5 +102,34 @@ vm '~/capture.sh final' >/dev/null
 same_as_baseline final "$user_rule"; check "  ...back to the state before Fathom, the user's own ufw rule kept" $?
 vm 'sudo ufw delete deny from 192.0.2.66 >/dev/null'
 
+# Updates: install from a git clone at v0.1.0, publish a v0.2.0 that changes
+# the desk, then fathom-update check, apply and rollback.
+ref=refs/fathom-vm/check
+git -C "$repo" update-ref "$ref" "$tree"
+git -C "$repo" bundle create -q "$logs/fathom.bundle" "$ref" 2>/dev/null
+git -C "$repo" update-ref -d "$ref"
+vm 'rm -rf ~/up.git ~/fathom-git ~/fathom-up ~/fathom.bundle && cat > ~/fathom.bundle' <"$logs/fathom.bundle"
+vm 'git clone -q --bare ~/fathom.bundle ~/up.git && git -C ~/up.git update-ref refs/heads/main refs/fathom-vm/check \
+    && git -C ~/up.git symbolic-ref HEAD refs/heads/main && git -C ~/up.git tag v0.1.0 main \
+    && git clone -q ~/up.git ~/fathom-git' >"$logs/update-setup.log" 2>&1
+step update-install 'cd ~/fathom-git && ./install.sh --desk'; check "install from a git clone at v0.1.0" $?
+vm 'fathom-update check --json' >"$logs/update-check-1.json" 2>&1
+jq -e '.available == false and .version == "v0.1.0"' "$logs/update-check-1.json" >/dev/null
+check "  ...fathom-update: up to date at v0.1.0" $?
+vm 'git clone -q ~/up.git ~/fathom-up && cd ~/fathom-up && echo "// fathom-update test" >> desk/plugin/fathom.desk/Glass.qml \
+    && git -c user.name=check -c user.email=check@example.invalid commit -qam "Desk: a test change" \
+    && git tag v0.2.0 && git push -q --tags origin main' >>"$logs/update-setup.log" 2>&1
+vm 'fathom-update check --json' >"$logs/update-check-2.json" 2>&1
+jq -e '.available and .target == "v0.2.0" and .parts == ["desk"] and (.needsPassword | not)' "$logs/update-check-2.json" >/dev/null
+check "  ...v0.2.0 found: one part (desk), no password" $?
+step update-apply 'fathom-update apply'; check "fathom-update apply" $?
+vm 'grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/Glass.qml && [ "$(jq -r .commit ~/.local/state/fathom/source)" = "$(git -C ~/fathom-git rev-parse v0.2.0)" ]'
+check "  ...the installed desk is v0.2.0's" $?
+step update-rollback 'fathom-update rollback'; check "fathom-update rollback" $?
+vm '! grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/Glass.qml'
+check "  ...the installed desk is v0.1.0's again" $?
+step update-uninstall 'cd ~/fathom-git && ./uninstall.sh'; check "uninstall after updating" $?
+vm 'rm -rf ~/up.git ~/fathom-git ~/fathom-up ~/fathom.bundle'
+
 echo "passed $pass, failed $fail (logs: $logs)"
 [[ $fail == 0 ]]
