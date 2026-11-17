@@ -244,6 +244,8 @@ pulse/systemd/  The collector (a user service)
 pulse/hypr/     Its key
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/ && python3 -m unittest discover -s tests
+tests/vm/       The same, for real, in a disposable Omarchy VM: install,
+                upgrade, uninstall and the firewall buttons (README there)
 install.sh      Installer
 uninstall.sh    Remove what the installer added (see "Uninstall", above)
 ```
@@ -519,7 +521,9 @@ clicking it opens Sentinel. Events found while catching up on the journal
 (after a restart, say) show in the deck without notifications.
 
 The page's buttons: **Lockdown** blocks every new incoming connection on
-Wi-Fi, wired and mobile interfaces (not loopback, Docker or VPNs); block or
+Wi-Fi, wired and mobile interfaces (not loopback, Docker or VPNs), SSH into
+this machine included: in the test VM (`tests/vm`), the SSH session that
+turned lockdown on carried on, and the next connection timed out; block or
 unblock an address; trust or forget a device; check files now; and open the
 firewall, sign-in or file-check log. The firewall buttons run a fixed root
 script, `/usr/local/lib/fathom-sentinel/admin`, through pkexec, and it checks
