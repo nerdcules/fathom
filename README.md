@@ -1,5 +1,7 @@
 # Fathom
 
+*Idea: [nerdcules](https://github.com/nerdcules) · Written by: Claude, in [Claude Code](https://claude.com/claude-code)*
+
 A futuristic, Windows-inspired desktop layer for [Omarchy](https://omarchy.org),
 built for Docker, .NET and AI work. Deep-space navy, cyan and violet, with
 windows framed in a cyan-to-violet gradient.
