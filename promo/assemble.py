@@ -8,7 +8,7 @@ takes/ (take.sh's desk.mp4 and look.mp4) and vo/ (voice.py's lines and
 lengths.json). Each shot becomes a 1920x1080 clip; the clips crossfade, the
 voice lines start 0.4 s into their shots, captions are burned in, and a
 quiet synthesized pad sits under the voice, ducking while it speaks.
-With --no-voice the captions carry the words alone, over the pad.
+With --no-voice the captions carry the words alone, with no sound at all.
 """
 
 import json
@@ -166,6 +166,11 @@ def main(work, out, voiced=True):
     run(["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(fc), "-map", "[v]",
          "-c:v", "libx264", "-crf", "18", "-preset", "slow", "-pix_fmt", "yuv420p", video])
 
+    if not voiced:
+        run(["ffmpeg", "-y", "-i", video, "-map", "0:v", "-c:v", "copy", "-an", "-movflags", "+faststart", out])
+        print(f"{out}: {total:.2f} s, {len(SHOTS)} shots, no sound")
+        return
+
     # Voice on the timeline.
     vo_in, vo_fc = [], []
     for i, at in enumerate(voice_at):
@@ -187,15 +192,11 @@ def main(work, out, voiced=True):
          "-af", f"lowpass=f=1800,afade=t=in:d=2,afade=t=out:st={total - 3:.3f}:d=3", "-ac", "1", music])
 
     mix = os.path.join(tmp, "mix.wav")
-    if voiced:
-        run(["ffmpeg", "-y", "-i", voice, "-i", music, "-filter_complex",
-             "[1:a]volume=0.45[m];[0:a]asplit=2[v1][v2];"
-             "[m][v2]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[duck];"
-             "[v1][duck]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11[out]",
-             "-map", "[out]", "-ar", "48000", mix])
-    else:
-        # The pad alone, quieter than speech would be: a background, not a voice.
-        run(["ffmpeg", "-y", "-i", music, "-af", "loudnorm=I=-20:TP=-2:LRA=11", "-ar", "48000", mix])
+    run(["ffmpeg", "-y", "-i", voice, "-i", music, "-filter_complex",
+         "[1:a]volume=0.45[m];[0:a]asplit=2[v1][v2];"
+         "[m][v2]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[duck];"
+         "[v1][duck]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11[out]",
+         "-map", "[out]", "-ar", "48000", mix])
 
     run(["ffmpeg", "-y", "-i", video, "-i", mix, "-map", "0:v", "-map", "1:a", "-c:v", "copy",
          "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", out])

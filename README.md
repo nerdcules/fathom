@@ -13,7 +13,7 @@ windows framed in a cyan-to-violet gradient.
 [![Personalise changing Fathom's accent and corners, from the promo](promo/video/preview.gif)](promo/video/fathom-promo.mp4)
 
 A 92.83-second tour: [with voiceover](promo/video/fathom-promo.mp4) or
-[captions only](promo/video/fathom-promo-captions.mp4). The desktop, the desk
+[captions only, no sound](promo/video/fathom-promo-captions.mp4). The desktop, the desk
 (Alt+Tab, Task view, Snap layouts, Quick settings) and Personalise are live
 recordings from a laptop running Fathom, made on 17 November 2026. Start, the
 Command Deck, Care, Sentinel, Pulse and Crumbs are the real pages drawn from
