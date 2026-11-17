@@ -7,16 +7,20 @@ git tag `vMAJOR.MINOR.PATCH`, which `fathom-update` offers on its default
 releases channel. Pre-release tags such as `v0.2.0-rc1` are never offered
 there.
 
-No release has been tagged yet; everything below is unreleased. Each line
-names its commit.
+Each line names its commit.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-11-17
+
+The first release: everything Fathom had on 17 November 2026.
 
 ### Added
 
 - `fathom-update`: check for a newer Fathom, install it and go back
   (`rollback`); follows releases by default, or every commit on `main`;
-  Care's Updates card shows a ready update when `fathom-update auto on`.
+  Care's Updates card shows a ready update when `fathom-update auto on`
+  (332a7c4).
 - `tests/vm`: the install, upgrade, uninstall and firewall checks in a
   disposable Omarchy VM (ffbe129).
 - Crumbs: every browser's cookies, the sites that led to trackers, and
@@ -56,3 +60,6 @@ names its commit.
   file check's cache is held to 1 GiB (c4c85b8).
 - Deck and Care: one tool's odd answer no longer blanks a page (5195495);
   the disks df could read still show when one mount can't be (2bffc44).
+
+[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nerdcules/fathom/releases/tag/v0.1.0
