@@ -66,8 +66,9 @@ checks always end it before connecting again.
 ### 17 November 2026
 
 VM: Omarchy 4.0.6 image updated to 4.5.0-3, ufw 0.36.2 with IPv6 on,
-4 CPUs and 8 GB under QEMU 11.1.2 with KVM. Checked: this repo at 846553a
-plus the changes committed with these scripts, against e132146.
+4 CPUs and 8 GB under QEMU 11.1.2 with KVM. Checked: 846553a with the
+changes since committed as 6b4f7d0 (the uninstall order) and 0877ec1 (the
+sign-in message), against e132146.
 
 - Three runs in a row of `check.sh`: 17 passed, 0 failed each; 52 to 55 s
   each. `fwtest.sh`: 15 passed, 0 failed in each.

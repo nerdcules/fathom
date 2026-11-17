@@ -121,11 +121,13 @@ part it finds:
   It deletes `~/.config/omarchy/themes/fathom` if Fathom built it (a
   `fathom` theme it didn't make is left), `~/.local/share/fathom/theme` and
   `~/.local/bin/fathom-look`.
+- **Fathom's block in `hyprland.lua`** goes first, and Hyprland reloads,
+  while the files it loads are still there: deleting them first sometimes
+  froze Hyprland in the test VM (see `tests/vm/README.md`).
 - **Each part:** stops it, turns its shell plugin off, and deletes its
   command in `~/.local/bin`, its file in `~/.config/hypr`, its plugin in
-  `~/.config/omarchy/plugins`, its user services and timer, its files in
-  `~/.local/share/fathom`, and Fathom's block in `hyprland.lua`, then reloads
-  Hyprland. The root parts go as in the table above.
+  `~/.config/omarchy/plugins`, its user services and timer, and its files in
+  `~/.local/share/fathom`. The root parts go as in the table above.
 
 These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
 
@@ -824,6 +826,8 @@ Omarchy's sign-in screen back.
 
 If the machine signs in automatically at boot (Omarchy's default with disk
 encryption), the sign-in screen only appears after signing out.
+`install.sh --signin` says which applies, from the `[Autologin]` user in
+SDDM's configuration.
 
 The theme has three wallpapers: **horizon** (a planet's glowing rim), **eclipse**
 (a black disc with a cyan-to-violet corona) and **hexgrid** (quiet, for working).
