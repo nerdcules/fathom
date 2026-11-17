@@ -425,6 +425,17 @@ firewall, sign-in or file-check log. The firewall buttons run a fixed root
 script, `/usr/local/lib/fathom-sentinel/admin`, through pkexec, and it checks
 every argument. Nothing leaves the machine.
 
+A firewall rule is Fathom's only if it carries Fathom's comment
+(`fathom-lockdown` or `fathom-block`) and has exactly the shape the buttons
+add: `deny in on <interface>` or `deny from <address>`, IPv4 and IPv6.
+Ending lockdown, unblocking and `uninstall.sh` remove only those, each by its
+full description with the comment and never by rule number, and check the
+rule files afterwards: every other rule stays, even one that differs from
+Fathom's only by its comment. Pressing Lockdown or Block again adds nothing.
+If a rule of yours matches the one Fathom would add apart from its action
+or comment, ufw would skip Fathom's, so Lockdown and Block change nothing and
+name your rule instead; a notification says why.
+
 ```bash
 fathom-sentinel status | jq .        # what Sentinel shows, as JSON
 fathom-sentinel trust <mac>          # mark a device as yours
@@ -435,7 +446,8 @@ fathom-sentinel log firewall         # today's blocks, in a terminal
 It needs `ufw`, `jq`, `iw` and `ip`. `--opensnitch` also installs OpenSnitch
 and starts its window, which asks the first time each app connects somewhere
 new. `uninstall.sh` removes the firewall rules Sentinel's buttons added, and
-removes OpenSnitch only if Fathom installed it.
+removes OpenSnitch only if Fathom installed it. A rule with Fathom's comment
+but another shape may be yours, so it is left and named.
 
 ## Pulse
 
@@ -560,7 +572,9 @@ services:
 Omarchy's firewall blocks containers from the host, so `--pulse` adds one ufw
 rule: TCP 4317 and 4318, from Docker's `172.16.0.0/12` range, to the bridge
 address only. A Docker network outside `172.16.0.0/12` isn't
-covered. `uninstall.sh` removes the rule.
+covered. `uninstall.sh` removes the rule, naming its comment
+(`fathom-pulse`) so that ufw leaves a rule of yours that differs only by
+its comment.
 
 ```bash
 fathom-pulse                     # open the page

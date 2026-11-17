@@ -118,24 +118,32 @@ def firewall():
     except OSError:
         pass
     active = run(["systemctl", "is-active", "ufw.service"]).strip() == "active"
+    lockdown, blocked = fathom_rules()
+    return {"on": enabled and active, "lockdown": lockdown, "blocked": blocked}
+
+
+def fathom_rules(paths=("/etc/ufw/user.rules", "/etc/ufw/user6.rules")):
+    """Is lockdown on, and which addresses are blocked, by Fathom's rules.
+    IPv4 rules, then IPv6 ones: an IPv6 address is blocked only in user6.rules."""
     lockdown, blocked = False, []
-    try:
-        with open("/etc/ufw/user.rules", encoding="utf-8") as f:
-            for line in f:
-                if not line.startswith("### tuple ###"):
-                    continue
-                m = re.search(r"comment=([0-9a-f]+)", line)
-                tag = bytes.fromhex(m.group(1)).decode("utf-8", "replace") if m else ""
-                if tag == LOCKDOWN_TAG:
-                    lockdown = True
-                elif tag == BLOCK_TAG:
-                    parts = line.split()
-                    # ### tuple ### deny any any 0.0.0.0/0 any <src> in comment=...
-                    if len(parts) >= 9:
-                        blocked.append(parts[8].split("/")[0])
-    except OSError:
-        pass
-    return {"on": enabled and active, "lockdown": lockdown, "blocked": sorted(set(blocked))[:50]}
+    for path in paths:
+        try:
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    if not line.startswith("### tuple ###"):
+                        continue
+                    m = re.search(r"comment=([0-9a-f]+)", line)
+                    tag = bytes.fromhex(m.group(1)).decode("utf-8", "replace") if m else ""
+                    if tag == LOCKDOWN_TAG:
+                        lockdown = True
+                    elif tag == BLOCK_TAG:
+                        parts = line.split()
+                        # ### tuple ### deny any any 0.0.0.0/0 any <src> in comment=...
+                        if len(parts) >= 9:
+                            blocked.append(parts[8].split("/")[0])
+        except OSError:
+            pass
+    return lockdown, sorted(set(blocked))[:50]
 
 
 def opensnitch():
@@ -403,7 +411,14 @@ def trust(args, on):
 def admin(*args):
     if not os.path.exists(ADMIN):
         sys.exit("fathom-sentinel: the firewall buttons aren't installed; run ./install.sh --sentinel")
-    sys.exit(subprocess.run(["pkexec", ADMIN, *args]).returncode)
+    r = subprocess.run(["pkexec", ADMIN, *args], stderr=subprocess.PIPE, text=True)
+    sys.stderr.write(r.stderr)
+    # The deck starts this without a terminal, so say why nothing changed.
+    # 126 and 127: the password prompt was dismissed or refused.
+    if r.returncode not in (0, 126, 127) and r.stderr.strip():
+        reason = r.stderr.strip().removeprefix("fathom-sentinel admin: ")
+        notify("Sentinel couldn't finish that", reason, 2)
+    sys.exit(r.returncode)
 
 
 def ip_arg(args):

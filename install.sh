@@ -14,6 +14,8 @@ SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fathom"
 PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 HYPR_BEGIN="-- fathom: begin (added by Fathom's install.sh; uninstall.sh removes it)"
 HYPR_END="-- fathom: end"
+# Read only, for Pulse's firewall rule; tests point it at a scratch folder.
+UFW_DIR="${FATHOM_UFW_DIR:-/etc/ufw}"
 
 skin=false
 signin=false
@@ -450,6 +452,23 @@ install_sentinel() {
   echo "Sentinel is watching. Press Super+Alt+X to see it."
 }
 
+# Whose is the ufw rule letting containers reach Pulse at this address:
+# "fathom" (it has Fathom's comment), "yours" (one that matches apart from
+# its action or comment), or nothing. ufw's rule files are world-readable.
+pulse_rule_owner() {
+  local bridge=$1 hex line owner=""
+  hex=$(printf fathom-pulse | od -An -tx1 | tr -d ' \n')
+  while read -r line; do
+    if [[ $line == "### tuple ### allow tcp 4317,4318 $bridge any 172.16.0.0/12 in comment=$hex" ]]; then
+      owner=${owner:-fathom}
+    else
+      owner=yours
+    fi
+  done < <(grep -E "^### tuple ### [^ ]+ tcp 4317,4318 ${bridge//./\\.} any 172\\.16\\.0\\.0/12 in( |\$)" \
+    "$UFW_DIR/user.rules" 2>/dev/null || true)
+  echo "$owner"
+}
+
 install_pulse() {
   if ! python3 -I -c 'import grpc, google.protobuf, opentelemetry.proto' 2>/dev/null; then
     echo "install.sh: Pulse needs python-opentelemetry-proto, python-grpcio and python-protobuf." >&2
@@ -481,13 +500,20 @@ install_pulse() {
   # Containers reach Pulse on Docker's bridge address, and a firewall that
   # denies incoming connections (Omarchy's ufw) blocks them there. Allow
   # only Docker's private ranges, only to that address, only these ports.
-  local bridge
+  local bridge owner
   bridge=$(ip -j -4 addr show docker0 2>/dev/null | jq -r '.[0].addr_info[0].local // empty' 2>/dev/null || true)
   if [[ -n $bridge ]] && command -v ufw >/dev/null; then
-    mkdir -p "$STATE_DIR"
-    printf '%s\n' "$bridge" >"$STATE_DIR/pulse-bridge"
-    as_root ufw allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318 comment fathom-pulse >/dev/null ||
-      echo "install.sh: couldn't let containers through the firewall; they can't reach Pulse until you do (see the README)." >&2
+    owner=$(pulse_rule_owner "$bridge")
+    if [[ $owner == yours ]]; then
+      # ufw would turn your rule into Fathom's (its comment and action)
+      # instead of adding one, and uninstall.sh would then remove it.
+      echo "install.sh: a firewall rule of yours already decides whether containers reach Pulse's ports; Fathom leaves it and adds none."
+    elif [[ $owner != fathom ]]; then
+      mkdir -p "$STATE_DIR"
+      printf '%s\n' "$bridge" >"$STATE_DIR/pulse-bridge"
+      as_root ufw allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318 comment fathom-pulse >/dev/null ||
+        echo "install.sh: couldn't let containers through the firewall; they can't reach Pulse until you do (see the README)." >&2
+    fi
   fi
 
   echo "Pulse is listening. Point an app's OpenTelemetry exporter at it (see the README), then press Super+Alt+P."

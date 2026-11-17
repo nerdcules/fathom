@@ -5,13 +5,21 @@
 #   install-root.sh install <sentinel dir> [--opensnitch]
 #   install-root.sh uninstall
 set -euo pipefail
-export PATH=/usr/bin
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-LIB=/usr/local/lib/fathom-sentinel
-UNITS=/etc/systemd/system
+# Tests set FATHOM_SENTINEL_ROOT to a scratch folder and FATHOM_SENTINEL_PATH
+# to stand-in commands; sudo and pkexec drop both, so in use this is /.
+ROOT=${FATHOM_SENTINEL_ROOT:-}
+if [[ -n $ROOT ]]; then
+  export PATH="${FATHOM_SENTINEL_PATH:?}:/usr/bin" FATHOM_SENTINEL_ETC="$ROOT/etc"
+else
+  export PATH=/usr/bin
+  (( EUID == 0 )) || { echo "install-root.sh: run as root" >&2; exit 1; }
+fi
+
+LIB=$ROOT/usr/local/lib/fathom-sentinel
+UNITS=$ROOT/etc/systemd/system
 MARK_SNITCH=$LIB/opensnitch-installed-by-fathom
-
-(( EUID == 0 )) || { echo "install-root.sh: run as root" >&2; exit 1; }
 
 install_parts() {
   local src=$1 snitch=$2
@@ -36,23 +44,15 @@ install_parts() {
   fi
 }
 
+# The firewall rules the buttons added: only rules with Fathom's comment and
+# shape, each removed by its full description, comment included, so a rule
+# of yours that matches one of them is kept. The helper names any it
+# leaves. It is this copy, not the installed one, so rules an older install
+# added go by today's checks.
+rules_left=false
 remove_fathom_rules() {
-  # Firewall rules the buttons added, found by their comments.
-  local hex_lock hex_block line spec
-  hex_lock=$(printf 'fathom-lockdown' | od -An -tx1 | tr -d ' \n')
-  hex_block=$(printf 'fathom-block' | od -An -tx1 | tr -d ' \n')
-  [[ -f /etc/ufw/user.rules ]] || return 0
-  grep -h "^### tuple ###" /etc/ufw/user.rules /etc/ufw/user6.rules 2>/dev/null |
-    grep -E "comment=($hex_lock|$hex_block)$" | while read -r line; do
-      # ### tuple ### deny any any 0.0.0.0/0 any <src> in[_<iface>] comment=...
-      read -r _ _ _ action _ _ _ _ src dir _ <<<"$line"
-      if [[ $dir == in_* ]]; then
-        spec=(deny in on "${dir#in_}")
-      else
-        spec=(deny from "${src%/*}")
-      fi
-      ufw delete "${spec[@]}" >/dev/null 2>&1 || true
-    done
+  command -v ufw >/dev/null || return 0
+  python3 -I "$HERE/root/admin" remove-all || rules_left=true
 }
 
 uninstall_parts() {
@@ -65,8 +65,12 @@ uninstall_parts() {
     pacman -Rns --noconfirm opensnitch || true
     echo "Removed OpenSnitch (Fathom had installed it)."
   fi
-  rm -rf "$LIB" /var/lib/fathom-sentinel
+  rm -rf "$LIB" "$ROOT/var/lib/fathom-sentinel"
   echo "Removed Sentinel's root parts."
+  if $rules_left; then
+    echo "install-root.sh: some firewall rules were left; see above." >&2
+    return 3
+  fi
 }
 
 case "${1:-}" in

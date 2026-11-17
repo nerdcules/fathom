@@ -130,7 +130,9 @@ if [[ -e $HOME/.local/bin/fathom-pulse || -f $UNITS/fathom-pulse.service ]]; the
   rmdir "${XDG_DATA_HOME:-$HOME/.local/share}/fathom" 2>/dev/null || true
   if [[ -s $STATE_DIR/pulse-bridge ]] && command -v ufw >/dev/null; then
     bridge=$(<"$STATE_DIR/pulse-bridge")
-    rule=(delete allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318)
+    # With its comment, ufw deletes only Fathom's rule: without one it also
+    # deletes any rule of yours that matches apart from the comment.
+    rule=(delete allow proto tcp from 172.16.0.0/12 to "$bridge" port 4317,4318 comment fathom-pulse)
     if [[ -t 0 ]]; then
       sudo ufw "${rule[@]}" >/dev/null || true
     else
