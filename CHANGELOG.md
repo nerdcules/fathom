@@ -11,6 +11,17 @@ Each line names its commit.
 
 ## [Unreleased]
 
+### Added
+
+- `tests/vm`: the VM checks run in WSL2 on Windows 11, with
+  `FATHOM_VM_DISPLAY=vnc` (no 3D), and `run.sh` types the VM disk's
+  passphrase from a file there (`qmp.py`) (2113525).
+
+### Fixed
+
+- `tests/vm/run.sh` stopped at once, saying nothing, when the VM folder had
+  no installer image; it needs one only for `run.sh install` now (2113525).
+
 ## [0.2.0] - 2026-11-18
 
 The laptop side of Fathom for Android, and Fathom's version on screen.

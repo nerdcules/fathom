@@ -139,6 +139,29 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### 18 November 2026, Windows 11 (WSL2)
+
+PC: Windows 11 Pro build 26300, WSL 2.7.13 (kernel 6.18.33.2), an Arch
+Linux distro with QEMU 11.1.3 and KVM, an i7-8700 with 64 GB. VM: the same
+one as below (Omarchy 4.5.0-3), its `disk.qcow2` and `vars.fd` copied from
+this laptop (SHA256 the same after the copy), with `FATHOM_VM_DISPLAY=vnc`
+(no 3D). Driven over SSH from this laptop.
+
+- At 0100fa8, with the old `run.sh` changed by hand to VNC and the
+  passphrase typed through QMP: `check.sh` 26 passed, 0 failed, in 86 s.
+- At 0100fa8 with this work uncommitted, two boots by the new `run.sh`, each
+  with a full `check.sh`: 26 passed, 0 failed, in 84 s (before the last two
+  changes: "no surface" in `qmp.py`, and typing only with `vnc`), then 26
+  passed, 0 failed, in 80 s with the scripts committed as 2113525.
+  `fwtest.sh` inside it: 15 passed, 0 failed in all three runs.
+- The unlock, with 2113525's `run.sh` and `qmp.py` (the same SHA256 on the PC
+  as here): the prompt was seen at 11 s, typed once, not asked again; the VM
+  answered SSH about 16 s after `run.sh` started.
+- On this laptop, `run.sh` with the default GTK window started and quit
+  cleanly (exit 0) with the control socket added; the unlock can't work
+  there (above). No full `check.sh` was run here with 2113525.
+- The phone part (`--phone`) isn't in these checks.
+
 ### 18 November 2026 (0.2.0)
 
 Same VM: Omarchy 4.5.0-3, ufw 0.36.2. Checked 4591e64 against e132146:
