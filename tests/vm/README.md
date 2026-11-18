@@ -37,6 +37,27 @@ to the VM at `10.0.2.2:8765` while it runs.
 Keyboard keys like Super go to the machine running the VM until you press
 Ctrl+Alt+G in the VM window (again to let go).
 
+Omarchy's installer encrypts the disk, so each boot stops at "A password is
+required to access the root volume". Type it in the window, or, with
+`FATHOM_VM_DISPLAY=vnc` (below), let `run.sh` type it. With the window (the
+default) it can't: once the VM's 3D driver takes the screen, QEMU can't
+read it ("no surface", from 7 s into the boot on this laptop), so the prompt
+is never seen. For `vnc`, put it in `$FATHOM_VM/passphrase` (readable by you alone,
+`chmod 600`; `run.sh` won't use it otherwise) and the VM's keyboard layout
+at that prompt, `uk` or `us`, in `$FATHOM_VM/keymap` (`us` if there's
+none). `qmp.py` then watches the screen through QEMU's control socket
+(`$FATHOM_VM/qmp.sock`), types it once when the prompt shows, and logs to
+`$FATHOM_VM/logs/unlock.log`. It never types a second time, so a wrong
+passphrase in the file leaves the prompt waiting for you rather than using
+up systemd's tries. It types only letters, digits, `#` and `~`. Anyone who
+can read that file and the disk image can open the VM's disk: fine for a
+throwaway VM, not for one holding anything of yours.
+
+`FATHOM_VM_DISPLAY=vnc tests/vm/run.sh` starts the VM with no window and no
+3D (`virtio-vga`, the screen on VNC at `127.0.0.1:5900`), for a machine with
+no GPU that Linux can render with; the default, `gtk`, is the window with 3D
+(`virtio-vga-gl`). Hyprland in the VM then draws without the host's GPU.
+
 ## Each time: run the checks
 
 With the VM running and Fathom not installed in it:
@@ -63,6 +84,58 @@ check`, `apply` and `rollback` against the plugin actually installed. Logs go to
 Each step has 5 minutes; a step that hangs fails rather than stopping the
 check. Fathom's lockdown blocks new SSH connections into the VM, so the
 checks always end it before connecting again.
+
+## On Windows 11 (WSL2)
+
+The same scripts run in an Arch Linux distro under WSL2, with QEMU using KVM
+through WSL's nested virtualization. Checked once, on 18 November 2026 (see
+Results): Windows 11 Pro build 26300, WSL 2.7.13 (kernel 6.18.33.2), an
+i7-8700 with 64 GB.
+
+What differs from a Linux machine, and what to do about it:
+
+- **No 3D.** WSL has no `/dev/dri`, only `/dev/dxg`, so QEMU's
+  `egl-headless` fails ("no drm render node available"), and its GTK
+  window, with or without GL, never got as far as opening the control socket
+  when started from an SSH session into Windows (12 s each; from a desktop
+  session on the PC it wasn't tried). Use `FATHOM_VM_DISPLAY=vnc`: Omarchy's
+  Hyprland came up with it, and every check passed.
+- **Windows programs from WSL.** With systemd on, Arch's `systemd-binfmt`
+  clears WSL's interop entry, and Windows programs fail with "Exec format
+  error". Microsoft's fix: `echo ':WSLInterop:M::MZ::/init:PF' | sudo tee
+  /etc/binfmt.d/WSLInterop.conf`, then restart the distro.
+- **Slow downloads in WSL** (on that PC; it may not happen on yours). A
+  130,369-byte file came at 942,967 B/s from Windows and 76,933 B/s from WSL,
+  and pacman's first download crawled at about 0.17 MB/s. Having pacman
+  download with Windows' `curl.exe` instead (an `XferCommand` script that
+  runs `/mnt/c/Windows/System32/curl.exe -s -S -L -f -C - -o "$(wslpath -w
+  "$2")" "$1"`, with `DownloadUser` commented out, since curl.exe's files
+  don't arrive as pacman's download user) took the same install from more
+  than 25 minutes, unfinished, to 87 s. pacman still checks each package's
+  signature.
+
+Setting it up, in PowerShell on the PC:
+
+```powershell
+wsl --install archlinux --name fathom-test --no-launch
+wsl -d fathom-test -u root -- pacman-key --init
+wsl -d fathom-test -u root -- pacman-key --populate archlinux
+# the interop fix above, and the curl.exe downloads if WSL's are slow, then:
+wsl -d fathom-test -u root -- pacman -Syu --noconfirm qemu-desktop edk2-ovmf openssh git python jq sudo
+```
+
+Then make a user in the `kvm` group, and give the distro the VM: either
+`make-vm.sh` and an install (`run.sh install` needs a window, so not with
+`vnc`), or a copy of a VM already made on another machine: its
+`disk.qcow2`, `vars.fd` and `vm_key`, into `~/VMs/omarchy-test` on WSL's own
+disk, not under `/mnt/c`. Fathom must not be installed in the copy. Clone
+this repo there too, with its history: `check.sh` installs the older commit
+from it.
+
+```bash
+FATHOM_VM_DISPLAY=vnc tests/vm/run.sh &    # with passphrase and keymap set (above)
+FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
+```
 
 ## Results
 

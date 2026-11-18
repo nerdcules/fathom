@@ -312,7 +312,8 @@ pulse/hypr/     Its key
 art/            make-art.py, which draws the wallpapers, preview and logo
 tests/          node --test tests/ && python3 -m unittest discover -s tests
 tests/vm/       The same, for real, in a disposable Omarchy VM: install,
-                upgrade, uninstall and the firewall buttons (README there)
+                upgrade, uninstall and the firewall buttons, on Linux or
+                in WSL2 on Windows 11 (README there)
 install.sh      Installer
 uninstall.sh    Remove what the installer added (see "Uninstall", above)
 ```
