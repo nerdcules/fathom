@@ -316,5 +316,13 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual(self.recorded(), [f"sankofa done e1 done, from the phone in {repo}"])
 
 
+    def test_a_phone_can_unpair_itself_and_only_itself(self):
+        fp, dev = self.paired()
+        self.assertEqual(self.call("POST", "/v1/unpair", fp)[0], 401)
+        self.assertEqual(self.call("POST", "/v1/unpair", fp, {}, token=dev["token"]), (200, {"unpaired": True}))
+        self.assertEqual(self.call("GET", "/v1/status", fp, token=dev["token"])[0], 401)
+        self.assertEqual(self.call("POST", "/v1/unpair", fp, {}, token=dev["token"])[0], 401)
+
+
 if __name__ == "__main__":
     unittest.main()

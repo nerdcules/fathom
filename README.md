@@ -814,7 +814,8 @@ a home screen for your phone in Fathom's look. Install it with
 ```bash
 fathom-phone pair        # shows a QR code for 2 minutes; scan it in the app
 fathom-phone devices     # the phones paired
-fathom-phone unpair <id> # forget one; its token stops working
+fathom-phone unpair <id> # forget one; its token stops working (forgetting
+                         # the laptop in the app does the same)
 fathom-phone alerts      # what a phone would be told about now, as JSON
 fathom-phone test-alert  # a test alert for 10 minutes, to check notifications
 ```

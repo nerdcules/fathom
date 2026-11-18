@@ -30,6 +30,8 @@ Each line names its commit.
   still held and the last note (repos whose `.sankofa/` has gone are left
   out). An item waiting on you is an alert, with a Done action that runs
   `sankofa done` in its repo.
+- `fathom-phone`: a phone can unpair itself (`POST /v1/unpair`), so
+  forgetting the laptop in the app also stops its token working here.
 
 ## [0.1.0] - 2026-11-17
 

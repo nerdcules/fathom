@@ -459,11 +459,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self.reply(404, {"error": "no such thing"})
 
     def do_POST(self):
-        if self.path not in ("/v1/pair", "/v1/action"):
+        if self.path not in ("/v1/pair", "/v1/action", "/v1/unpair"):
             return self.reply(404, {"error": "no such thing"})
         length = int(self.headers.get("Content-Length") or 0)
         if length > MAX_BODY:
             return self.reply(413, {"error": "too large"})
+        if self.path == "/v1/unpair":
+            # A phone forgetting this laptop: its token stops working here too.
+            dev = self.device()
+            if dev is None:
+                return self.reply(401, {"error": "not paired"})
+            with LOCK:
+                save_devices([d for d in devices() if d["id"] != dev["id"]])
+            print(f"fathom-phone: {dev.get('name')} ({dev.get('id')}) unpaired itself", flush=True)
+            return self.reply(200, {"unpaired": True})
         if self.path == "/v1/action":
             dev = self.device()
             if dev is None:
@@ -484,13 +493,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.reply(400, {"error": "bad request"})
         with LOCK:
             window = read_json(PAIRING, None)
+            who = self.client_address[0]
             if not window or window.get("closed") or time.time() > window.get("expires", 0):
+                print(f"fathom-phone: pairing refused for {name!r} from {who}: no window open", flush=True)
                 return self.reply(403, {"error": "no pairing window open; run fathom-phone pair"})
             if not hmac.compare_digest(digest(secret), window.get("secretHash", "")):
                 window["tries"] = window.get("tries", 0) + 1
                 if window["tries"] >= PAIR_TRIES:
                     window["closed"] = "too many wrong tries"
                 write_private(PAIRING, window)
+                print(f"fathom-phone: pairing refused for {name!r} from {who}: wrong secret "
+                      f"(try {window['tries']} of {PAIR_TRIES})", flush=True)
                 return self.reply(403, {"error": "wrong secret"})
             token = secrets.token_urlsafe(32)
             dev = {"id": secrets.token_hex(4), "name": name, "tokenHash": digest(token),
@@ -500,6 +513,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             save_devices(devs)
             window.update(closed="paired", device=dev["id"], deviceName=name)
             write_private(PAIRING, window)
+            print(f"fathom-phone: paired {name!r} ({dev['id']}) from {who}", flush=True)
         return self.reply(200, {"deviceId": dev["id"], "token": token, "host": socket.gethostname(), "api": API})
 
 
