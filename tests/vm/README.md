@@ -66,6 +66,16 @@ checks always end it before connecting again.
 
 ## Results
 
+### 18 November 2026 (0.2.0)
+
+Same VM: Omarchy 4.5.0-3, ufw 0.36.2. Checked 4591e64 against e132146:
+`check.sh` 26 passed, 0 failed, in 80 s or so; `fwtest.sh` 15 passed, 0
+failed. The first run, at 814f460, had one failure: the "they are this
+checkout's" comparison, since install.sh now writes the version into the
+installed `Version.js` (de83adc). The check leaves that file out now, and
+a new one makes sure the deck's and desk's copies were written (4591e64).
+The phone part (`--phone`) isn't in these checks.
+
 ### 17 November 2026
 
 VM: Omarchy 4.0.6 image updated to 4.5.0-3, ufw 0.36.2 with IPv6 on,
