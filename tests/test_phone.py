@@ -5,6 +5,8 @@ unpairing, and what a paired phone can read."""
 
 import hashlib
 import http.client
+import http.server
+import threading
 import json
 import os
 import shutil
@@ -66,11 +68,28 @@ class PhoneTest(unittest.TestCase):
             with open(path, "w") as f:
                 f.write("#!/bin/sh\n" + script + "\n")
             os.chmod(path, 0o755)
+        # A stand-in ntfy: keeps each ping's topic.
+        self.pings = []
+        pings = self.pings
+
+        class Ntfy(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get("Content-Length") or 0))
+                pings.append(self.path.strip("/"))
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+        self.ntfy = http.server.HTTPServer(("127.0.0.1", 0), Ntfy)
+        threading.Thread(target=self.ntfy.serve_forever, daemon=True).start()
+        self.ntfy_port = self.ntfy.server_address[1]
         self.port = free_port()
         self.env = dict(os.environ, HOME=self.home, XDG_CONFIG_HOME=os.path.join(self.home, ".config"),
                         XDG_STATE_HOME=os.path.join(self.home, ".local", "state"),
                         FATHOM_PHONE_PORT=str(self.port), FATHOM_PHONE_BIND="127.0.0.1", CALLS=self.calls,
-                        FATHOM_CLAUDE=self.claude_stub())
+                        FATHOM_CLAUDE=self.claude_stub(), FATHOM_PHONE_NTFY=f"http://127.0.0.1:{self.ntfy_port}",
+                        FATHOM_PHONE_PUSH_EVERY="0.3")
         self.server = subprocess.Popen([PHONE, "serve"], env=self.env, stdout=subprocess.DEVNULL,
                                        stderr=subprocess.PIPE)
         for _ in range(100):
@@ -83,6 +102,7 @@ class PhoneTest(unittest.TestCase):
             self.fail("the service didn't start: " + self.server.stderr.read().decode()[:300])
 
     def tearDown(self):
+        self.ntfy.shutdown()
         self.server.terminate()
         self.server.wait(timeout=10)
         self.server.stderr.close()
@@ -401,6 +421,35 @@ class PhoneTest(unittest.TestCase):
         fp, dev = self.paired()
         self.assertEqual(self.call("POST", "/v1/health/ask", fp, {"finding": "battery-drain"}, token=dev["token"]),
                          (404, {"error": "that finding has gone"}))
+
+
+    # instant push
+    def test_instant_push_pings_on_a_new_alert(self):
+        fp, dev = self.paired()
+        t = dev["token"]
+        endpoint = f"http://127.0.0.1:{self.ntfy_port}/upAbCdEf123456?up=1"
+        self.assertEqual(self.call("POST", "/v1/push", fp, {"endpoint": endpoint}), (401, {"error": "not paired"}))
+        self.assertEqual(self.call("POST", "/v1/push", fp, {"endpoint": endpoint}, token=t), (200, {"push": True, "test": True}))
+        self.assertEqual(self.pings, ["upAbCdEf123456"])  # the test ping on turning it on
+        self.assertEqual(self.run_phone("test-alert").returncode, 0)
+        for _ in range(50):
+            if len(self.pings) > 1:
+                break
+            time.sleep(0.1)
+        self.assertEqual(self.pings, ["upAbCdEf123456", "upAbCdEf123456"])
+        time.sleep(1)  # the same alert doesn't ping again
+        self.assertEqual(len(self.pings), 2)
+        self.assertEqual(self.call("POST", "/v1/push", fp, {"endpoint": None}, token=t), (200, {"push": False}))
+
+    def test_push_only_through_this_laptops_ntfy(self):
+        fp, dev = self.paired()
+        t = dev["token"]
+        code, body = self.call("POST", "/v1/push", fp, {"endpoint": "https://ntfy.sh/upAbCdEf123456?up=1"}, token=t)
+        self.assertEqual(code, 400)
+        self.assertIn("set its server to http://", body["error"])
+        code, _ = self.call("POST", "/v1/push", fp, {"endpoint": f"http://127.0.0.1:{self.ntfy_port}/notup"}, token=t)
+        self.assertEqual(code, 400)
+        self.assertEqual(self.pings, [])
 
 
 if __name__ == "__main__":

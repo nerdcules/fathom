@@ -195,6 +195,30 @@ if [[ -e $HOME/.local/bin/fathom-phone || -f $UNITS/fathom-phone.service ]]; the
   echo "Removed the phone service and its pairings."
 fi
 
+# Instant alerts: ntfy's service and settings, Fathom's own copy of ntfy
+# (a package's stays), the pings it held and its firewall rules.
+if [[ -f $UNITS/fathom-push.service ]]; then
+  systemctl --user disable --now fathom-push.service >/dev/null 2>&1 || true
+  rm -f "$UNITS/fathom-push.service"
+  systemctl --user daemon-reload
+  rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/ntfy" "${XDG_STATE_HOME:-$HOME/.local/state}/fathom/ntfy" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}/fathom/ntfy"
+  hex=$(printf fathom-push | od -An -tx1 | tr -d ' \n')
+  if command -v ufw >/dev/null && grep -qs "comment=$hex" "${FATHOM_UFW_DIR:-/etc/ufw}/user.rules"; then
+    cmds=""
+    for src in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do
+      cmds+="ufw delete allow proto tcp from $src to any port 4921 comment fathom-push >/dev/null 2>&1; "
+    done
+    cmds+="ufw delete allow in on tailscale0 to any port 4921 proto tcp comment fathom-push >/dev/null 2>&1; true"
+    if [[ -t 0 ]]; then
+      sudo bash -c "$cmds"
+    else
+      pkexec bash -c "$cmds"
+    fi
+  fi
+  echo "Removed instant alerts (ntfy)."
+fi
+
 # The shell forgets the plugins removed above. (Their Hyprland block went
 # first, at the top.)
 if $hypr_changed; then

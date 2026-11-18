@@ -1,0 +1,7 @@
+# ntfy for Fathom's instant phone alerts (install.sh --push). The laptop
+# sends the phone's ntfy app a bare ping on a UnifiedPush topic; the app
+# wakes Fathom, which asks the laptop for the alerts itself.
+listen-http: ":4921"
+# Pings missed while the phone was away wait here, then go.
+cache-file: "@STATE@/cache.db"
+cache-duration: "12h"

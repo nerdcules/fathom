@@ -43,6 +43,7 @@ cd ~/Work/fathom
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--crumbs` | Crumbs, its key, and the helper that writes the browsers' cookie rules. Needs your password for the helper |
 | `--phone` | The laptop side of [Fathom for Android](#phone): `fathom-phone` and its service, and a firewall rule for port 4920. Needs your password for the rule |
+| `--push` | Instant phone alerts: ntfy on port 4921 as a user service, which the phone's ntfy app connects to. Uses an installed ntfy (the AUR's `ntfysh-bin`), else downloads ntfy 2.38.1's official release and checks it against the release's `checksums.txt`. Needs your password for the firewall rule |
 | `--signin` | The sign-in screen. Needs your password |
 | `--all` | Every part (OpenSnitch only with `--opensnitch`) |
 | `--link` | Link the commands, their Hyprland files and the theme `fathom-look` builds from to this repo instead of copying, for working on them (theme edits show after `fathom-look apply`) |
@@ -907,6 +908,18 @@ Read by hand, all ten:
 So Ask Claude uses the targeted question on Sonnet 5.5. This is one
 made-up case with an obvious cause: harder ones (no clear culprit, real
 data with many apps) are not measured.
+
+Instant alerts, with `--push`: alerts otherwise reach the phone at its
+15-minute check. With ntfy on the laptop and the ntfy app on the phone (its
+default server set to this laptop, port 4921), Fathom's app registers for
+UnifiedPush, and `fathom-phone` pings the phone's topic when an alert it
+hasn't pinged for appears (it looks every 20 seconds while a phone has push
+on). The ping carries no alert text: the phone wakes and asks
+`fathom-phone` for the alerts over its own pinned connection. It accepts
+only an endpoint on this laptop's ntfy, so pings never leave the home
+network or Tailscale; away from both, the 15-minute check carries on.
+ntfy's own access settings are its defaults for now: on the home network,
+anyone who knows a topic's random name could read or send its pings.
 
 Some alerts offer an action, and those are the only changes a phone can
 make: trust a new device (`fathom-sentinel trust`), restart a failed service

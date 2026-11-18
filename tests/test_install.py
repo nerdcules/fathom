@@ -187,6 +187,34 @@ class Install(unittest.TestCase):
         self.assertTrue(lua.startswith("-- the user's own Hyprland file\nrequire(\"omarchy\")\n"))
         self.assertEqual(lua.count('require("hypr.fathom-deck")'), 1)
 
+    # ------------------------------------------------------------ instant push
+    def test_push_uses_an_installed_ntfy_and_opens_its_port(self):
+        ntfy = os.path.join(self.box.bin, "ntfy")
+        write(ntfy, "#!/bin/sh\necho 'ntfy 2.38.1'\n")
+        os.chmod(ntfy, 0o755)
+        self.ok("--push")
+        conf = self.box.path(".config/fathom/ntfy/server.yml")
+        unit = read(self.box.path(".config/systemd/user/fathom-push.service")).decode()
+        self.assertIn(f"ExecStart={ntfy} serve --config {os.path.dirname(conf)}/server.yml", unit)
+        self.assertIn(f'cache-file: "{self.box.path(".local/state/fathom/ntfy")}/cache.db"', read(conf).decode())
+        calls = "\n".join(self.box.calls())
+        self.assertIn("systemctl --user restart fathom-push.service", calls)
+        for src in ("192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"):
+            self.assertIn(f"ufw allow proto tcp from {src} to any port 4921 comment fathom-push", calls)
+        self.assertNotIn("curl", calls)  # ntfy was there: nothing downloaded
+        self.assertIn("push", self.installed_parts())
+        r = self.box.run("uninstall.sh")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(os.path.exists(self.box.path(".config/systemd/user/fathom-push.service")))
+        self.assertFalse(os.path.exists(conf))
+
+    def test_push_without_ntfy_stops_if_it_cant_get_a_checked_copy(self):
+        r = self.install("--push")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("ntfy", r.stderr)
+        self.assertFalse(os.path.exists(self.box.path(".config/systemd/user/fathom-push.service")))
+        self.assertFalse(os.path.exists(self.box.path(".local/share/fathom/ntfy/ntfy")))
+
     def test_an_install_that_was_killed_is_put_back_on_the_next_run(self):
         # Killed after the deck plugin you had was moved aside, before the
         # new one went in.
