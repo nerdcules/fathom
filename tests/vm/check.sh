@@ -68,8 +68,11 @@ step old-install 'cd ~/fathom-old && ./install.sh'; check "older Fathom ($old) i
 step upgrade 'cd ~/fathom-new && ./install.sh'; check "this Fathom installs over it (upgrade)" $?
 vm '[ $(omarchy plugin list | grep -cE "^fathom\.(deck|desk|player) +enabled") = 3 ]'
 check "  ...deck, desk and player plugins enabled" $?
-vm 'for p in deck desk player; do diff -rq ~/fathom-new/$p/plugin/fathom.$p ~/.config/omarchy/plugins/fathom.$p >/dev/null || exit 1; done'
+# Version.js differs on purpose: install.sh writes the version into the copy.
+vm 'for p in deck desk player; do diff -rq -x Version.js ~/fathom-new/$p/plugin/fathom.$p ~/.config/omarchy/plugins/fathom.$p >/dev/null || exit 1; done'
 check "  ...and they are this checkout's" $?
+vm 'for p in deck desk; do grep -q "Written by install.sh" ~/.config/omarchy/plugins/fathom.$p/Version.js || exit 1; done'
+check "  ...with the version written into the deck's and desk's copies" $?
 vm 'test -f ~/.config/omarchy/themes/fathom/.fathom-install && [ "$(omarchy theme current)" = Fathom ]'
 check "  ...theme built by fathom-look and switched on" $?
 vm '[ "$(tr "\n" " " < ~/.local/state/fathom/installed)" = "skin player deck desk mail " ]'
