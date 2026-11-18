@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "."
+import "Version.js" as Build
 import "Format.js" as F
 
 // The Start menu: search or ask, pinned apps, recent work, and quick
@@ -450,11 +451,20 @@ Item {
             font.pixelSize: 14 * Skin.u
           }
         }
-        Label {
-          text: start.status ? (start.status.name || start.status.user) + " · " + start.status.host : ""
-          color: Skin.dim
-          font.pixelSize: 13 * Skin.u
+        Column {
           Layout.fillWidth: true
+          Label {
+            text: start.status ? (start.status.name || start.status.user) + " · " + start.status.host : ""
+            color: Skin.dim
+            font.pixelSize: 13 * Skin.u
+          }
+          // Fathom's version, always under your name.
+          Label {
+            text: "Fathom " + Build.text
+            color: Skin.dim
+            opacity: 0.8
+            font.pixelSize: 11 * Skin.u
+          }
         }
         Pill {
           visible: !!start.status && start.status.docker !== "missing"
@@ -592,6 +602,12 @@ Item {
             font.weight: Font.Medium
             font.letterSpacing: 10 * Skin.u
             leftPadding: font.letterSpacing
+          }
+          Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: Build.text
+            color: Skin.dim
+            font.pixelSize: 12 * Skin.u
           }
           Label {
             width: parent.width

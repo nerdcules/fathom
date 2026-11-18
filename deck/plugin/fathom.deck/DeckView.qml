@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "."
+import "Version.js" as Build
 
 // The Command Deck's content: a clock, page tabs, a summary line and the
 // current page (Deck or Care) on a translucent scrim. Plain QtQuick only, so
@@ -319,6 +320,13 @@ Item {
           color: deck.error !== "" ? Skin.urgent : Skin.dim
           font.pixelSize: 12 * Skin.u
           Layout.fillWidth: true
+        }
+        // Fathom's version, on every page.
+        Label {
+          text: "Fathom " + Build.text
+          color: Skin.dim
+          font.pixelSize: 12 * Skin.u
+          Layout.rightMargin: 14 * Skin.u
         }
         Label {
           readonly property var source: deck.page === "care" ? deck.care : (deck.page === "sentinel" ? deck.sentinel

@@ -13,6 +13,13 @@ Each line names its commit.
 
 ### Added
 
+- Fathom's version shows on every screen it has: each deck page's footer,
+  Start (under your name), the About card, the bar pill's tooltip and the
+  sign-in screen, as the release, build number (commits since that
+  release) and commit, e.g. "v0.1.0 · build 12 · 0847b57".
+  `install.sh` stamps it into what it installs; `fathom-update version`
+  prints it.
+
 - `fathom-phone` (`./install.sh --phone`): the laptop side of Fathom for
   Android. An HTTPS service on port 4920 with a pinned self-signed
   certificate, pairing by QR code (one-time secret, 2 minutes, 5 tries),

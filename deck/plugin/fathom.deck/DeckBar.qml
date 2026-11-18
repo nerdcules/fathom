@@ -5,6 +5,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "."
+import "Version.js" as Build
 import "Format.js" as F
 
 // The Command Deck at a glance, in the bar: containers that need attention,
@@ -73,6 +74,7 @@ BarWidget {
     else if (segments.length === 0) lines.push(strings.t("bar.quiet"))
     for (var i = 0; i < segments.length; i++) lines.push(line(segments[i]))
     lines.push(strings.t("bar.hint"))
+    lines.push("Fathom " + Build.text)
     return lines.join("\n")
   }
 

@@ -258,7 +258,13 @@ install_signin() {
     echo "install.sh: SDDM is not installed, so there is no sign-in screen to theme." >&2
     return 1
   fi
-  as_root bash "$REPO/signin/install-root.sh" install "$REPO/signin/fathom"
+  # A copy with this install's version in it; install-root.sh copies that.
+  local theme
+  theme=$(mktemp -d)/fathom
+  cp -rL "$REPO/signin/fathom" "$theme"
+  write_version_js "$theme/Version.js"
+  as_root bash "$REPO/signin/install-root.sh" install "$theme"
+  rm -rf "$(dirname "$theme")"
   # SDDM reads /etc/sddm.conf, then sddm.conf.d in name order; the last
   # [Autologin] User= wins.
   local auto="" conf files=()
@@ -274,6 +280,40 @@ install_signin() {
   else
     echo "You will see it the next time you start up or sign out."
   fi
+}
+
+# Fathom's version, from git: the release tag, the build number (commits
+# since that release) and the commit, e.g. "v0.1.0 · build 12 · 0847b57".
+# Sets VERSION, BUILD, COMMIT, DIRTY and VERSION_TEXT.
+fathom_version() {
+  VERSION="" BUILD=-1 COMMIT="" DIRTY=false VERSION_TEXT="version unknown (not a git checkout)"
+  command -v git >/dev/null && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  local desc
+  COMMIT=$(git -C "$REPO" rev-parse --short=7 HEAD)
+  [[ -n $(git -C "$REPO" status --porcelain --untracked-files=no) ]] && DIRTY=true
+  desc=$(git -C "$REPO" describe --tags --long --abbrev=7 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)
+  if [[ $desc =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)-g[0-9a-f]+$ ]]; then
+    VERSION=${BASH_REMATCH[1]} BUILD=${BASH_REMATCH[2]}
+  else
+    VERSION=0.0.0 BUILD=$(git -C "$REPO" rev-list --count HEAD)  # no release yet
+  fi
+  VERSION_TEXT="v$VERSION · build $BUILD · $COMMIT"
+  $DIRTY && VERSION_TEXT+=" · with local changes"
+  return 0
+}
+
+# Writes the version into an installed copy's Version.js.
+write_version_js() {
+  local dest=$1
+  cat >"$dest" <<EOF
+.pragma library
+// Written by install.sh: the version of Fathom installed here.
+var version = "$VERSION"
+var build = $BUILD
+var commit = "$COMMIT"
+var dirty = $DIRTY
+var text = "$VERSION_TEXT"
+EOF
 }
 
 # Copy a file into place, or link it to the repo with --link.
@@ -345,6 +385,7 @@ stage_plugin() {
   rm -rf "${STAGE:?}/$id"
   mkdir -p "$STAGE"
   cp -r "$REPO/${id#fathom.}/plugin/$id" "$STAGE/$id"
+  [[ -f $STAGE/$id/Version.js ]] && write_version_js "$STAGE/$id/Version.js"
   if ! omarchy plugin validate "$STAGE/$id" >/dev/null; then
     rm -rf "${STAGE:?}/$id"
     echo "install.sh: Omarchy found a problem with the new $id (above); the one you had is unchanged." >&2
@@ -755,16 +796,18 @@ record_source() {
     branch=$(git -C "$REPO" symbolic-ref --short -q HEAD || true)
     [[ -n $(git -C "$REPO" status --porcelain --untracked-files=no) ]] && dirty=true
   fi
-  python3 -I - "$STATE_DIR/source" "$REPO" "$commit" "$branch" "$dirty" "$link" "$apply" "$opensnitch" "$INSTALLED" <<'PY'
+  python3 -I - "$STATE_DIR/source" "$REPO" "$commit" "$branch" "$dirty" "$link" "$apply" "$opensnitch" "$INSTALLED" \
+    "$VERSION" "$BUILD" "$VERSION_TEXT" <<'PY'
 import json, os, sys, time
-out, repo, commit, branch, dirty, link, apply_, snitch, installed = sys.argv[1:]
+out, repo, commit, branch, dirty, link, apply_, snitch, installed, version, build, version_text = sys.argv[1:]
 try:
     parts = [l.strip() for l in open(installed) if l.strip()]
 except OSError:
     parts = []
 data = {"repo": repo, "commit": commit or None, "branch": branch or None, "dirty": dirty == "true",
         "link": link == "true", "apply": apply_ == "true", "opensnitch": snitch == "true",
-        "parts": parts}
+        "parts": parts, "version": version or None, "build": int(build) if int(build) >= 0 else None,
+        "versionText": version_text}
 with open(out + ".new", "w") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
@@ -773,6 +816,7 @@ PY
 }
 
 mkdir -p "$STATE_DIR"
+fathom_version
 restore_staged
 # fathom-update comes with every install, whichever parts.
 place "$REPO/update/bin/fathom-update" "$BIN_DIR/fathom-update"

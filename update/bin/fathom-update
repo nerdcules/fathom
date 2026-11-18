@@ -6,6 +6,9 @@
                                 --auto does nothing unless `auto on` (Care's
                                 timer uses it)
   fathom-update status          the last check, as JSON, without going online
+  fathom-update version         the version installed: release, build number
+                                (commits since that release) and commit, as
+                                install.sh recorded it; --json for all of it
   fathom-update apply           update the repo (fast-forward only) and
                                 re-run install.sh for the parts that changed
   fathom-update rollback        go back to the version before the last apply
@@ -350,6 +353,17 @@ def main(argv):
                 notify(describe(r).splitlines()[0])
         elif cmd == "status":
             print(json.dumps(read_json(RESULT, None)))
+        elif cmd == "version":
+            src = read_json(SOURCE, {}) or {}
+            text = src.get("versionText") or (
+                f"version not recorded (installed at {src['commit'][:7]}; install.sh again records it)"
+                if src.get("commit") else "not installed")
+            if as_json:
+                print(json.dumps({"version": src.get("version"), "build": src.get("build"),
+                                  "commit": (src.get("commit") or "")[:7] or None, "dirty": src.get("dirty"),
+                                  "text": text}))
+            else:
+                print(f"Fathom {text}")
         elif cmd == "apply":
             done = apply()
             print(done)

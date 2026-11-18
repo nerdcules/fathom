@@ -109,6 +109,17 @@ own uncommitted changes or commits in the clone stop it, and it says so.
 `rollback` moves the clone back to the version before the last `apply` and
 reinstalls the parts that differ.
 
+Which Fathom is installed shows everywhere it has a screen: the footer of
+every deck page (Personalise included), under your name in Start, in the
+About card, in the bar pill's tooltip and under the machine's name on the
+sign-in screen, as "v0.1.0 · build 12 · 0847b57": the release, the build
+number (commits since that release; 0 on the release itself) and the
+commit, with "with local changes" if the clone had uncommitted changes.
+`install.sh` writes it into the copies it installs (the deck plugin's and
+the sign-in theme's `Version.js`) and its record, so each shows the version
+it's actually running; `fathom-update version` prints it (`--json` for the
+parts). Run from the repo without installing, they say so instead.
+
 Care can look for you: `fathom-update auto on` adds the check to Care's
 3-hourly one (off unless you turn it on, since it contacts the remote), and
 Care's Updates card then shows Fathom's version and changes with an

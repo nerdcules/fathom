@@ -6,6 +6,7 @@
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Effects
+import "Version.js" as Build
 
 Rectangle {
   id: root
@@ -273,6 +274,18 @@ Rectangle {
       color: root.muted
       font.family: root.mono
       font.pixelSize: 12 * root.u
+    }
+
+    // Fathom's version, under the machine's name.
+    Text {
+      anchors.right: parent.right
+      anchors.rightMargin: 48 * root.u
+      y: 64 * root.u
+      text: "Fathom " + Build.text
+      color: root.muted
+      opacity: 0.8
+      font.family: root.mono
+      font.pixelSize: 11 * root.u
     }
 
     // ---------- Clock ----------

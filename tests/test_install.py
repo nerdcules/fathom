@@ -65,6 +65,18 @@ class Install(unittest.TestCase):
     def installed_parts(self):
         return read(self.box.path(".local/state/fathom/installed")).decode().split()
 
+    def test_the_installed_deck_and_the_record_carry_the_version(self):
+        # The sandbox has no git, so the version is "unknown": what matters is
+        # that the installed copy has it and the repo's file is untouched.
+        self.ok("--deck")
+        js = read(self.box.path(".config/omarchy/plugins/fathom.deck/Version.js")).decode()
+        self.assertIn('var text = "version unknown (not a git checkout)"', js)
+        self.assertIn("Written by install.sh", js)
+        self.assertIn('var text = "from the repo, not installed"', read(os.path.join(REPO, "deck/plugin/fathom.deck/Version.js")).decode())
+        import json
+        record = json.loads(read(self.box.path(".local/state/fathom/source")))
+        self.assertEqual(record["versionText"], "version unknown (not a git checkout)")
+
     # ------------------------------------------------------------ plugins
 
     def test_a_plugin_that_fails_validation_leaves_the_one_you_had(self):
@@ -203,3 +215,63 @@ class Install(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Version(unittest.TestCase):
+    """install.sh's fathom_version and write_version_js, on scratch git repos."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, self.tmp)
+        self.env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid",
+                        GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.invalid",
+                        GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+
+    def git(self, *args):
+        import subprocess
+        return subprocess.run(["git", "-C", self.tmp, *args], env=self.env, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def commit(self, n=1):
+        import uuid
+        for _ in range(n):
+            write(os.path.join(self.tmp, "f"), uuid.uuid4().hex + "\n")
+            self.git("add", "-A")
+            self.git("commit", "-q", "-m", "c")
+
+    def version(self):
+        """VERSION_TEXT, and the Version.js it writes."""
+        import subprocess
+        out = os.path.join(self.tmp, "Version.js")
+        script = ('set -euo pipefail; source <(sed -n "/^fathom_version() {/,/^}/p; /^write_version_js() {/,/^}/p" '
+                  f'"{REPO}/install.sh"); REPO="{self.tmp}"; fathom_version; write_version_js "{out}"; echo "$VERSION_TEXT"')
+        r = subprocess.run(["bash", "-c", script], env=self.env, capture_output=True, text=True, check=True)
+        return r.stdout.strip(), read(out).decode()
+
+    def test_release_build_number_and_commit(self):
+        self.git("init", "-q", "-b", "main")
+        self.commit()
+        self.git("tag", "v0.1.0")
+        self.commit(2)
+        head = self.git("rev-parse", "--short=7", "HEAD")
+        text, js = self.version()
+        self.assertEqual(text, f"v0.1.0 · build 2 · {head}")
+        self.assertIn('var version = "0.1.0"', js)
+        self.assertIn("var build = 2", js)
+        self.assertIn(f'var text = "v0.1.0 · build 2 · {head}"', js)
+
+    def test_on_the_release_itself_build_0_and_local_changes_said(self):
+        self.git("init", "-q", "-b", "main")
+        self.commit()
+        self.git("tag", "v1.2.3")
+        self.git("tag", "v2.0.0-rc1")  # a pre-release isn't a release
+        self.assertTrue(self.version()[0].startswith("v1.2.3 · build 0 · "))
+        write(os.path.join(self.tmp, "f"), "changed\n")
+        self.assertTrue(self.version()[0].endswith(" · with local changes"))
+
+    def test_before_any_release_and_outside_git(self):
+        self.assertEqual(self.version()[0], "version unknown (not a git checkout)")
+        self.git("init", "-q", "-b", "main")
+        self.commit(3)
+        self.assertTrue(self.version()[0].startswith("v0.0.0 · build 3 · "))

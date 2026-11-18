@@ -211,6 +211,21 @@ class UpdateTest(unittest.TestCase):
         open(os.path.join(self.home, ".local/bin/fathom-desk"), "w").close()
         self.assertEqual(self.checked()["installedParts"], ["desk"])
 
+    def test_version_says_what_install_sh_recorded(self):
+        source = os.path.join(self.home, ".local/state/fathom/source")
+        with open(source) as f:
+            data = json.load(f)
+        r = self.update("version")
+        self.assertIn("version not recorded (installed at", r.stdout)  # the stand-in installer doesn't record one
+        data.update(version="0.1.0", build=4, versionText="v0.1.0 · build 4 · abc1234")
+        with open(source, "w") as f:
+            json.dump(data, f)
+        self.assertEqual(self.update("version").stdout.strip(), "Fathom v0.1.0 · build 4 · abc1234")
+        j = json.loads(self.update("version", "--json").stdout)
+        self.assertEqual((j["version"], j["build"], j["text"]), ("0.1.0", 4, "v0.1.0 · build 4 · abc1234"))
+        os.remove(source)
+        self.assertEqual(self.update("version").stdout.strip(), "Fathom not installed")
+
     def test_without_a_record_it_says_how_to_make_one(self):
         os.remove(os.path.join(self.home, ".local/state/fathom/source"))
         r = self.update("check")
