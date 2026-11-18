@@ -134,5 +134,24 @@ class HealthTest(unittest.TestCase):
                          "Nothing looks off.\n\n• Storage: 53% used.\n• Heat: none\n\nNext\nAsk again tomorrow.")
 
 
+    def test_targeted_question_carries_only_the_findings_evidence(self):
+        import json as j
+        with tempfile.TemporaryDirectory() as tmp:
+            self.m.HEALTH_DIR = tmp
+            self.m.health_add("0123abcd", week(2.6, 4.1, bg_app_ms=4 * 60000), now=NOW)
+            dev = {"id": "0123abcd", "name": "Pixel 8 Pro"}
+            title, system, q = self.m.ask_question(dev, "battery-drain", now=NOW, style="targeted")
+            self.assertEqual((title, system), ("Battery is draining faster than usual", self.m.ASK_TARGETED))
+            self.assertIn("Usual causes to choose from:", q)
+            ev = j.loads(q.split("\n")[-1])
+            self.assertEqual((ev["drainPctPerHourUsual"], ev["drainPctPerHourLastDay"]), (2.6, 4.1))
+            self.assertEqual(ev["appsMostChanged"][0], {"app": "Maps", "backgroundMinLastDay": 384, "backgroundMinUsualDay": 0,
+                                                         "screenMinLastDay": 0, "screenMinUsualDay": 0})
+            self.assertNotIn('"bars"', q)  # not the whole summary
+            # The broad style, and a question with no finding, get the whole summary.
+            self.assertIn('"bars"', self.m.ask_question(dev, "battery-drain", now=NOW, style="broad")[2])
+            self.assertEqual(self.m.ask_question(dev, None, now=NOW, style="targeted")[1], self.m.ASK_SYSTEM)
+
+
 if __name__ == "__main__":
     unittest.main()

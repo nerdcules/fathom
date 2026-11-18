@@ -45,6 +45,11 @@ Each line names its commit.
   `fathom-phone` writes out of its own data. No tools, MCP servers,
   settings or hooks, nothing saved; Sonnet 5.5 by default
   (`FATHOM_PHONE_ASK_MODEL`); one question at a time and 20 a day per phone.
+- Ask Claude asks a targeted question about a finding: only its evidence,
+  the usual causes to choose from, and a fixed answer shape (Likely cause,
+  The evidence, Try this); `FATHOM_PHONE_ASK_STYLE=broad` for the first
+  version. `phone/tools/ask-compare` compares styles and models on a
+  made-up finding.
 - `fathom-phone` logs every pairing attempt: paired, wrong secret or no
   window open, with the phone's name and address.
 

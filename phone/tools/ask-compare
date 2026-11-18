@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Compare the ways fathom-phone can ask Claude about a phone health finding.
+
+Builds a made-up week (the same shape as tests/test_phone_health.py): six
+days draining 2.6% an hour on battery, then a day at 4.1% with Maps running
+6 h 24 min in the background. Asks about the battery-drain finding with each
+prompt style and model, once each, and reports per answer: whether it names
+Maps, numbers in it that aren't in the data it was given (or simply
+restated from it: check any listed by hand), words, seconds and
+the cost Claude Code reports. Uses your Claude account (about $0.01 a call).
+
+  phone/tools/ask-compare [--models claude-sonnet-5-5,claude-haiku-5-5] [--styles broad,targeted] [--json out.json]
+"""
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+import os
+import re
+import tempfile
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PHONE = os.path.join(HERE, "..", "bin", "fathom-phone")
+
+
+def load():
+    loader = importlib.machinery.SourceFileLoader("fathom_phone", PHONE)
+    mod = importlib.util.module_from_spec(importlib.util.spec_from_loader("fathom_phone", loader))
+    loader.exec_module(mod)
+    return mod
+
+
+def week(now, rate_before=2.6, rate_today=4.1, bg_app_ms=4 * 60000):
+    out = []
+    for i in range(7 * 96):
+        t = now - 7 * 86400 + i * 900
+        today = t >= now - 86400
+        rate = rate_today if today else rate_before
+        level = max(0, round(100 - rate * (i % 96) * 0.25))
+        apps = [{"pkg": "com.android.chrome", "label": "Chrome", "fg": 300000, "bg": 0}]
+        if today:
+            apps.append({"pkg": "com.google.android.apps.maps", "label": "Maps", "fg": 0, "bg": bg_app_ms})
+        out.append({"t": t, "level": level, "charging": False, "tempC": 31.5, "thermal": 0, "storagePct": 61, "apps": apps})
+    return out
+
+
+def numbers(text):
+    return [n.rstrip(".") for n in re.findall(r"\d+(?:\.\d+)?", text)]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--models", default="claude-sonnet-5-5,claude-haiku-5-5")
+    ap.add_argument("--styles", default="broad,targeted")
+    ap.add_argument("--json")
+    args = ap.parse_args()
+    m = load()
+    claude = m.claude_path()
+    if not claude:
+        raise SystemExit("Claude Code isn't installed")
+    now = int(time.time())
+    rows = []
+    with tempfile.TemporaryDirectory() as tmp:
+        m.HEALTH_DIR = tmp
+        m.ASK_DIR = os.path.join(tmp, "ask")
+        m.health_add("0123abcd", week(now), now=now)
+        dev = {"id": "0123abcd", "name": "Pixel 8 Pro"}
+        for style in args.styles.split(","):
+            title, system, question = m.ask_question(dev, "battery-drain", now=now, style=style)
+            given = set(numbers(question + " " + system))
+            for model in args.models.split(","):
+                r = m.ask_claude(claude, system, question, model=model)
+                answer = r.get("answer") or ""
+                # Figures Claude may fairly restate: a minute count as hours and minutes ("384" as
+                # "6 h 24 min"), milliseconds as minutes, and thousands written with commas.
+                mins = {int(x) for x in given if x.isdigit()} | {int(x) // 60000 for x in given if x.isdigit() and int(x) >= 60000}
+                derived = {str(v) for v in mins} | {str(v // 60) for v in mins} | {str(v % 60) for v in mins} \
+                    | {f"{v % 60:02d}" for v in mins}
+                answer_nums = [n.replace(",", "") for n in re.findall(r"\d[\d,]*(?:\.\d+)?", answer)]
+                rows.append({
+                    "style": style, "model": model, "status": r["status"], "namesMaps": "Maps" in answer,
+                    "notInData": sorted(set(n.rstrip(".") for n in answer_nums if n.rstrip(".") not in given and n.rstrip(".") not in derived)),
+                    "words": len(answer.split()), "seconds": r["seconds"], "costUsd": r.get("costUsd"),
+                    "questionChars": len(question), "answer": answer or r.get("error"),
+                })
+                print(f"{style:9} {model:18} maps={rows[-1]['namesMaps']!s:5} notInData={rows[-1]['notInData']} "
+                      f"words={rows[-1]['words']} {r['seconds']} s ${r.get('costUsd')}", flush=True)
+    if args.json:
+        with open(args.json, "w") as f:
+            json.dump(rows, f, indent=2)
+    print()
+    for r in rows:
+        print(f"--- {r['style']} · {r['model']} ({r['questionChars']} chars asked)\n{r['answer']}\n")
+
+
+if __name__ == "__main__":
+    main()

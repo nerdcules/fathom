@@ -869,6 +869,45 @@ Code reported $0.010 to $0.013 each. One question runs at a time, 20 a day
 per phone; the answer is kept in `~/.local/state/fathom/phone/ask/` until
 the next one, and deleted with the phone's health.
 
+The question is targeted: the rules have already measured the problem, so
+for a finding Claude gets only that finding's evidence (for faster drain:
+drain today and usually, by hour, screen time, the apps whose background
+and screen time changed most, battery temperature, heat slowdowns), a short
+list of the usual causes to choose from, and a fixed answer shape: *Likely
+cause*, *The evidence*, *Try this*. A question with no finding still gets
+the whole summary. `FATHOM_PHONE_ASK_STYLE=broad` brings back the first
+version for every question.
+
+`phone/tools/ask-compare` asks about a made-up battery-drain finding (six
+days at 2.6% an hour, then a day at 4.1% with Maps 6 h 24 min in the
+background) with each style and model. Two runs on 18 November 2026, plus
+a third of broad alone after fixing the script's number check:
+
+| Style | Model | Named Maps | Words | Seconds | Cost (Claude Code's figure) |
+|---|---|---|---|---|---|
+| broad | Sonnet 5.5 | 3 of 3 | 154, 148, 150 | 4.7, 4.7, 4.4 | $0.0097, $0.0098, $0.0098 |
+| broad | Haiku 5.5 | 3 of 3 | 116, 134, 110 | 6.1, 8.7, 8.2 | $0.0008, $0.0012, $0.0011 |
+| targeted | Sonnet 5.5 | 2 of 2 | 82, 91 | 3.5, 3.4 | $0.0092, $0.0033 |
+| targeted | Haiku 5.5 | 2 of 2 | 82, 94 | 4.6, 2.6 | $0.0007, $0.0002 |
+
+Read by hand, all ten:
+
+- No figure was missing from the data. The script's own check flagged
+  correct ones in the first two runs (milliseconds and hours since
+  midnight); with that fixed, the third run's flagged none.
+- Sonnet's broad answers called Maps' 6 h 24 min "today" in 3 of 3. That
+  was the last 24 hours; since midnight it was 2 h 20 min, as the summary
+  they were given said. The targeted question has one labelled window.
+- Haiku's second targeted answer said to set Maps' battery use to
+  "Unrestricted or Optimized": Unrestricted lets it run more, the wrong way.
+  No other answer gave a step that would make it worse.
+- The targeted answers kept the shape in 4 of 4 (82 to 94 words against a
+  90-word limit); the broad ones ran over their 120 in 4 of 6.
+
+So Ask Claude uses the targeted question on Sonnet 5.5. This is one
+made-up case with an obvious cause: harder ones (no clear culprit, real
+data with many apps) are not measured.
+
 Some alerts offer an action, and those are the only changes a phone can
 make: trust a new device (`fathom-sentinel trust`), restart a failed service
 (`fathom-care restart`), block an address (`fathom-sentinel block`), mark a
