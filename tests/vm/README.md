@@ -159,7 +159,9 @@ this laptop (SHA256 the same after the copy), with `FATHOM_VM_DISPLAY=vnc`
   answered SSH about 16 s after `run.sh` started.
 - On this laptop, `run.sh` with the default GTK window started and quit
   cleanly (exit 0) with the control socket added; the unlock can't work
-  there (above). No full `check.sh` was run here with 2113525.
+  there (above). Then, at 3d02c4b (2113525's scripts, clean tree), with the
+  default GTK window and the disk unlocked at the window's prompt: `check.sh`
+  26 passed, 0 failed, in 78 s; `fwtest.sh` inside it 15 passed, 0 failed.
 - The phone part (`--phone`) isn't in these checks.
 
 ### 18 November 2026 (0.2.0)
