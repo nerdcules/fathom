@@ -31,7 +31,6 @@ sentinel=false
 pulse=false
 crumbs=false
 phone=false
-push=false
 opensnitch=false
 link=false
 apply=true
@@ -71,11 +70,6 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
                pairs with (fathom-phone pair) and reads the deck from, on
                port 4920. Needs your password for the firewall rule that
                lets your home network and Tailscale reach it
-  --push       Instant phone alerts: ntfy on port 4921, which the phone's
-               ntfy app connects to. Uses ntfy if it's installed (the AUR's
-               ntfysh-bin), else downloads its official release and checks
-               it against the release's checksums. Needs your password for
-               the firewall rule
   --crumbs     Crumbs: the cookies every browser here keeps, which are
                trackers and which sites led to them (Super+Alt+O), and
                blocking them. Needs your password for the helper that
@@ -112,7 +106,6 @@ while (($#)); do
     --pulse) pulse=true ;;
     --crumbs) crumbs=true ;;
     --phone) phone=true ;;
-    --push) push=true ;;
     --opensnitch) opensnitch=true ;;
     --all)
       skin=true
@@ -125,7 +118,6 @@ while (($#)); do
       pulse=true
       crumbs=true
       phone=true
-      push=true
       ;;
     --link) link=true ;;
     --no-apply) apply=false ;;
@@ -148,7 +140,7 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs && ! $phone && ! $push; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs && ! $phone; then
   skin=true
   player=true
   deck=true
@@ -625,29 +617,26 @@ install_pulse() {
 # A matching rule already there is left alone (ufw would otherwise turn a
 # rule of yours into Fathom's); Fathom's own are tagged fathom-phone. All
 # the rules needed go in one root call, so one password prompt.
-# Lets the home network's private ranges, and Tailscale, reach a port:
-# one rule each, tagged with a comment so uninstall.sh removes only Fathom's.
-lan_firewall() {
-  local port=$1 tag=$2
+phone_firewall() {
   command -v ufw >/dev/null || return 0
   local hex src line cmds=()
-  hex=$(printf '%s' "$tag" | od -An -tx1 | tr -d ' \n')
+  hex=$(printf fathom-phone | od -An -tx1 | tr -d ' \n')
   for src in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12; do
-    line=$(grep -E "^### tuple ### [^ ]+ tcp $port 0\.0\.0\.0/0 any ${src//./\\.} in( |\$)" \
+    line=$(grep -E "^### tuple ### [^ ]+ tcp 4920 0\.0\.0\.0/0 any ${src//./\\.} in( |\$)" \
       "$UFW_DIR/user.rules" 2>/dev/null || true)
     if [[ -z $line ]]; then
-      cmds+=("ufw allow proto tcp from $src to any port $port comment $tag")
+      cmds+=("ufw allow proto tcp from $src to any port 4920 comment fathom-phone")
     elif [[ $line != *"comment=$hex" ]]; then
-      echo "install.sh: a firewall rule of yours for port $port from $src is there already; Fathom leaves it."
+      echo "install.sh: a firewall rule of yours for port 4920 from $src is there already; Fathom leaves it."
     fi
   done
   if ip link show tailscale0 >/dev/null 2>&1; then
-    line=$(grep -E "^### tuple ### [^ ]+ tcp $port 0\.0\.0\.0/0 any 0\.0\.0\.0/0 in_tailscale0( |\$)" \
+    line=$(grep -E "^### tuple ### [^ ]+ tcp 4920 0\.0\.0\.0/0 any 0\.0\.0\.0/0 in_tailscale0( |\$)" \
       "$UFW_DIR/user.rules" 2>/dev/null || true)
     if [[ -z $line ]]; then
-      cmds+=("ufw allow in on tailscale0 to any port $port proto tcp comment $tag")
+      cmds+=("ufw allow in on tailscale0 to any port 4920 proto tcp comment fathom-phone")
     elif [[ $line != *"comment=$hex" ]]; then
-      echo "install.sh: a firewall rule of yours for port $port on Tailscale is there already; Fathom leaves it."
+      echo "install.sh: a firewall rule of yours for port 4920 on Tailscale is there already; Fathom leaves it."
     fi
   fi
   ((${#cmds[@]})) || return 0
@@ -655,8 +644,6 @@ lan_firewall() {
   joined=$(printf '%s >/dev/null && ' "${cmds[@]}")
   as_root bash -c "${joined% && }"
 }
-
-phone_firewall() { lan_firewall 4920 fathom-phone; }
 
 install_phone() {
   local missing=() tool
@@ -678,77 +665,6 @@ install_phone() {
   phone_firewall ||
     echo "install.sh: couldn't open port 4920 in the firewall; the phone can't reach Fathom until it is (see the README)." >&2
   echo "Phone service installed. Pair your phone: fathom-phone pair"
-}
-
-# ntfy's official release, used when ntfy isn't installed already.
-NTFY_VERSION=2.38.1
-
-# The ntfy to run: one on PATH (a package), else Fathom's own copy, fetched
-# from the release and checked against its checksums.txt.
-ntfy_binary() {
-  local have own="${XDG_DATA_HOME:-$HOME/.local/share}/fathom/ntfy/ntfy"
-  if have=$(command -v ntfy); then
-    echo "$have"
-    return 0
-  fi
-  if [[ -x $own ]] && "$own" --version 2>/dev/null | grep -qF "$NTFY_VERSION"; then
-    echo "$own"
-    return 0
-  fi
-  local arch
-  case $(uname -m) in
-    x86_64) arch=amd64 ;;
-    aarch64) arch=arm64 ;;
-    *) echo "install.sh: no ntfy release for $(uname -m); install ntfy yourself" >&2; return 1 ;;
-  esac
-  local name="ntfy_${NTFY_VERSION}_linux_${arch}" tmp
-  tmp=$(mktemp -d)
-  local base="https://github.com/binwiederhier/ntfy/releases/download/v$NTFY_VERSION"
-  if ! curl -fsSL -o "$tmp/$name.tar.gz" "$base/$name.tar.gz" || ! curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt"; then
-    rm -rf "$tmp"
-    echo "install.sh: couldn't download ntfy $NTFY_VERSION" >&2
-    return 1
-  fi
-  if ! (cd "$tmp" && grep -E "  $name\.tar\.gz\$" checksums.txt | sha256sum -c --quiet -); then
-    rm -rf "$tmp"
-    echo "install.sh: ntfy's download doesn't match its checksum; not installed" >&2
-    return 1
-  fi
-  mkdir -p "$(dirname "$own")"
-  tar -xzf "$tmp/$name.tar.gz" -C "$tmp" "$name/ntfy"
-  install -m 755 "$tmp/$name/ntfy" "$own"
-  rm -rf "$tmp"
-  echo "$own"
-}
-
-install_push() {
-  local ntfy
-  ntfy=$(ntfy_binary) || return 1
-  local conf="${XDG_CONFIG_HOME:-$HOME/.config}/fathom/ntfy" state="${XDG_STATE_HOME:-$HOME/.local/state}/fathom/ntfy"
-  mkdir -p "$conf" "$state"
-  sed "s|@STATE@|$state|" "$REPO/push/server.yml" >"$conf/server.yml"
-  local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-  mkdir -p "$units"
-  cat >"$units/fathom-push.service" <<EOF
-[Unit]
-Description=Fathom's instant phone alerts: ntfy on port 4921
-After=network-online.target
-
-[Service]
-ExecStart=$ntfy serve --config $conf/server.yml
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-EOF
-  systemctl --user daemon-reload
-  systemctl --user enable fathom-push.service >/dev/null 2>&1 || true
-  systemctl --user restart fathom-push.service
-  lan_firewall 4921 fathom-push ||
-    echo "install.sh: couldn't open port 4921 in the firewall; the phone's ntfy app can't connect until it is." >&2
-  local here
-  here=$(ip -4 -o addr show scope global 2>/dev/null | awk '$2 ~ /^(wl|en|eth)/ {sub("/.*", "", $4); print $4; exit}' || true)
-  echo "Instant alerts ready ($ntfy). On the phone: install the ntfy app, set its default server to http://${here:-<this laptop>}:4921, then Fathom › Settings › Instant alerts › Turn on."
 }
 
 install_crumbs() {
@@ -789,7 +705,7 @@ restore_staged() {
 
 # The parts asked for, in the order they're installed.
 parts=()
-for part in skin player deck desk mail sentinel pulse crumbs phone push signin; do
+for part in skin player deck desk mail sentinel pulse crumbs phone signin; do
   ${!part} && parts+=("$part")
 done
 done_parts=()

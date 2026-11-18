@@ -54,7 +54,6 @@ PARTS = {
     "pulse": ("pulse/",),
     "crumbs": ("crumbs/",),
     "phone": ("phone/",),
-    "push": ("push/",),
     "signin": ("signin/",),
 }
 ORDER = list(PARTS)
@@ -73,8 +72,6 @@ EVIDENCE = {
     "pulse": os.path.join(BIN, "fathom-pulse"),
     "crumbs": os.path.join(BIN, "fathom-crumbs"),
     "phone": os.path.join(BIN, "fathom-phone"),
-    "push": os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
-                         "systemd", "user", "fathom-push.service"),
     "signin": os.environ.get("FATHOM_UPDATE_SDDM_THEME", "/usr/share/sddm/themes/fathom"),
 }
 # A release: a semantic version tag. Pre-releases (v1.2.0-rc1) and other

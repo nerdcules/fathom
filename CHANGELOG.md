@@ -50,13 +50,6 @@ Each line names its commit.
   The evidence, Try this); `FATHOM_PHONE_ASK_STYLE=broad` for the first
   version. `phone/tools/ask-compare` compares styles and models on a
   made-up finding.
-- Instant phone alerts (`./install.sh --push`): ntfy on port 4921 as a
-  user service (an installed ntfy, else its official release checked
-  against the release's checksums), with a firewall rule for the home
-  network and Tailscale. `fathom-phone` takes a phone's UnifiedPush
-  endpoint (`POST /v1/push`, only this laptop's ntfy) and pings it, with no
-  alert text, when a new alert appears; the phone then fetches the alerts
-  itself.
 - `fathom-phone` logs every pairing attempt: paired, wrong secret or no
   window open, with the phone's name and address.
 
