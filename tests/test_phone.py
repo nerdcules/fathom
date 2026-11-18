@@ -324,5 +324,32 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/v1/unpair", fp, {}, token=dev["token"])[0], 401)
 
 
+    # phone health
+    def health_file(self, dev_id):
+        return os.path.join(self.home, ".local", "state", "fathom", "phone", "health", f"{dev_id}.json")
+
+    def test_phone_health_is_kept_read_back_and_forgotten(self):
+        fp, dev = self.paired()
+        now = int(time.time())
+        samples = [{"t": now - 900, "level": 81, "charging": False, "tempC": 31.0, "thermal": 0, "storagePct": 61,
+                    "apps": [{"pkg": "com.android.chrome", "label": "Chrome", "fg": 600000, "bg": 0}]},
+                   {"t": now, "level": 80, "charging": False, "tempC": 31.5, "thermal": 0, "storagePct": 61, "apps": []}]
+        self.assertEqual(self.call("POST", "/v1/health/samples", fp, {"samples": samples})[0], 401)
+        self.assertEqual(self.call("POST", "/v1/health/samples", fp, {"samples": samples}, token=dev["token"]), (200, {"kept": 2}))
+        self.assertEqual(stat.S_IMODE(os.stat(self.health_file(dev["deviceId"])).st_mode), 0o600)
+        code, h = self.call("GET", "/v1/health?range=today", fp, token=dev["token"])
+        self.assertEqual((code, h["samples"], h["tempC"], h["apps"][0]["label"]), (200, 2, 31.5, "Chrome"))
+        self.assertEqual(self.call("GET", "/v1/health?range=week", fp, token=dev["token"])[1]["range"], "week")
+        self.assertEqual(self.call("POST", "/v1/health/forget", fp, {}, token=dev["token"]), (200, {"forgotten": True}))
+        self.assertFalse(os.path.exists(self.health_file(dev["deviceId"])))
+
+    def test_unpairing_deletes_phone_health(self):
+        fp, dev = self.paired()
+        self.call("POST", "/v1/health/samples", fp, {"samples": [{"t": int(time.time()), "level": 50}]}, token=dev["token"])
+        self.assertTrue(os.path.exists(self.health_file(dev["deviceId"])))
+        self.assertEqual(self.run_phone("unpair", dev["deviceId"]).returncode, 0)
+        self.assertFalse(os.path.exists(self.health_file(dev["deviceId"])))
+
+
 if __name__ == "__main__":
     unittest.main()

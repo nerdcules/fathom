@@ -9,6 +9,8 @@ pairs with it once, then reads what the Command Deck shows.
   fathom-phone unpair <id>|all  forget a phone (its token stops working)
   fathom-phone status           the service, its fingerprint and devices, as JSON
   fathom-phone alerts           what the phone would be told about now, as JSON
+  fathom-phone health [week]    each phone's health (battery, heat, storage,
+                                apps), if it sends it, as JSON
   fathom-phone test-alert       a test alert for the next 10 minutes, so the
                                 phone shows a notification
 
@@ -41,6 +43,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 
 HOME = os.path.expanduser("~")
 CONFIG = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config"), "fathom")
@@ -256,6 +259,194 @@ class Reader:
 READER = Reader()
 
 
+# ---------------------------------------------------------------- phone health
+
+# What a paired phone sends about itself, about every 15 minutes, if its
+# owner turns Phone health on: battery charge and whether it's charging, the
+# battery's temperature, Android's thermal status, storage used, and each
+# app's foreground and background time since the last sample. Kept here
+# only, readable by you alone, for HEALTH_DAYS; deleted when the phone is
+# unpaired or asks.
+HEALTH_DIR = os.path.join(DIR, "health")
+HEALTH_DAYS = 35
+HEALTH_BODY = 512 * 1024
+PKG = re.compile(r"^[A-Za-z0-9_.]{1,200}$")
+DEVICE_ID = re.compile(r"^[0-9a-f]{8}$")
+
+
+def clean_sample(x, now):
+    """One sample, checked and trimmed; None if it doesn't check out."""
+    if not isinstance(x, dict):
+        return None
+    try:
+        t, level = int(x["t"]), int(x["level"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (now - 40 * 86400 <= t <= now + 3600) or not 0 <= level <= 100:
+        return None
+
+    def num(key, lo, hi, kind=float):
+        try:
+            v = kind(x[key])
+        except (KeyError, TypeError, ValueError):
+            return None
+        return v if lo <= v <= hi else None
+
+    apps = []
+    for a in (x.get("apps") or [])[:60] if isinstance(x.get("apps"), list) else []:
+        if isinstance(a, dict) and PKG.match(str(a.get("pkg", ""))):
+            fg = max(0, min(int(a.get("fg") or 0), 3_600_000 * 6)) if str(a.get("fg", "0")).isdigit() else 0
+            bg = max(0, min(int(a.get("bg") or 0), 3_600_000 * 6)) if str(a.get("bg", "0")).isdigit() else 0
+            if fg or bg:
+                apps.append({"pkg": a["pkg"], "label": plain_text(a.get("label") or a["pkg"], 60), "fg": fg, "bg": bg})
+    return {"t": t, "level": level, "charging": bool(x.get("charging")), "tempC": num("tempC", -30, 90),
+            "thermal": num("thermal", 0, 6, int), "storagePct": num("storagePct", 0, 100, int), "apps": apps}
+
+
+def health_path(dev_id):
+    if not DEVICE_ID.match(str(dev_id)):
+        raise PhoneError("bad device id")
+    return os.path.join(HEALTH_DIR, f"{dev_id}.json")
+
+
+def health_load(dev_id):
+    data = read_json(health_path(dev_id), {})
+    return data.get("samples", []) if isinstance(data, dict) else []
+
+
+def health_add(dev_id, raw, now=None):
+    """Keeps the new samples (one per time), drops those older than HEALTH_DAYS."""
+    now = int(now or time.time())
+    new = [c for c in (clean_sample(x, now) for x in raw[:2000]) if c]
+    with LOCK:
+        by_time = {x["t"]: x for x in health_load(dev_id)}
+        by_time.update({x["t"]: x for x in new})
+        keep = sorted((x for x in by_time.values() if x["t"] >= now - HEALTH_DAYS * 86400), key=lambda x: x["t"])
+        private_dir(HEALTH_DIR)
+        path = health_path(dev_id)
+        tmp = f"{path}.{os.getpid()}.new"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump({"samples": keep}, f, separators=(",", ":"))
+        os.replace(tmp, path)
+    return len(new)
+
+
+def health_forget(dev_id):
+    try:
+        os.remove(health_path(dev_id))
+    except (FileNotFoundError, PhoneError):
+        pass
+
+
+def drain(samples, start, end):
+    """Battery used per hour on battery between start and end: (% an hour, hours seen).
+    Only pairs of samples up to 40 minutes apart, neither charging."""
+    drop = hours = 0.0
+    for a, b in zip(samples, samples[1:]):
+        if not (start <= a["t"] and b["t"] <= end) or a["charging"] or b["charging"]:
+            continue
+        gap = b["t"] - a["t"]
+        if 0 < gap <= 2400 and b["level"] <= a["level"]:
+            drop += a["level"] - b["level"]
+            hours += gap / 3600
+    return (drop / hours if hours else None), hours
+
+
+def duration(ms):
+    m = int(ms // 60000)
+    return f"{m // 60} h {m % 60:02d} min" if m >= 60 else f"{m} min"
+
+
+def app_times(samples, start, end):
+    """Per app over [start, end): foreground and background milliseconds, and its label."""
+    out = {}
+    for x in samples:
+        if start <= x["t"] < end:
+            for a in x["apps"]:
+                o = out.setdefault(a["pkg"], {"label": a["label"], "fg": 0, "bg": 0})
+                o["fg"] += a["fg"]
+                o["bg"] += a["bg"]
+    return out
+
+
+def health_findings(samples, now):
+    """What the rules find in the last day, against the six days before it."""
+    found = []
+    day = 86400
+    recent, recent_h = drain(samples, now - day, now)
+    usual, usual_h = drain(samples, now - 7 * day, now - day)
+    if recent is not None and usual is not None and recent_h >= 2 and usual_h >= 8 \
+            and recent >= 1.4 * usual and recent - usual >= 0.5:
+        detail = f"{recent:.1f}% an hour on battery in the last day, against your usual {usual:.1f}%."
+        now_apps, before = app_times(samples, now - day, now), app_times(samples, now - 7 * day, now - day)
+        culprit = max(now_apps.items(), key=lambda kv: kv[1]["bg"], default=None)
+        if culprit and culprit[1]["bg"] >= 30 * 60000:
+            per_day_before = before.get(culprit[0], {}).get("bg", 0) / 6
+            if culprit[1]["bg"] >= 2 * per_day_before:
+                detail += f" {culprit[1]['label']} ran {duration(culprit[1]['bg'])} in the background."
+        found.append({"id": "battery-drain", "level": "warn", "title": "Battery is draining faster than usual",
+                      "detail": detail})
+    heat = heat_slowdowns(samples, now - day, now)
+    if heat >= 3:
+        found.append({"id": "heat", "level": "warn", "title": f"The phone slowed itself down for heat {heat} times in the last day",
+                      "detail": "Android's thermal status reached moderate or above."})
+    last = samples[-1] if samples else None
+    if last and last.get("storagePct") is not None and last["storagePct"] >= 90:
+        found.append({"id": "storage", "level": "warn", "title": f"Phone storage is {last['storagePct']}% full",
+                      "detail": ""})
+    return found
+
+
+def heat_slowdowns(samples, start, end):
+    """Times the thermal status rose to moderate (2) or above."""
+    n, prev = 0, 0
+    for x in samples:
+        th = x.get("thermal") or 0
+        if start <= x["t"] < end and th >= 2 and prev < 2:
+            n += 1
+        prev = th
+    return n
+
+
+def health_summary(samples, now=None, range_="today"):
+    """What the phone's Health screen shows, for today (by hour) or the last 7 days (by day)."""
+    now = int(now or time.time())
+    local = datetime.datetime.fromtimestamp(now)
+    midnight = int(local.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+    if range_ == "week":
+        start = midnight - 6 * 86400
+        bars = []
+        for d in range(7):
+            s0 = start + d * 86400
+            levels = [x["level"] for x in samples if s0 <= x["t"] < s0 + 86400]
+            bars.append({"label": datetime.datetime.fromtimestamp(s0).strftime("%a"), "level": min(levels) if levels else None})
+    else:
+        range_, start = "today", midnight
+        bars = []
+        for h in range(24):
+            s0 = midnight + h * 3600
+            levels = [x["level"] for x in samples if s0 <= x["t"] < s0 + 3600]
+            bars.append({"label": f"{h:02d}:00", "level": levels[-1] if levels else None})
+    apps = app_times(samples, start, now + 1)
+    shown = sorted(apps.values(), key=lambda a: a["fg"], reverse=True)[:4]
+    rows = [{"label": a["label"], "ms": a["fg"], "background": False} for a in shown if a["fg"] > 0]
+    bg = max(apps.values(), key=lambda a: a["bg"], default=None)
+    if bg and bg["bg"] >= 10 * 60000:
+        rows.append({"label": f"{bg['label']} (background)", "ms": bg["bg"], "background": True})
+    last = samples[-1] if samples else {}
+    _, usual_h = drain(samples, now - 7 * 86400, now - 86400)
+    return {
+        "range": range_, "time": now, "samples": len(samples), "since": samples[0]["t"] if samples else None,
+        "bars": bars, "tempC": last.get("tempC"), "thermal": last.get("thermal"),
+        "storagePct": last.get("storagePct"), "heatSlowdowns": heat_slowdowns(samples, start, now + 1),
+        "screenMs": sum(a["fg"] for a in apps.values()), "apps": rows,
+        "findings": health_findings(samples, now),
+        "learning": None if usual_h >= 8 else
+        f"Still learning your usual: {usual_h:.0f} h of battery use from before today so far; the rules need 8.",
+    }
+
+
 # ---------------------------------------------------------------- alerts
 
 MAC = re.compile(r"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$")
@@ -346,6 +537,15 @@ def alerts(read=None, now=None):
                 add(f"sankofa:{r['repo']}:{item['id']}", "Sankofa", "sankofa.awaiting", "warn",
                     f"{r['name']} needs you", item.get("text", ""), None,
                     [{"id": "done", "label": "Done", "onLaptop": False, "args": [r["repo"], item["id"]]}])
+
+    for d in devices():
+        try:
+            samples = health_load(d["id"])
+        except PhoneError:
+            continue
+        for f in health_findings(samples, now) if samples else []:
+            add(f"phone:{d['id']}:{f['id']}:{now // 86400}", "Phone", "phone.health", f["level"],
+                f"{d.get('name') or 'Phone'}: {f['title']}", f["detail"])
 
     update = read("update") or {}
     if update.get("available") and update.get("target"):
@@ -452,6 +652,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.reply(200, data)
         if self.path == "/v1/alerts":
             return self.reply(200, {"time": int(time.time()), "host": socket.gethostname(), "alerts": alerts()})
+        url = urllib.parse.urlsplit(self.path)
+        if url.path == "/v1/health":
+            range_ = (urllib.parse.parse_qs(url.query).get("range") or ["today"])[0]
+            return self.reply(200, health_summary(health_load(dev["id"]), range_=range_))
         if self.path.startswith("/v1/part/"):
             name = self.path[len("/v1/part/"):]
             if name in SOURCES:
@@ -459,11 +663,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self.reply(404, {"error": "no such thing"})
 
     def do_POST(self):
-        if self.path not in ("/v1/pair", "/v1/action", "/v1/unpair"):
+        if self.path not in ("/v1/pair", "/v1/action", "/v1/unpair", "/v1/health/samples", "/v1/health/forget"):
             return self.reply(404, {"error": "no such thing"})
         length = int(self.headers.get("Content-Length") or 0)
-        if length > MAX_BODY:
+        if length > (HEALTH_BODY if self.path == "/v1/health/samples" else MAX_BODY):
             return self.reply(413, {"error": "too large"})
+        if self.path.startswith("/v1/health/"):
+            dev = self.device()
+            if dev is None:
+                return self.reply(401, {"error": "not paired"})
+            if self.path == "/v1/health/forget":
+                health_forget(dev["id"])
+                print(f"fathom-phone: {dev.get('name')} ({dev.get('id')}) deleted its phone health data", flush=True)
+                return self.reply(200, {"forgotten": True})
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+                samples = body.get("samples")
+                if not isinstance(samples, list):
+                    raise ValueError
+            except (ValueError, AttributeError):
+                return self.reply(400, {"error": "bad request"})
+            return self.reply(200, {"kept": health_add(dev["id"], samples)})
         if self.path == "/v1/unpair":
             # A phone forgetting this laptop: its token stops working here too.
             dev = self.device()
@@ -471,6 +691,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.reply(401, {"error": "not paired"})
             with LOCK:
                 save_devices([d for d in devices() if d["id"] != dev["id"]])
+            health_forget(dev["id"])
             print(f"fathom-phone: {dev.get('name')} ({dev.get('id')}) unpaired itself", flush=True)
             return self.reply(200, {"unpaired": True})
         if self.path == "/v1/action":
@@ -639,7 +860,15 @@ def main(argv):
                 if len(keep) == len(devs):
                     raise PhoneError(f"no paired device {args[0]}")
                 save_devices(keep)
+            for d in devs:
+                if d not in keep:
+                    health_forget(d["id"])
             print(f"Forgot {len(devs) - len(keep)} device{'s' if len(devs) - len(keep) != 1 else ''}.")
+        elif cmd == "health":
+            # For you, or Claude on the laptop, to read: each phone's health summary.
+            range_ = args[0] if args else "today"
+            print(json.dumps({d["id"]: {"name": d.get("name"), **health_summary(health_load(d["id"]), range_=range_)}
+                              for d in devices()}, indent=2))
         elif cmd == "alerts":
             print(json.dumps(alerts()))
         elif cmd == "test-alert":

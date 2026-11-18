@@ -32,6 +32,16 @@ Each line names its commit.
   `sankofa done` in its repo.
 - `fathom-phone`: a phone can unpair itself (`POST /v1/unpair`), so
   forgetting the laptop in the app also stops its token working here.
+- `fathom-phone` keeps phone health, when the phone's owner turns it on:
+  samples of battery charge, charging, battery temperature, thermal status,
+  storage and each app's foreground and background time (35 days, readable
+  by you alone, deleted on unpair or when the phone asks). Rules look at the
+  last day against the six before it: battery draining 1.4 times faster
+  than usual (naming an app that ran much longer in the background), 3 or
+  more heat slowdowns, storage 90% full; their findings are alerts too.
+  `fathom-phone health [week]` prints it for you or Claude to read.
+- `fathom-phone` logs every pairing attempt: paired, wrong secret or no
+  window open, with the phone's name and address.
 
 ## [0.1.0] - 2026-11-17
 

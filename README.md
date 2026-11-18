@@ -818,6 +818,7 @@ fathom-phone unpair <id> # forget one; its token stops working (forgetting
                          # the laptop in the app does the same)
 fathom-phone alerts      # what a phone would be told about now, as JSON
 fathom-phone test-alert  # a test alert for 10 minutes, to check notifications
+fathom-phone health      # each phone's health, if it sends it (add week: 7 days)
 ```
 
 `fathom-phone` runs as a user service and answers HTTPS on port 4920 with a
@@ -842,6 +843,19 @@ update, plus anything [Sankofa](https://github.com/nerdcules/sankofa) has
 waiting on you. Each alert keeps the same id while it's true, so the phone notifies
 once. The phone checks about every 15 minutes, the shortest Android allows
 an app in the background.
+
+Phone health, if you turn it on in the app: about every 15 minutes the
+phone sends its battery charge, whether it's charging, the battery's
+temperature, Android's thermal status, storage used and, with Android's
+Usage access, how long each app was on screen or running in the background.
+`fathom-phone` keeps 35 days in `~/.local/state/fathom/phone/health/`
+(readable by you alone) and deletes a phone's when it's unpaired or the app
+asks. Rules compare the last day with the six before it: the battery
+draining at least 1.4 times (and 0.5% an hour) faster than usual, naming an
+app that spent at least 30 minutes in the background and twice its usual;
+3 or more heat slowdowns; storage 90% full. Until there are 8 hours of
+battery use before today they say they're still learning. What they find
+is an alert too.
 
 Some alerts offer an action, and those are the only changes a phone can
 make: trust a new device (`fathom-sentinel trust`), restart a failed service
