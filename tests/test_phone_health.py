@@ -124,6 +124,10 @@ class HealthTest(unittest.TestCase):
                 # A day later the count starts again (the stand-in claude says nothing; that's a failed answer, not a refusal).
                 self.m.write_private(self.m.ask_path("0123abcd"), {"status": "done", "asked": [now - 90000] * 20})
                 self.assertEqual(self.m.ask_start({"id": "0123abcd", "name": "Pixel"}, None)[0], 202)
+                for _ in range(100):  # let the background answer finish before the folder goes
+                    if self.m.ask_state("0123abcd")["status"] != "running":
+                        break
+                    t.sleep(0.05)
             finally:
                 del os.environ["FATHOM_CLAUDE"]
 
