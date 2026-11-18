@@ -109,10 +109,10 @@ own uncommitted changes or commits in the clone stop it, and it says so.
 `rollback` moves the clone back to the version before the last `apply` and
 reinstalls the parts that differ.
 
-Which Fathom is installed shows everywhere it has a screen: the footer of
-every deck page (Personalise included), under your name in Start, in the
-About card, in the bar pill's tooltip and under the machine's name on the
-sign-in screen, as "v0.1.0 · build 12 · 0847b57": the release, the build
+Which Fathom is installed shows in the footer of every deck page
+(Personalise included), under your name in Start, in the About card, in the
+bar pill's tooltip and under the machine's name on the sign-in screen (not
+yet on the desk's screens, the mini-player or mail notifications), as "v0.1.0 · build 12 · 0847b57": the release, the build
 number (commits since that release; 0 on the release itself) and the
 commit, with "with local changes" if the clone had uncommitted changes.
 `install.sh` writes it into the copies it installs (the deck plugin's and
