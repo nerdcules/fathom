@@ -68,10 +68,11 @@ class Install(unittest.TestCase):
     def test_the_installed_deck_and_the_record_carry_the_version(self):
         # The sandbox has no git, so the version is "unknown": what matters is
         # that the installed copy has it and the repo's file is untouched.
-        self.ok("--deck")
-        js = read(self.box.path(".config/omarchy/plugins/fathom.deck/Version.js")).decode()
-        self.assertIn('var text = "version unknown (not a git checkout)"', js)
-        self.assertIn("Written by install.sh", js)
+        self.ok("--deck", "--desk")
+        for plugin in ("fathom.deck", "fathom.desk"):  # the deck and Start; Quick settings
+            js = read(self.box.path(f".config/omarchy/plugins/{plugin}/Version.js")).decode()
+            self.assertIn('var text = "version unknown (not a git checkout)"', js, plugin)
+            self.assertIn("Written by install.sh", js, plugin)
         self.assertIn('var text = "from the repo, not installed"', read(os.path.join(REPO, "deck/plugin/fathom.deck/Version.js")).decode())
         import json
         record = json.loads(read(self.box.path(".local/state/fathom/source")))

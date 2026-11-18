@@ -14,8 +14,9 @@ Each line names its commit.
 ### Added
 
 - Fathom's version shows in each deck page's footer, Start (under your
-  name), the About card, the bar pill's tooltip and the sign-in screen
-  (not yet the desk, the mini-player or mail), as the release, build number (commits since that
+  name), the About card, the bar pill's tooltip, Quick settings and the
+  sign-in screen (not on Alt+Tab, Task view, Snap layouts, the mini-player
+  or mail), as the release, build number (commits since that
   release) and commit, e.g. "v0.1.0 · build 12 · 0847b57".
   `install.sh` stamps it into what it installs; `fathom-update version`
   prints it.

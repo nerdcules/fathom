@@ -111,12 +111,13 @@ reinstalls the parts that differ.
 
 Which Fathom is installed shows in the footer of every deck page
 (Personalise included), under your name in Start, in the About card, in the
-bar pill's tooltip and under the machine's name on the sign-in screen (not
-yet on the desk's screens, the mini-player or mail notifications), as "v0.1.0 · build 12 · 0847b57": the release, the build
+bar pill's tooltip, at the bottom of Quick settings and under the machine's
+name on the sign-in screen (not on Alt+Tab, Task view or Snap layouts, the
+mini-player or mail notifications), as "v0.1.0 · build 12 · 0847b57": the release, the build
 number (commits since that release; 0 on the release itself) and the
 commit, with "with local changes" if the clone had uncommitted changes.
-`install.sh` writes it into the copies it installs (the deck plugin's and
-the sign-in theme's `Version.js`) and its record, so each shows the version
+`install.sh` writes it into the copies it installs (the deck and desk
+plugins' and the sign-in theme's `Version.js`) and its record, so each shows the version
 it's actually running; `fathom-update version` prints it (`--json` for the
 parts). Run from the repo without installing, they say so instead.
 

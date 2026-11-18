@@ -4,6 +4,7 @@ import Quickshell.Bluetooth
 import Quickshell.Services.Pipewire
 import "."
 import "Desk.js" as D
+import "Version.js" as Build
 
 // Quick settings (Super+Alt+A): Wi-Fi, Bluetooth, Focus, night light, stay
 // awake and the power profile as tiles; volume and brightness as sliders;
@@ -244,6 +245,15 @@ Item {
             onClicked: { view.done(); Quickshell.execDetached(["omarchy-menu", "summon", "root"]) }
           }
         }
+      }
+
+      // Fathom's version, as the deck and Start show it.
+      Label {
+        width: parent.width
+        horizontalAlignment: Text.AlignRight
+        text: "Fathom " + Build.text
+        color: Skin.dim
+        font.pixelSize: 11 * Skin.u
       }
     }
   }
