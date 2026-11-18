@@ -110,5 +110,29 @@ class HealthTest(unittest.TestCase):
                 self.m.health_path("../etc")
 
 
+    def test_twenty_questions_a_day(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.m.ASK_DIR = tmp
+            self.m.HEALTH_DIR = tmp
+            os.environ["FATHOM_CLAUDE"] = "/bin/true"
+            try:
+                import time as t
+                now = int(t.time())
+                self.m.write_private(self.m.ask_path("0123abcd"), {"status": "done", "asked": [now - 60] * 20})
+                code, reply = self.m.ask_start({"id": "0123abcd", "name": "Pixel"}, None)
+                self.assertEqual(code, 429)
+                # A day later the count starts again (the stand-in claude says nothing; that's a failed answer, not a refusal).
+                self.m.write_private(self.m.ask_path("0123abcd"), {"status": "done", "asked": [now - 90000] * 20})
+                self.assertEqual(self.m.ask_start({"id": "0123abcd", "name": "Pixel"}, None)[0], 202)
+            finally:
+                del os.environ["FATHOM_CLAUDE"]
+
+
+    def test_answers_read_as_plain_text(self):
+        md = "Nothing looks off.\n\n- **Storage:** 53% used.\n- **Heat:**  none\n\n## Next\nAsk again   tomorrow."
+        self.assertEqual(self.m.plain_answer(md),
+                         "Nothing looks off.\n\n• Storage: 53% used.\n• Heat: none\n\nNext\nAsk again tomorrow.")
+
+
 if __name__ == "__main__":
     unittest.main()

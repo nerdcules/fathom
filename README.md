@@ -857,6 +857,18 @@ app that spent at least 30 minutes in the background and twice its usual;
 battery use before today they say they're still learning. What they find
 is an alert too.
 
+Ask Claude on the laptop: from a finding (or, with none, the Health screen
+itself) the phone can ask Claude Code on this laptop what's behind it.
+`fathom-phone` writes the question itself from its copy of the phone's
+health, so the phone sends only which finding, and runs `claude -p` with no
+tools, no MCP servers, no settings or hooks (`--setting-sources project` in
+an empty folder) and nothing saved, on Sonnet 5.5 unless
+`FATHOM_PHONE_ASK_MODEL` says otherwise. It uses your Claude account: on 18
+November 2026 a question about three samples took 4.3 to 6.5 s and Claude
+Code reported $0.010 to $0.013 each. One question runs at a time, 20 a day
+per phone; the answer is kept in `~/.local/state/fathom/phone/ask/` until
+the next one, and deleted with the phone's health.
+
 Some alerts offer an action, and those are the only changes a phone can
 make: trust a new device (`fathom-sentinel trust`), restart a failed service
 (`fathom-care restart`), block an address (`fathom-sentinel block`), mark a

@@ -40,6 +40,11 @@ Each line names its commit.
   than usual (naming an app that ran much longer in the background), 3 or
   more heat slowdowns, storage 90% full; their findings are alerts too.
   `fathom-phone health [week]` prints it for you or Claude to read.
+- Ask Claude on the laptop: a phone asks about a health finding (or its
+  health in general) and Claude Code answers on the laptop, from a question
+  `fathom-phone` writes out of its own data. No tools, MCP servers,
+  settings or hooks, nothing saved; Sonnet 5.5 by default
+  (`FATHOM_PHONE_ASK_MODEL`); one question at a time and 20 a day per phone.
 - `fathom-phone` logs every pairing attempt: paired, wrong secret or no
   window open, with the phone's name and address.
 
