@@ -11,55 +11,51 @@ Each line names its commit.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-18
+
+The laptop side of Fathom for Android, and Fathom's version on screen.
+
 ### Added
 
-- Fathom's version shows in each deck page's footer, Start (under your
-  name), the About card, the bar pill's tooltip, Quick settings and the
-  sign-in screen (not on Alt+Tab, Task view, Snap layouts, the mini-player
-  or mail), as the release, build number (commits since that
-  release) and commit, e.g. "v0.1.0 · build 12 · 0847b57".
-  `install.sh` stamps it into what it installs; `fathom-update version`
-  prints it.
-
 - `fathom-phone` (`./install.sh --phone`): the laptop side of Fathom for
-  Android. An HTTPS service on port 4920 with a pinned self-signed
-  certificate, pairing by QR code (one-time secret, 2 minutes, 5 tries),
-  a token per phone kept as its SHA-256, and read-only access to what the
-  deck shows; `devices` and `unpair`.
-- `fathom-phone` alerts and actions: `/v1/alerts` works out what needs a
-  look (a failed service, disk, a restart, a container in trouble, Sentinel's
-  warnings from the last day, Pulse errors, Claude Code waiting, a Fathom
+  Android. An HTTPS service on port 4920 with a self-signed certificate the
+  phone pins, pairing by QR code (a one-time secret, 2 minutes, 5 tries), a
+  token per phone kept only as its SHA-256, the deck's parts for the phone
+  to read, `devices` and `unpair`; a firewall rule for the home network and
+  Tailscale (e5daf83).
+- Alerts for the phone: what needs a look (a failed service, disk filling,
+  a restart to finish an update, a container in trouble, Sentinel's
+  warnings from the last day, errors in Pulse, Claude Code waiting, a Fathom
   update), each with an id that stays the same while it's true. A phone can
   take only the actions an alert offers (trust a device, restart a failed
   service, block an address), with the arguments from the laptop's own copy
-  of that alert; those needing root ask for the password on the laptop.
-  `fathom-phone alerts` and `fathom-phone test-alert`.
-- `fathom-phone` reads Sankofa: per repo, the items still open, the leases
-  still held and the last note (repos whose `.sankofa/` has gone are left
-  out). An item waiting on you is an alert, with a Done action that runs
-  `sankofa done` in its repo.
-- `fathom-phone`: a phone can unpair itself (`POST /v1/unpair`), so
-  forgetting the laptop in the app also stops its token working here.
-- `fathom-phone` keeps phone health, when the phone's owner turns it on:
-  samples of battery charge, charging, battery temperature, thermal status,
-  storage and each app's foreground and background time (35 days, readable
-  by you alone, deleted on unpair or when the phone asks). Rules look at the
-  last day against the six before it: battery draining 1.4 times faster
-  than usual (naming an app that ran much longer in the background), 3 or
-  more heat slowdowns, storage 90% full; their findings are alerts too.
-  `fathom-phone health [week]` prints it for you or Claude to read.
-- Ask Claude on the laptop: a phone asks about a health finding (or its
-  health in general) and Claude Code answers on the laptop, from a question
-  `fathom-phone` writes out of its own data. No tools, MCP servers,
-  settings or hooks, nothing saved; Sonnet 5.5 by default
-  (`FATHOM_PHONE_ASK_MODEL`); one question at a time and 20 a day per phone.
-- Ask Claude asks a targeted question about a finding: only its evidence,
-  the usual causes to choose from, and a fixed answer shape (Likely cause,
-  The evidence, Try this); `FATHOM_PHONE_ASK_STYLE=broad` for the first
-  version. `phone/tools/ask-compare` compares styles and models on a
-  made-up finding.
-- `fathom-phone` logs every pairing attempt: paired, wrong secret or no
-  window open, with the phone's name and address.
+  of the alert; those needing root ask for the password on the laptop.
+  `fathom-phone alerts` and `test-alert` (00e462b).
+- Sankofa for the phone: each repo's open items, leases held and last note;
+  an item waiting on you is an alert, with Done (9b4d00c).
+- A phone can unpair itself, so forgetting the laptop in the app stops its
+  token working here; every pairing attempt is logged (310a213).
+- Phone health, when the phone's owner turns it on: battery charge,
+  charging, battery temperature, thermal status, storage and each app's
+  foreground and background time, kept 35 days, readable by you alone and
+  deleted on unpair. Rules compare the last day with the six before it
+  (faster battery drain, naming an app behind it; heat slowdowns; storage
+  90% full), and their findings are alerts. `fathom-phone health [week]`
+  (dd69b57).
+- Ask Claude on the laptop: the phone asks about a health finding and
+  Claude Code answers here, from a question `fathom-phone` writes out of its
+  own data, with no tools, MCP servers, settings or hooks, and nothing
+  saved; one question at a time, 20 a day per phone (b8cd76d). The question
+  is targeted: only the finding's evidence, the usual causes and a fixed
+  answer shape; `phone/tools/ask-compare` compares styles and models
+  (7e680b0).
+- Fathom's version, as the release, build number (commits since that
+  release) and commit, e.g. "v0.2.0 · build 0 · 1a2b3c4": in each deck
+  page's footer, Start, the About card, the bar pill's tooltip, Quick
+  settings and the sign-in screen (not Alt+Tab, Task view, Snap layouts,
+  the mini-player or mail). `install.sh` stamps it into what it installs
+  and its record; `fathom-update version` prints it (de83adc, eb5fdbb,
+  cbea201).
 
 ## [0.1.0] - 2026-11-17
 
@@ -119,5 +115,6 @@ The first release: everything Fathom had on 17 November 2026.
 - Care's own description said its check runs hourly; it runs every 3 hours
   (332a7c4).
 
-[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nerdcules/fathom/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nerdcules/fathom/releases/tag/v0.1.0
