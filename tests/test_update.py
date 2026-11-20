@@ -153,6 +153,25 @@ class UpdateTest(unittest.TestCase):
         self.commit(self.up, "installer change", tag="v0.2.0")
         self.assertEqual(self.checked()["parts"], ["desk", "sentinel"])
 
+    def test_prereleases_follow_the_newest_tag_rc_included(self):
+        self.write(self.up, "desk/plugin.qml", "v2\n")
+        self.commit(self.up, "desk change", tag="v0.2.0")
+        self.write(self.up, "desk/plugin.qml", "v3\n")
+        self.commit(self.up, "first try", tag="v0.3.0-rc.1")
+        self.write(self.up, "README.md", "v4\n")
+        self.commit(self.up, "second try", tag="v0.3.0-rc.2")
+        self.assertEqual(self.checked()["target"], "v0.2.0")   # releases: never an rc
+        r = self.update("channel", "prereleases")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.checked()["target"], "v0.3.0-rc.2")
+        self.update("apply")
+        # The release itself is newer than every one of its pre-releases.
+        self.write(self.up, "README.md", "v5\n")
+        self.commit(self.up, "release", tag="v0.3.0")
+        r = self.checked()
+        self.assertEqual(r["target"], "v0.3.0")
+        self.assertTrue(r["available"])
+
     def test_no_release_yet_on_the_releases_channel(self):
         for repo in (self.up, self.repo):
             self.git(repo, "tag", "-d", "v0.1.0")

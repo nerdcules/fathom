@@ -12,10 +12,11 @@
   fathom-update apply           update the repo (fast-forward only) and
                                 re-run install.sh for the parts that changed
   fathom-update rollback        go back to the version before the last apply
-  fathom-update channel releases|main
+  fathom-update channel releases|prereleases|main
                                 follow releases (the default): tags named for
                                 semantic versions, vMAJOR.MINOR.PATCH, never
-                                pre-releases like v1.2.0-rc1; or every commit
+                                pre-releases like v1.2.0-rc1; or the newest
+                                tag, pre-releases included; or every commit
                                 on the branch
   fathom-update auto on|off     let Care's 3-hourly check look for updates
                                 (it contacts the git remote; off by default)
@@ -80,8 +81,12 @@ EVIDENCE = {
     "signin": os.environ.get("FATHOM_UPDATE_SDDM_THEME", "/usr/share/sddm/themes/fathom"),
 }
 # A release: a semantic version tag. Pre-releases (v1.2.0-rc1) and other
-# tags are never offered on the releases channel.
+# tags are never offered on the releases channel; the prereleases channel
+# offers whichever is newest in semantic-version order.
 TAG = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+PRE_TAG = re.compile(r"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+                     r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$")
+CHANNELS = ("releases", "prereleases", "main")
 
 
 class UpdateError(Exception):
@@ -112,7 +117,7 @@ def write_json(path, data):
 def settings():
     s = dict(DEFAULTS)
     s.update({k: v for k, v in read_json(SETTINGS, {}).items() if k in DEFAULTS})
-    if s["channel"] not in ("releases", "main"):
+    if s["channel"] not in CHANNELS:
         s["channel"] = DEFAULTS["channel"]
     s["auto"] = s["auto"] is True
     return s
@@ -168,12 +173,21 @@ def target_of(repo, channel, branch):
         if git(repo, "rev-parse", "--verify", "-q", ref, check=False) is None:
             return None, f"the remote has no branch {branch or 'main'}"
         return ref, ref
-    tags = [t for t in (git(repo, "tag", "-l", "v*") or "").splitlines() if TAG.match(t)]
-    tags.sort(key=lambda t: tuple(int(n) for n in t[1:].split(".")), reverse=True)
+    pattern = PRE_TAG if channel == "prereleases" else TAG
+    tags = [t for t in (git(repo, "tag", "-l", "v*") or "").splitlines() if pattern.match(t)]
+    tags.sort(key=precedence, reverse=True)
     if not tags:
         return None, ("no release has been published yet; follow every commit instead with: "
                       "fathom-update channel main")
     return tags[0], tags[0]
+
+
+def precedence(tag):
+    """Semantic-version order: v1.2.0-rc1 < v1.2.0-rc2 < v1.2.0 < v1.10.0."""
+    m = PRE_TAG.match(tag)
+    pre = m.group(4).split(".") if m.group(4) else []
+    ids = tuple((0, int(i), "") if i.isdigit() else (1, 0, i) for i in pre)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), 0 if pre else 1, ids)
 
 
 def parts_changed(repo, old, new, installed):
@@ -377,12 +391,13 @@ def main(argv):
             if notifying:
                 notify(done)
         elif cmd == "channel":
-            if len(args) != 1 or args[0] not in ("releases", "main"):
-                raise UpdateError("channel takes releases or main")
+            if len(args) != 1 or args[0] not in CHANNELS:
+                raise UpdateError("channel takes releases, prereleases or main")
             s = settings()
             s["channel"] = args[0]
             write_json(SETTINGS, s)
-            print(f"Following {'tagged releases' if args[0] == 'releases' else 'every commit'} from now on.")
+            print("Following " + {"releases": "tagged releases", "prereleases": "the newest tag, pre-releases included",
+                                  "main": "every commit"}[args[0]] + " from now on.")
         elif cmd == "auto":
             if len(args) != 1 or args[0] not in ("on", "off"):
                 raise UpdateError("auto takes on or off")

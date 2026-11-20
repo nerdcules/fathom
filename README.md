@@ -95,8 +95,11 @@ Fathom updates from the git clone you installed it from. Versions are
 releases: git tags named for [semantic versions](https://semver.org),
 `vMAJOR.MINOR.PATCH`, with what changed in [CHANGELOG.md](CHANGELOG.md).
 `fathom-update` follows releases and never offers a pre-release such as
-`v0.2.0-rc1`; `fathom-update channel main` follows every commit on the
-branch instead (`channel releases` goes back).
+`v0.2.0-rc1`; `fathom-update channel prereleases` offers whichever tag is
+newest, pre-releases included (the release `v0.2.0` is newer than its
+`v0.2.0-rc1`), to try one before it's released; `fathom-update channel
+main` follows every commit on the branch instead (`channel releases` goes
+back).
 
 `fathom-update` (or `check`) fetches from the clone's remote and says what's
 new: the commits, the parts they touch, and whether reinstalling them needs
