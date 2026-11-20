@@ -39,7 +39,7 @@ cd ~/Work/fathom
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
-| `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
+| `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
 | `--pulse` | Pulse, its key and its collector service. Asks for your password once if `ufw` is installed and Docker's bridge (`docker0`) has an address, so containers can reach it |
 | `--opensnitch` | With `--sentinel`: also install OpenSnitch, which asks the first time each app connects somewhere new |
 | `--crumbs` | Crumbs, its key, and the helper that writes the browsers' cookie rules. Needs your password for the helper |
@@ -565,9 +565,11 @@ is open. It looks after the machine so you don't have to.
   Old package downloads and system logs need your password, so the deck
   closes for those and a notification says how much was freed.
 - **Warnings:** failed services (yours and the system's), with buttons to
-  restart one or read its log, a disk over 85% full, and a kernel update
-  waiting for a restart. Below them: battery health, CPU temperature, when you
-  last updated and whether snapshots are on.
+  restart one or read its log, a disk over 85% full, a kernel update
+  waiting for a restart, and CVEs [Ward](#ward) rated as needing you now.
+  Until Ward is set up, an offer to set it up is listed too, with **Set up**
+  and **Not now**; it doesn't count as a warning. Below them: battery health,
+  CPU temperature, when you last updated and whether snapshots are on.
 - **Updates:** system packages (flagging a new kernel), AUR packages, firmware
   and Omarchy itself, with the download size. **Update everything** runs
   Omarchy's own updater in a terminal, which checks free space, takes a
@@ -588,7 +590,30 @@ the timer off: `systemctl --user disable --now fathom-care.timer`.
 fathom-care status | jq .     # what Care shows, as JSON
 fathom-care check             # check now
 fathom-care clean trash npm   # free those (names from `status`)
+fathom-care ward status       # what Ward's last check found, as JSON
+fathom-care ward setup        # install Ward and turn on its daily check
 ```
+
+### Ward
+
+[Ward](https://github.com/nerdcules/ward) is a separate app: once a day it
+matches this machine's packages and kernel against the published CVEs,
+works out what the machine actually uses, has Claude Code triage the rest,
+and alerts you when something needs you. Fathom offers to set it up in three
+places: `./install.sh --sentinel` (or `--all`) asks once at a terminal,
+Care's Warnings lists the offer, and Sentinel's page has a **Set up** button.
+Setting up runs `fathom-care ward install` in a terminal: through
+`nerdcules-update` when that is installed, otherwise from a clone of Ward's
+newest release tag, built with its `bin/install` (which asks for your
+password). While Ward has only pre-releases it asks before installing one.
+It then turns on Ward's daily check and offers to run the first one, which
+downloads CVE.org's list once (669 MB). "No" at install, or **Not now** in
+Care, is remembered in `~/.local/state/fathom/ward-dismissed`, and Care stops
+offering it; Sentinel keeps its button.
+
+Care and Sentinel read Ward's last results (`~/.local/state/ward/findings.json`)
+and never run a check themselves, since a check can call Claude. Ward's own
+alerts aren't repeated by Care.
 
 ## Sentinel
 
@@ -624,6 +649,9 @@ check's results every minute. It runs as you. What it watches:
   (`MemoryHigh=1G`) rather than growing to the size of your installed
   packages (16.2 GB once here) and crowding other programs' cache.
 - **OpenSnitch**, if installed: its rule counts, and new rules as they appear.
+- **CVEs**, through [Ward](#ward): what its last check found (CVEs needing
+  you now, matches not triaged yet, a kernel branch that no longer gets
+  fixes), or, until it's set up, a **Set up** button.
 
 Warnings, port scans, failed SSH sign-ins and USB storage send a notification;
 clicking it opens Sentinel. Events found while catching up on the journal

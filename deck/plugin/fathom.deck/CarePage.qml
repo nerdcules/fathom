@@ -20,10 +20,20 @@ GridLayout {
   signal updateRequested()
   signal fathomUpdateRequested()
   signal checkRequested()
+  signal wardSetupRequested()
+  signal wardDismissRequested()
+  signal wardOpenRequested()
 
   readonly property var disk: care ? care.disk : null
   readonly property var reclaim: care && Array.isArray(care.reclaim) ? care.reclaim : []
   readonly property var warnings: care && Array.isArray(care.warnings) ? care.warnings : []
+  // The warnings that need you: the offer to set up Ward is listed with
+  // them but isn't one, so it doesn't count.
+  readonly property int needCount: {
+    var n = 0
+    for (var i = 0; i < warnings.length; i++) if (warnings[i].kind !== "ward-setup") n++
+    return n
+  }
   readonly property var updates: care ? care.updates : null
   readonly property var info: care ? care.info : null
   readonly property bool busyChecking: checking || (!!care && care.checking === true)
@@ -70,7 +80,7 @@ GridLayout {
     if (!care) return [{ tone: "stopped", text: Skin.t("loading") }]
     var out = []
     var need = 0
-    for (var i = 0; i < warnings.length; i++) if (warnings[i].kind !== "disk") need++
+    for (var i = 0; i < warnings.length; i++) if (warnings[i].kind !== "disk" && warnings[i].kind !== "ward-setup") need++
     if (need > 0) out.push({ tone: "bad", text: Skin.tn("care.summary.warnings", need).arg(Skin.n(need)) })
     if (fathomReady) out.push({ tone: "warn", text: Skin.t("care.summary.fathom").arg(fathomUpdate.target) })
     if (updates) {
@@ -79,7 +89,7 @@ GridLayout {
         : { tone: "ok", text: Skin.t("care.summary.upToDate") })
     }
     if (disk) out.push({ tone: F.level(disk.pct), text: Skin.t("summary.disk").arg(Skin.n(disk.pct)) })
-    if (out.length === 0 || (need === 0 && warnings.length === 0)) out.unshift({ tone: "ok", text: Skin.t("care.summary.clear") })
+    if (out.length === 0 || (need === 0 && page.needCount === 0)) out.unshift({ tone: "ok", text: Skin.t("care.summary.clear") })
     return out
   }
 
@@ -212,8 +222,8 @@ GridLayout {
   Card {
     title: Skin.t("care.warnings")
     glyph: ""
-    subtitle: page.warnings.length > 0 ? Skin.tn("care.needYou", page.warnings.length).arg(Skin.n(page.warnings.length)) : ""
-    subtitleColor: page.warnings.length > 0 ? Skin.warn : Skin.dim
+    subtitle: page.needCount > 0 ? Skin.tn("care.needYou", page.needCount).arg(Skin.n(page.needCount)) : ""
+    subtitleColor: page.needCount > 0 ? Skin.warn : Skin.dim
 
     Empty {
       visible: !!page.care && page.warnings.length === 0
@@ -225,13 +235,38 @@ GridLayout {
         id: wrow
         required property var modelData
         readonly property bool isUnit: modelData.kind === "unit"
+        readonly property bool isWardSetup: modelData.kind === "ward-setup"
+        readonly property bool isWard: modelData.kind === "ward"
         alwaysShowActions: true
-        tone: modelData.kind === "disk" ? Skin.levelColor(modelData.level) : (isUnit ? Skin.urgent : Skin.warn)
-        name: isUnit ? Skin.t("care.unitFailed").arg(modelData.description || modelData.unit)
+        tone: isWardSetup ? Skin.dim : isWard ? Skin.urgent
+          : (modelData.kind === "disk" ? Skin.levelColor(modelData.level) : (isUnit ? Skin.urgent : Skin.warn))
+        name: isWardSetup ? Skin.t("care.wardSetup")
+          : isWard ? Skin.tn("care.wardNow", modelData.now).arg(Skin.n(modelData.now))
+          : isUnit ? Skin.t("care.unitFailed").arg(modelData.description || modelData.unit)
           : (modelData.kind === "disk" ? Skin.t("care.diskFull").arg(Skin.n(modelData.pct))
           : Skin.t("care.reboot"))
-        detail: isUnit ? Skin.t(modelData.scope === "user" ? "care.unitUser" : "care.unitSystem").arg(modelData.unit)
+        detail: isWardSetup ? Skin.t("care.wardSetupDetail")
+          : isWard ? Skin.t("care.wardNowDetail")
+          : isUnit ? Skin.t(modelData.scope === "user" ? "care.unitUser" : "care.unitSystem").arg(modelData.unit)
           : (modelData.kind === "disk" ? Skin.t("care.diskFullDetail") : Skin.t("care.rebootDetail"))
+
+        Pill {
+          visible: wrow.isWardSetup
+          text: Skin.t("care.wardSetUp")
+          primary: true
+          onClicked: page.wardSetupRequested()
+        }
+        Pill {
+          visible: wrow.isWardSetup
+          text: Skin.t("care.wardNotNow")
+          onClicked: page.wardDismissRequested()
+        }
+        Pill {
+          visible: wrow.isWard
+          glyph: "\uf2d0"
+          tip: Skin.t("care.openWard")
+          onClicked: page.wardOpenRequested()
+        }
 
         Pill {
           visible: wrow.isUnit

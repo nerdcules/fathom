@@ -695,6 +695,29 @@ install_sentinel() {
   fi
 
   echo "Sentinel is watching. Press Super+Alt+X to see it."
+  offer_ward
+}
+
+# Ward (github.com/nerdcules/ward) checks this machine against the published
+# CVEs every day; it is a separate app. Asked once, and only in a terminal:
+# not when it is installed, when stdin or stdout isn't a terminal, or after a
+# "no". A "no" is remembered, as Care's "Not now" is: Care stops offering it,
+# and Sentinel's row keeps its Set up button.
+offer_ward() {
+  command -v ward >/dev/null && return 0
+  [[ -t 0 && -t 1 ]] || return 0
+  local dismissed="$STATE_DIR/ward-dismissed" answer
+  [[ -e $dismissed ]] && return 0
+  read -rp "Also set up Ward, which checks this machine against published CVEs every day? [y/N] " answer || answer=""
+  if [[ $answer == [yY]* ]]; then
+    bash "$REPO/care/bin/fathom-care" ward install ||
+      echo "Ward wasn't set up. Care's Warnings and Sentinel's page offer it again." >&2
+  else
+    mkdir -p "$STATE_DIR"
+    touch "$dismissed"
+    echo "Not setting up Ward. Sentinel's page (Super+Alt+X) can set it up later."
+  fi
+  return 0
 }
 
 # Whose is the ufw rule letting containers reach Pulse at this address:

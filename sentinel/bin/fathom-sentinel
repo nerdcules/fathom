@@ -25,6 +25,7 @@ import json
 import os
 import queue
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -169,6 +170,21 @@ def opensnitch():
     deny = sum(1 for r in rules if r["action"] in ("deny", "reject"))
     return {"installed": True, "active": active, "rules": len(rules), "allow": allow, "deny": deny,
             "recent": sorted(rules, key=lambda r: r["created"], reverse=True)[:8]}
+
+
+def ward():
+    """Ward (github.com/nerdcules/ward), a separate app that checks this
+    machine against the published CVEs, as `fathom-care ward status` reads
+    it: installed or not, and what its last check found. None without Care,
+    which comes with the Command Deck this page is part of."""
+    care = shutil.which("fathom-care") or os.path.join(HOME, ".local", "bin", "fathom-care")
+    if not os.access(care, os.X_OK):
+        return None
+    try:
+        value = json.loads(run([care, "ward", "status"]) or "null")
+    except ValueError:
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def network():
@@ -380,6 +396,7 @@ def status():
         "watching": watching,
         "firewall": firewall(),
         "opensnitch": opensnitch(),
+        "ward": ward(),
         "integrity": {"checkedAt": integrity.get("checkedAt"), "files": integrity.get("files", 0),
                       "packages": integrity.get("packages", 0), "altered": integrity.get("alteredCount", len(integrity.get("altered", [])))}
         if integrity else None,

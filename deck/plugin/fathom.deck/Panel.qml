@@ -580,6 +580,11 @@ Item {
         onCheckFilesRequested: root.handOff([root.sentinelTool, "check-files"])
         onSentinelLogRequested: function(what) { root.handOff([root.sentinelTool, "log", what]) }
         onSnitchRequested: root.handOff(["uwsm-app", "--", "opensnitch-ui"])
+        // Setting Ward up installs a package (it asks for your password) in a
+        // terminal, so the deck steps aside.
+        onWardSetupRequested: root.handOff([root.careTool, "ward", "setup"])
+        onWardDismissRequested: root.run([root.careTool, "ward", "dismiss"])
+        onWardOpenRequested: root.handOff(["uwsm-app", "--", "ward"])
         pulse: root.pulse
         agents: root.agents
         pulseRange: root.pulseRange

@@ -59,6 +59,9 @@ Item {
   signal checkFilesRequested()
   signal sentinelLogRequested(string what)
   signal snitchRequested()
+  signal wardSetupRequested()
+  signal wardDismissRequested()
+  signal wardOpenRequested()
   signal pulseRangeRequested(string range)
   signal askRequested(string text)
   signal lookApplyRequested(var args)
@@ -241,6 +244,9 @@ Item {
         onUpdateRequested: deck.updateRequested()
         onFathomUpdateRequested: deck.fathomUpdateRequested()
         onCheckRequested: deck.checkRequested()
+        onWardSetupRequested: deck.wardSetupRequested()
+        onWardDismissRequested: deck.wardDismissRequested()
+        onWardOpenRequested: deck.wardOpenRequested()
       }
 
       SentinelPage {
@@ -259,6 +265,8 @@ Item {
         onCheckFilesRequested: deck.checkFilesRequested()
         onLogRequested: function(what) { deck.sentinelLogRequested(what) }
         onSnitchRequested: deck.snitchRequested()
+        onWardSetupRequested: deck.wardSetupRequested()
+        onWardOpenRequested: deck.wardOpenRequested()
       }
 
       PulsePage {

@@ -17,11 +17,16 @@ GridLayout {
   signal checkFilesRequested()
   signal logRequested(string what)
   signal snitchRequested()
+  signal wardSetupRequested()
+  signal wardOpenRequested()
 
   readonly property var fw: sentinel ? sentinel.firewall : null
   readonly property var snitch: sentinel ? sentinel.opensnitch : null
   readonly property var files: sentinel ? sentinel.integrity : null
   readonly property var net: sentinel ? sentinel.network : null
+  // Ward, the CVE watch: null without Care (fathom-care ward status).
+  readonly property var ward: sentinel ? sentinel.ward : null
+  readonly property var wardResults: ward ? ward.results : null
   readonly property var events: sentinel && Array.isArray(sentinel.events) ? sentinel.events : []
   readonly property var devices: net && Array.isArray(net.devices) ? net.devices : []
   readonly property var blocks: sentinel ? sentinel.blocksToday : null
@@ -62,6 +67,7 @@ GridLayout {
     else out.push({ tone: "ok", text: Skin.t("sentinel.protected") })
     if (fw && fw.lockdown) out.push({ tone: "warn", text: Skin.t("sentinel.lockdownOn") })
     if (blocks) out.push({ tone: "ok", text: Skin.tn("sentinel.summary.blocked", blocks.total).arg(Skin.n(blocks.total)) })
+    if (wardResults && wardResults.now > 0) out.push({ tone: "bad", text: Skin.tn("sentinel.wardNow", wardResults.now).arg(Skin.n(wardResults.now)) })
     if (net && net.ssid) out.push({ tone: newDevices > 0 ? "warn" : "ok", text: Skin.tn("sentinel.summary.devices", devices.length).arg(Skin.n(devices.length)).arg(net.ssid) })
     return out
   }
@@ -109,6 +115,45 @@ GridLayout {
         glyph: ""
         tip: Skin.t("sentinel.openSnitch")
         onClicked: page.snitchRequested()
+      }
+    }
+
+    // Ward: which published CVEs affect this machine. Offered here until it
+    // is set up; then what its last check found, and a way to open it.
+    ListRow {
+      visible: !!page.ward
+      readonly property var r: page.wardResults
+      tone: !page.ward || !page.ward.installed ? Skin.dim
+        : (r && r.now > 0 ? Skin.urgent : (r && (r.kernel || r.exploited > 0 || r.soon > 0) ? Skin.warn : Skin.ok))
+      name: !page.ward || !page.ward.installed ? Skin.t("sentinel.wardMissing")
+        : (!r ? Skin.t("sentinel.wardNoCheck")
+        : (r.now > 0 ? Skin.tn("sentinel.wardNow", r.now).arg(Skin.n(r.now)) : Skin.t("sentinel.wardClear")))
+      detail: {
+        if (!page.ward || !page.ward.installed) return Skin.t("sentinel.wardMissingDetail")
+        var parts = []
+        if (r) {
+          parts.push(Skin.tn("sentinel.wardMatches", r.affected).arg(Skin.n(r.affected)).arg(Skin.n(r.packages)))
+          if (r.open > 0) parts.push(Skin.tn("sentinel.wardOpen", r.open).arg(Skin.n(r.open)))
+          if (r.kernel) parts.push(Skin.t("sentinel.wardKernel").arg(r.kernel.branch))
+          if (r.checkedAt) parts.push(Skin.t("sentinel.wardChecked").arg(page.agoText(Math.floor(Date.parse(r.checkedAt) / 1000))))
+        } else {
+          parts.push(Skin.t("sentinel.wardNoCheckDetail"))
+        }
+        if (!page.ward.scheduled) parts.push(Skin.t("sentinel.wardDailyOff"))
+        return parts.join(" · ")
+      }
+      alwaysShowActions: true
+      Pill {
+        visible: !!page.ward && !page.ward.installed
+        text: Skin.t("sentinel.wardSetUp")
+        tip: Skin.t("sentinel.wardSetUpTip")
+        onClicked: page.wardSetupRequested()
+      }
+      Pill {
+        visible: !!page.ward && page.ward.installed
+        glyph: "\uf2d0"
+        tip: Skin.t("sentinel.openWard")
+        onClicked: page.wardOpenRequested()
       }
     }
 
@@ -167,6 +212,7 @@ GridLayout {
     SectionTitle { text: Skin.t("sentinel.watchingTitle"); Layout.topMargin: 6 * Skin.u }
     Label {
       text: Skin.t("sentinel.watchingList") + (page.snitch && page.snitch.installed ? ", OpenSnitch" : "")
+        + (page.ward && page.ward.installed ? ", Ward" : "")
       color: Skin.dim
       font.pixelSize: 12 * Skin.u
       wrapMode: Text.WordWrap

@@ -21,6 +21,12 @@
 #                               show a service's log in a terminal
 #   fathom-care update          run Omarchy's update in a terminal, then
 #                               check again
+#   fathom-care ward status|setup|install|dismiss
+#                               Ward, which checks this machine against the
+#                               published CVEs: what its last check found
+#                               (status), install it and turn on its daily
+#                               check in a terminal (setup; install is the
+#                               same, here), or stop offering it (dismiss)
 #
 # Everything is measured on this machine. The update check asks the package
 # mirrors, the AUR and fwupd what's new, as Omarchy's own update check does;
@@ -37,9 +43,13 @@ PACMAN_DB="${FATHOM_PACMAN_DB:-/var/lib/pacman}"
 WARN_PCT=85
 BAD_PCT=95
 JOURNAL_KEEP=200M
+WARD_FINDINGS="${XDG_STATE_HOME:-$HOME/.local/state}/ward/findings.json"
+WARD_DISMISSED="$STATE/ward-dismissed"
+WARD_REPO="https://github.com/nerdcules/ward.git"
+WARD="${FATHOM_WARD:-ward}"   # the ward command; tests name a stand-in
 
 usage() {
-  sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 notify() {
@@ -341,12 +351,16 @@ status() {
   # fathom-update's last check, as it saved it; nothing is fetched here.
   [[ -s $STATE/update.json ]] && fathom=$(jq -c 'objects' "$STATE/update.json" 2>/dev/null || echo null)
   [[ -n $fathom ]] || fathom=null
+  local ward
+  ward=$(ward_status 2>/dev/null) || ward=null
+  [[ -n $ward ]] || ward=null
 
   jq -n \
     --argjson size "$size" --argjson used "$used" --argjson free "$avail" \
     --arg model "${model:0:64}" --argjson units "$units" --argjson cache "$cache" --argjson fathom "$fathom" \
     --argjson battery "$bat_health" --argjson cycles "$cycles" --argjson temp "$temp" \
     --argjson lastUpdate "$last_update" --argjson reboot "$reboot" --argjson snapshots "$snapshots" \
+    --argjson ward "$ward" \
     --argjson forecast "$(forecast)" \
     --argjson checking "$($started && echo true || { (exec 9>"$LOCK"; flock -n 9) 2>/dev/null && echo false || echo true; })" \
     --argjson stale "$stale" \
@@ -362,10 +376,13 @@ status() {
       updates: (if $stale then null else ($cache.updates // null) end),
       updatesStale: $stale,
       fathom: $fathom,
+      ward: $ward,
       warnings: (
         [$units[] | {kind: "unit"} + .]
         + (if $pct >= $warnPct then [{kind: "disk", pct: $pct, level: (if $pct >= $badPct then "bad" else "warn" end)}] else [] end)
         + (if $reboot then [{kind: "reboot"}] else [] end)
+        + (if $ward != null and ($ward.installed | not) and ($ward.dismissed | not) then [{kind: "ward-setup"}] else [] end)
+        + (if ($ward.results.now // 0) > 0 then [{kind: "ward", now: $ward.results.now}] else [] end)
       ),
       info: {battery: $battery, cycles: $cycles, cpuTemp: $temp, lastUpdate: $lastUpdate, snapshots: $snapshots}
     }'
@@ -389,6 +406,8 @@ notify_warnings() {
       disk:bad) notify -u critical "The disk is nearly full" "Open Care (Super+Alt+C) to see what can be freed." ;;
       disk:warn) notify "The disk is getting full" "Open Care (Super+Alt+C) to see what can be freed." ;;
       reboot) notify "Restart to finish updating" "The kernel was updated; it takes effect when you restart." ;;
+      # Ward sends its own alerts; Care only shows its warnings.
+      ward | ward-setup) ;;
     esac
   done <<<"$now_keys"
   printf '%s\n' "$now_keys" | sed '/^$/d' >"$NOTIFIED"
@@ -481,6 +500,103 @@ unit_log() {
   fi
 }
 
+# ---------------------------------------------------------------- Ward
+
+# Ward (github.com/nerdcules/ward) is a separate app that checks this
+# machine's packages and kernel against the published CVEs once a day and
+# alerts on its own. Care offers to set it up and passes on what its last
+# check found; it reads Ward's results file and never runs a check, which
+# can call Claude.
+ward_status() {
+  local installed=false scheduled=false dismissed=false results=null
+  command -v "$WARD" >/dev/null && installed=true
+  [[ -e $WARD_DISMISSED ]] && dismissed=true
+  if $installed && [[ $(systemctl --user is-enabled ward.timer 2>/dev/null) == enabled ]]; then
+    scheduled=true
+  fi
+  if [[ -s $WARD_FINDINGS ]]; then
+    results=$(jq -c '
+      ((.findings // []) | map(select(.verdict == "affected"))) as $a
+      | {
+          checkedAt: (.checkedAt // null),
+          affected: ($a | length),
+          packages: ($a | map(.package) | unique | length),
+          now: ($a | map(select(.priority == "now")) | length),
+          soon: ($a | map(select(.priority == "soon")) | length),
+          open: ($a | map(select((.applies // "") == "")) | length),
+          exploited: ($a | map(select(.kev == true and .applies != "no")) | length),
+          kernel: ((.kernels // []) | map(select(.eol == true)) | .[0] // null
+                   | if . then {package, branch, stable} else null end)
+        }' "$WARD_FINDINGS" 2>/dev/null) || results=null
+    [[ -n $results ]] || results=null
+  fi
+  jq -nc --argjson i "$installed" --argjson s "$scheduled" --argjson d "$dismissed" --argjson r "$results" \
+    '{installed: $i, scheduled: $s, dismissed: $d, results: $r}'
+}
+
+# The newest release tag of Ward's repo, asking first when it is only a
+# pre-release. For a machine without nerdcules-update.
+ward_from_git() {
+  local tags tag answer src="$STATE/ward-src"
+  tags=$(git ls-remote --tags --refs "$WARD_REPO" 'v*' | sed 's#.*refs/tags/##') || return 1
+  tag=$(grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' <<<"$tags" | sort -V | tail -n 1 || true)
+  if [[ -z $tag ]]; then
+    tag=$(sort -V <<<"$tags" | tail -n 1)
+    [[ -n $tag ]] || { echo "Ward has no release to install yet."; return 1; }
+    read -rp "Ward has no stable release yet; the newest is the pre-release $tag. Install it? [y/N] " answer || answer=""
+    [[ $answer == [yY]* ]] || return 1
+  fi
+  rm -rf "$src"
+  git clone --quiet --depth 1 --branch "$tag" "$WARD_REPO" "$src" && (cd "$src" && bin/install)
+}
+
+# Installs Ward (through nerdcules-update when it's here) and turns on its
+# daily check. Runs in a terminal: the install asks for your password.
+ward_install() {
+  local answer tag
+  if ! command -v "$WARD" >/dev/null; then
+    if command -v nerdcules-update >/dev/null; then
+      nerdcules-update apply ward || return 1
+      # The stable channel has nothing to install while Ward has only
+      # pre-releases; install the newest by its tag, without changing
+      # the channel.
+      if ! command -v "$WARD" >/dev/null; then
+        tag=$(nerdcules-update versions ward --json | jq -r '.published[0] // empty')
+        [[ -n $tag ]] || { echo "Ward has no release to install yet."; return 1; }
+        read -rp "Ward has no stable release yet; the newest is the pre-release $tag. Install it? [y/N] " answer || answer=""
+        [[ $answer == [yY]* ]] || return 1
+        nerdcules-update install ward "$tag" || return 1
+      fi
+    else
+      ward_from_git || return 1
+    fi
+    hash -r
+    command -v "$WARD" >/dev/null || { echo "Ward didn't install."; return 1; }
+  fi
+  "$WARD" schedule on || return 1
+  rm -f "$WARD_DISMISSED"
+  echo
+  echo "Ward is set up; its daily check alerts you when something needs you."
+  read -rp "Run its first check now? It downloads CVE.org's list once (669 MB) and asks Claude about what it finds. [y/N] " answer || answer=""
+  if [[ $answer == [yY]* ]]; then
+    "$WARD" check
+  fi
+}
+
+ward_command() {
+  case ${1:-status} in
+    status) ward_status ;;
+    install) ward_install ;;
+    setup) exec omarchy-launch-floating-terminal-with-presentation \
+      "$(printf %q "$(realpath -s "$0")") ward install" ;;
+    dismiss) mkdir -p "$STATE" && touch "$WARD_DISMISSED" ;;
+    *)
+      echo "fathom-care: ward takes status, setup, install or dismiss" >&2
+      exit 2
+      ;;
+  esac
+}
+
 case ${1:-} in
   "") exec omarchy-shell shell summon fathom.deck '{"page":"care"}' ;;
   status) status ;;
@@ -492,6 +608,7 @@ case ${1:-} in
   # terminal's Done or Failed. setsid: the check outlives the terminal.
   update) exec omarchy-launch-floating-terminal-with-presentation \
     "omarchy-update; code=\$?; setsid -f $(printf %q "$(realpath -s "$0")") check >/dev/null 2>&1 </dev/null; (exit \$code)" ;;
+  ward) ward_command "${2:-}" ;;
   -h | --help | help) usage ;;
   *)
     echo "fathom-care: unknown command '$1'" >&2

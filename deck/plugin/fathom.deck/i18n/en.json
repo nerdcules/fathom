@@ -688,5 +688,38 @@
     "one": "%1 session",
     "other": "%1 sessions"
   },
-  "pcs.updates": "Updates"
+  "pcs.updates": "Updates",
+  "sentinel.wardMissing": "CVE watch isn't set up",
+  "sentinel.wardMissingDetail": "Ward checks this machine's packages and kernel against published CVEs every day",
+  "sentinel.wardSetUp": "Set up",
+  "sentinel.wardSetUpTip": "Install Ward and turn on its daily check (asks for your password)",
+  "sentinel.wardNoCheck": "Ward hasn't checked yet",
+  "sentinel.wardNoCheckDetail": "Open Ward and press Space, or wait for its daily check",
+  "sentinel.wardNow": {
+    "one": "%1 CVE needs you now",
+    "other": "%1 CVEs need you now"
+  },
+  "sentinel.wardClear": "No CVE needs you now",
+  "sentinel.wardMatches": {
+    "one": "%1 match in %2 packages",
+    "other": "%1 matches in %2 packages"
+  },
+  "sentinel.wardOpen": {
+    "one": "%1 not triaged yet",
+    "other": "%1 not triaged yet"
+  },
+  "sentinel.wardKernel": "kernel %1 is end-of-life",
+  "sentinel.wardChecked": "checked %1",
+  "sentinel.wardDailyOff": "daily check off",
+  "sentinel.openWard": "Open Ward",
+  "care.wardSetup": "CVE watch isn't set up",
+  "care.wardSetupDetail": "Ward checks this machine against published CVEs every day and alerts you when one matters here.",
+  "care.wardSetUp": "Set up",
+  "care.wardNotNow": "Not now",
+  "care.wardNow": {
+    "one": "%1 CVE needs you now",
+    "other": "%1 CVEs need you now"
+  },
+  "care.wardNowDetail": "Ward's last check rated it urgent here. Open Ward for what it is and what fixes it.",
+  "care.openWard": "Open Ward"
 }
