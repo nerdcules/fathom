@@ -1,26 +1,104 @@
 {
-  "about": "Every Omarchy bar item and its Fathom dropdown (#14). fathom: the Fathom plugin that replaces it (a clone of it, see bar/README.md); planned: what its dropdown will hold; none: why it has none. tests/test_bar.py fails when Omarchy has a bar item this list doesn't name.",
+  "about": "Every Omarchy bar item and its Fathom dropdown (#14). fathom: the Fathom plugin that replaces it (a clone of it, see bar/README.md); planned: what its dropdown will hold; none: why it has none. follows: the Omarchy files (under /usr/share/omarchy) a dropdown copies behaviour from, each with the start of its sha256 when the dropdown was last checked against it; kitFollows: the same for Omarchy's popup frame, which every dropdown uses. tests/test_bar.py fails when Omarchy has a bar item this list doesn't name, or when a followed file has changed.",
+  "checkedWith": "omarchy 4.5.0-3",
+  "kitFollows": {
+    "shell/Ui/KeyboardPanel.qml": "e8e0779598c9aaec",
+    "shell/Ui/Panel.qml": "aa268bb8597d1fe2"
+  },
   "omarchy": {
-    "omarchy.monitor": { "fathom": "fathom.display" },
-    "omarchy.audio": { "fathom": "fathom.desk", "how": "the bar's cluster: one button for Bluetooth, network, volume and battery, opening Quick settings" },
-    "omarchy.bluetooth": { "fathom": "fathom.desk", "how": "the bar's cluster" },
-    "omarchy.network": { "fathom": "fathom.desk", "how": "the bar's cluster" },
-    "omarchy.power": { "fathom": "fathom.desk", "how": "the bar's cluster" },
-    "omarchy.clock": { "planned": "the calendar" },
-    "omarchy.weather": { "planned": "the forecast" },
-    "omarchy.tailscale": { "planned": "the tailnet: on or off, exit node, machines, copy an address" },
-    "omarchy.agents": { "planned": "each AI agent's usage, limits and balance" },
-    "omarchy.elsewhen": { "planned": "the world clock: the time in each city" },
-    "omarchy.dropbox": { "planned": "Dropbox's status, storage and recent files" },
-    "omarchy.media": { "planned": "what's playing, with its controls" },
-    "omarchy.keyboard-layout": { "planned": "the layouts, to pick one (a click cycles them today)" },
-    "omarchy.microphone": { "planned": "the microphone: mute, level and input (a click mutes it today)" },
-    "omarchy.indicators": { "planned": "each indicator (Do not disturb, night light, stay awake, ...) with its switch" },
-    "omarchy.system-update": { "planned": "what the update brings, and Update now (a click starts it today)" },
-    "omarchy.tray": { "planned": "each app's tray menu in Fathom's look" },
-    "omarchy.menu": { "planned": "to be decided: Omarchy's menu, or Fathom's Start" },
-    "omarchy.workspaces": { "planned": "to be decided (a click goes to the workspace today)" },
-    "omarchy.active-window": { "planned": "to be decided: the window's actions (snap, float, close, move)" },
-    "omarchy.spacer": { "none": "blank space between items, with nothing to open" }
+    "omarchy.monitor": {
+      "fathom": "fathom.display",
+      "follows": {
+        "shell/plugins/panels/monitor/Panel.qml": "b405184f103f1e82",
+        "shell/plugins/panels/monitor/Model.js": "4374daa9cf57e742",
+        "bin/omarchy-monitor-state": "a45baaef96920b37",
+        "bin/omarchy-brightness-display": "044e6bcb55bb98b6",
+        "bin/omarchy-hyprland-monitor-scaling": "a65db542eec9b4df",
+        "bin/omarchy-display-text-size": "f0c72e38f985f621"
+      }
+    },
+    "omarchy.audio": {
+      "fathom": "fathom.desk",
+      "how": "the bar's cluster: one button for Bluetooth, network, volume and battery, opening Quick settings",
+      "follows": {
+        "shell/plugins/panels/audio/Panel.qml": "f75564d2a8be05a1"
+      }
+    },
+    "omarchy.bluetooth": {
+      "fathom": "fathom.desk",
+      "how": "the bar's cluster",
+      "follows": {
+        "shell/plugins/panels/bluetooth/Panel.qml": "1e03d3ae942f4fe0"
+      }
+    },
+    "omarchy.network": {
+      "fathom": "fathom.desk",
+      "how": "the bar's cluster",
+      "follows": {
+        "shell/plugins/panels/network/Panel.qml": "8beba301a1d87db1"
+      }
+    },
+    "omarchy.power": {
+      "fathom": "fathom.desk",
+      "how": "the bar's cluster",
+      "follows": {
+        "shell/plugins/panels/power/Panel.qml": "145cd9632d8caa3a"
+      }
+    },
+    "omarchy.clock": {
+      "fathom": "fathom.clock",
+      "follows": {
+        "shell/plugins/panels/clock/BarWidget.qml": "e73f7a17f74ade40",
+        "shell/plugins/panels/clock/Panel.qml": "9eed7b315a07c61a",
+        "shell/plugins/panels/clock/Model.js": "8a2645eb75b22d4e",
+        "shell/plugins/panels/clock/WallClock.qml": "369c0c5313a56b99",
+        "bin/omarchy-menu-timezone": "697de38e3a243648"
+      }
+    },
+    "omarchy.weather": {
+      "planned": "the forecast"
+    },
+    "omarchy.tailscale": {
+      "planned": "the tailnet: on or off, exit node, machines, copy an address"
+    },
+    "omarchy.agents": {
+      "planned": "each AI agent's usage, limits and balance"
+    },
+    "omarchy.elsewhen": {
+      "planned": "the world clock: the time in each city"
+    },
+    "omarchy.dropbox": {
+      "planned": "Dropbox's status, storage and recent files"
+    },
+    "omarchy.media": {
+      "planned": "what's playing, with its controls"
+    },
+    "omarchy.keyboard-layout": {
+      "planned": "the layouts, to pick one (a click cycles them today)"
+    },
+    "omarchy.microphone": {
+      "planned": "the microphone: mute, level and input (a click mutes it today)"
+    },
+    "omarchy.indicators": {
+      "planned": "each indicator (Do not disturb, night light, stay awake, ...) with its switch"
+    },
+    "omarchy.system-update": {
+      "planned": "what the update brings, and Update now (a click starts it today)"
+    },
+    "omarchy.tray": {
+      "planned": "each app's tray menu in Fathom's look"
+    },
+    "omarchy.menu": {
+      "planned": "to be decided: Omarchy's menu, or Fathom's Start"
+    },
+    "omarchy.workspaces": {
+      "planned": "to be decided (a click goes to the workspace today)"
+    },
+    "omarchy.active-window": {
+      "planned": "to be decided: the window's actions (snap, float, close, move)"
+    },
+    "omarchy.spacer": {
+      "none": "blank space between items, with nothing to open"
+    }
   }
 }

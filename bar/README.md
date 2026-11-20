@@ -6,7 +6,9 @@ look, now and as Omarchy adds items (#14). This folder holds them.
 - `items.json`: every Omarchy bar item, and its Fathom dropdown (`fathom`),
   what's planned for it (`planned`), or why it has none (`none`).
   `tests/test_bar.py` fails when Omarchy has a bar item this list doesn't
-  name, so a new one can't go unnoticed. The bar's cluster
+  name, so a new one can't go unnoticed; and `follows`, the Omarchy files
+  each dropdown copies behaviour from (see "Keeping up with Omarchy"). The
+  bar's cluster
   (`fathom.desk`) stands for Omarchy's Bluetooth, network, volume and
   battery items.
 - `kit/`: what every dropdown is made of, copied into each plugin as
@@ -51,12 +53,17 @@ item needs a description, not a new screen:
 | `rows` | `key`, `title`, `rows: [{key, glyph, name, detail, trail, active, busy, clickable}]`, `busyLabel` | `picked(key, row key)` |
 | `switch` | `key`, `glyph`, `name`, `detail`, `on` | `toggled(key, !on)` |
 | `actions` | `key`, `buttons: [{key, label, glyph, primary}]` | `picked(key, button key)` |
+| `meter` | `key`, `label`, `trail`, `value` (0 to 1) | `picked(key, "doubleClick")` |
+| `fields` | `key`, `fields: [{key, label, value, placeholder, digits}]`, `okLabel`, `cancelLabel` | `submitted(key, {field: text})`, `cancelled(key)` |
 | `text` | `text`, `dim` | |
 
 `hidden: true` leaves a section out. A new description, which every value
 change makes, updates the parts in place, so a slider being dragged or the
 control with the keyboard keeps it. An item that needs a picture of its
-own (a calendar, say) puts its own QML in the card beside the sections.
+own puts its own QML in the card beside the sections, as the clock's
+month does (`plugin/fathom.clock/MonthGrid.qml`), and can take keys of
+its own first through the card's `keyHandler` (the clock's arrows step
+the month, as Omarchy's do).
 
 ### The look and the keys
 
@@ -75,9 +82,27 @@ a slider, Return or Space presses, Tab and Shift+Tab go to the next or
 previous dropdown on the bar, and Esc closes it. Nothing shows as chosen
 until a key is used.
 
+## Keeping up with Omarchy
+
+A dropdown copies behaviour from Omarchy's own: its settings, IPC
+methods, the scripts it runs, and for the clock, Omarchy's date code
+(`Model.js`, copied unchanged). When Omarchy updates one of those, the
+copy doesn't follow by itself. So `items.json` records, for each
+dropdown, the Omarchy files it follows and the start of each one's
+sha256 when it was last checked against it (`checkedWith` names the
+Omarchy version), and the same for Omarchy's popup frame (`kitFollows`).
+On a machine with Omarchy, `tests/test_bar.py` fails when one has
+changed or gone, naming it. Then: read Omarchy's change, bring the
+dropdown into line (or decide it needn't), try it, and write the new
+fingerprint in.
+
+What this doesn't catch: a change Omarchy makes somewhere the list
+doesn't name, and the tests only run when someone runs them.
+
 ## Adding one
 
-1. Give the item a `fathom` line in `items.json`, in place of `planned`.
+1. Give the item a `fathom` line in `items.json`, in place of `planned`,
+   with `follows`: every Omarchy file it copies behaviour from.
 2. Make `plugin/fathom.<name>/` as above, cloning the Omarchy item.
 3. Test its `sections()` in `tests/bar.test.mjs`, which also checks it has
    the words it asks for; `tests/test_bar.py` checks it's a clone of its

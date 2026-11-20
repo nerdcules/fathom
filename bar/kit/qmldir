@@ -6,3 +6,5 @@ DropRow 1.0 DropRow.qml
 DropCard 1.0 DropCard.qml
 DropTheme 1.0 DropTheme.qml
 DropSections 1.0 DropSections.qml
+DropMeter 1.0 DropMeter.qml
+DropFields 1.0 DropFields.qml

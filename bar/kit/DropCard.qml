@@ -27,6 +27,9 @@ FocusScope {
   default property alias body: bodyColumn.data
   property alias trailing: trailHolder.data
   property alias bodySpacing: bodyColumn.spacing
+  // An item's own keys, asked first: a function(event) that returns true
+  // for a key it used (the clock's arrows step the month, as Omarchy's do).
+  property var keyHandler: null
 
   signal closeRequested()
   signal tabRequested(int direction)
@@ -68,6 +71,7 @@ FocusScope {
   }
 
   Keys.onPressed: function(e) {
+    if (typeof card.keyHandler === "function" && card.keyHandler(e)) { e.accepted = true; return }
     var k = e.key
     if (k === Qt.Key_Escape) { card.closeRequested(); e.accepted = true }
     else if (k === Qt.Key_Backtab || (k === Qt.Key_Tab && (e.modifiers & Qt.ShiftModifier))) { card.tabRequested(-1); e.accepted = true }

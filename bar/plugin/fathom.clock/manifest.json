@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.clock",
+  "name": "Clock (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's clock with Fathom's calendar: the month with week numbers, the year so far, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Clock.qml"
+  },
+  "barWidget": {
+    "displayName": "Clock (Fathom)",
+    "description": "Date and time, with Fathom's calendar",
+    "category": "Time",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.clock"
+  }
+}

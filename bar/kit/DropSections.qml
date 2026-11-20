@@ -11,6 +11,10 @@ import "."
 //             trail, active, busy, clickable}], busyLabel}      -> picked(key, row key)
 //   switch   {key, glyph, name, detail, on}                     -> toggled(key, !on)
 //   actions  {key, buttons: [{key, label, glyph, primary}]}     -> picked(key, button key)
+//   meter    {key, label, trail, value (0..1)}                  -> picked(key, "doubleClick")
+//   fields   {key, fields: [{key, label, value, placeholder,
+//             digits}], okLabel, cancelLabel}                   -> submitted(key, {field: text}),
+//                                                                  cancelled(key)
 //   text     {text, dim}
 //
 // `hidden: true` leaves a section out. Every part is the kit's, in the Quick
@@ -21,6 +25,8 @@ Column {
   signal moved(string key, real value)
   signal picked(string key, string value)
   signal toggled(string key, bool on)
+  signal submitted(string key, var values)
+  signal cancelled(string key)
 
   spacing: 14 * DropSkin.u
 
@@ -39,7 +45,7 @@ Column {
       visible: !spec.hidden
       active: !spec.hidden
       sourceComponent: ({ slider: sliderPart, choices: choicesPart, rows: rowsPart, "switch": switchPart,
-                          actions: actionsPart, text: textPart })[spec.type] || null
+                          actions: actionsPart, text: textPart, meter: meterPart, fields: fieldsPart })[spec.type] || null
     }
   }
 
@@ -156,6 +162,33 @@ Column {
           onClicked: sections.picked(spec.key, String(modelData.key))
         }
       }
+    }
+  }
+
+  Component {
+    id: meterPart
+    DropMeter {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      label: spec.label || ""
+      trail: spec.trail || ""
+      value: Number(spec.value) || 0
+      onDoubleClicked: sections.picked(spec.key, "doubleClick")
+    }
+  }
+
+  Component {
+    id: fieldsPart
+    DropFields {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      fields: spec.fields || []
+      okLabel: spec.okLabel || ""
+      cancelLabel: spec.cancelLabel || ""
+      onSubmitted: function(values) { sections.submitted(spec.key, values) }
+      onCancelled: sections.cancelled(spec.key)
     }
   }
 

@@ -139,6 +139,27 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, the clock: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`, as below).
+
+- `check.sh` 27 passed, 0 failed.
+- `./install.sh --desk`: `fathom.clock` took `omarchy.clock`'s place at the
+  start of the centre, with its settings; its label read "Friday 22:35".
+- Real input through QMP: a click opened the calendar (November 2026, ISO
+  weeks 45 to 50, the 20th lit, "2026 88%"). Left showed October, with
+  Today; T came back. W wrote `"weekStartDay": "monday"` into the clone's
+  entry in `shell.json`, and again `"sunday"`; a right-click on the label
+  wrote `"format": "dddd h:mm AP"` and the label changed. Super+Ctrl+Alt+D
+  opened it. A double-click on the year bar opened the two fields; typing
+  1980, Tab, 85, Return wrote `"birthYear": 1980, "lifeExpectancy": 85`
+  and the life bar showed 54%. Two wheel-ups on the grid went back to
+  September. `omarchy-shell omarchy.clock toggle` opened it.
+- With the clock's settings put back by hand, `uninstall.sh` left
+  `shell.json` the same as the baseline, and no plugin.
+- Not tried: the middle-click time zone menu, a vertical bar.
+
 ### Issue #14, the bar's dropdowns: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (a copy of

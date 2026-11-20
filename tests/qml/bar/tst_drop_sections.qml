@@ -26,13 +26,18 @@ Item {
       { key: "eDP-1", name: "eDP-1", active: true, clickable: false },
       { key: "HDMI-A-1", name: "HDMI-A-1", active: true } ] },
     { type: "actions", key: "do", buttons: [{ key: "settings", label: "Settings" }] },
-    { type: "text", text: "A note", dim: true }
+    { type: "text", text: "A note", dim: true },
+    { type: "meter", key: "year", label: "2026", trail: "88%", value: 0.88 },
+    { type: "fields", key: "life", okLabel: "Save", cancelLabel: "Cancel", hidden: true,
+      fields: [{ key: "born", label: "Born", value: "", digits: true }, { key: "to", label: "Live to", value: "90", digits: true }] }
   ]
 
   DropCard {
     id: card
     x: 20; y: 20; width: 400
     title: "Display"
+    property bool claimX: false
+    keyHandler: function(e) { if (card.claimX && e.key === Qt.Key_X) { top.log.push("x"); return true } return false }
     onCloseRequested: top.log.push("close")
     onTabRequested: function(d) { top.log.push("tab " + d) }
     DropSections {
@@ -42,6 +47,8 @@ Item {
       onMoved: function(k, v) { top.log.push(k + " " + Math.round(v * 100)) }
       onPicked: function(k, v) { top.log.push(k + " " + v) }
       onToggled: function(k, on) { top.log.push(k + " " + on) }
+      onSubmitted: function(k, v) { top.log.push(k + " " + JSON.stringify(v)) }
+      onCancelled: function(k) { top.log.push(k + " cancelled") }
     }
   }
 
@@ -135,6 +142,42 @@ Item {
       sections.model = Qt.binding(function() { return top.spec })
     }
 
+    function test_a_meter_shows_its_value_and_sends_a_double_click() {
+      var meter = find("year")
+      verify(meter.visible)
+      compare(meter.value, 0.88)
+      var p = meter.mapToItem(top, meter.width / 2, meter.height / 2)
+      mouseDoubleClickSequence(top, p.x, p.y)
+      compare(top.log, ["year doubleClick"])
+    }
+
+    function test_fields_take_typing_and_send_it() {
+      var copy = top.spec.map(function(x) { var c = {}; for (var k in x) c[k] = x[k]; return c })
+      copy[9].hidden = false
+      sections.model = copy
+      wait(80)
+      var born = find("field born")
+      verify(born, "a field for each")
+      verify(born.activeFocus, "the first takes the keyboard")
+      keyClick("1"); keyClick("9"); keyClick("x"); keyClick("8"); keyClick("0")
+      compare(born.text, "1980", "digits only")
+      keyClick(Qt.Key_Tab)
+      verify(find("field to").activeFocus, "Tab hops to the next field, not the next dropdown")
+      keyClick(Qt.Key_Return)
+      compare(top.log, ['life {"born":"1980","to":"90"}'])
+      keyClick(Qt.Key_Escape)
+      compare(top.log[1], "life cancelled", "Esc cancels, it doesn't close the dropdown")
+      sections.model = Qt.binding(function() { return top.spec })
+    }
+
+    function test_an_item_can_claim_keys_first() {
+      card.claimX = true
+      keyClick(Qt.Key_X)
+      keyClick(Qt.Key_Escape)
+      compare(top.log, ["x", "close"], "claimed first; the rest as before")
+      card.claimX = false
+    }
+
     function test_keys() {
       keyClick(Qt.Key_Escape)
       keyClick(Qt.Key_Tab)
@@ -159,7 +202,7 @@ Item {
       // Up from nothing chosen goes to the last control.
       card.rest()
       keyClick(Qt.Key_Up)
-      verify(find("do settings").activeFocus, "Up goes to the last")
+      verify(find("do settings").activeFocus, "Up goes to the last button")
       keyClick(Qt.Key_Down)
       verify(find("level").activeFocus, "Down from the last wraps to the first")
     }

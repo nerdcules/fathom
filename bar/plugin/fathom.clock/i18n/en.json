@@ -1,0 +1,16 @@
+{
+  "clock.weekYear": "Week %1 · %2",
+  "clock.weekShort": "W",
+  "clock.startWeeksOn": "Start weeks on %1",
+  "clock.today": "Today",
+  "clock.previousMonth": "Previous month",
+  "clock.nextMonth": "Next month",
+  "clock.life": "Life",
+  "clock.born": "Born",
+  "clock.liveTo": "Live to",
+  "clock.year": "year",
+  "clock.save": "Save",
+  "clock.cancel": "Cancel",
+  "drop.on": "On",
+  "drop.off": "Off"
+}

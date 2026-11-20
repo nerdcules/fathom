@@ -30,6 +30,15 @@ Each line names its commit.
   `bar/items.json` lists every Omarchy bar item with its Fathom dropdown
   or plan, and a test fails when Omarchy has one it doesn't name; the
   install names the bar items still without one.
+- The clock's Fathom dropdown: Omarchy's label (formats, right-click to
+  change, middle-click for the time zone) with Fathom's calendar: the
+  month with ISO week numbers and today lit, the year so far, and
+  Omarchy's life bar; its keys and settings are Omarchy's. The kit's
+  factory gained a meter and text fields, and a card can take keys of its
+  own first.
+- A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
+  records the Omarchy files each copies behaviour from, with a
+  fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.
 - One look everywhere: the bar's dropdowns size for the screen by the
   rule the Command Deck and the desk use, so their text, sliders and
   buttons match Quick settings', and `tests/test_one_look.py` fails if the

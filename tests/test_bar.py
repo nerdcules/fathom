@@ -7,6 +7,7 @@ plugin's description.
 """
 
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -33,6 +34,27 @@ class Factory(unittest.TestCase):
                            env=env, capture_output=True, text=True, timeout=120)
         self.assertEqual(r.returncode, 0, r.stdout[-3000:] + r.stderr[-2000:])
         self.assertIn(" 0 failed", r.stdout)
+
+
+class Cards(unittest.TestCase):
+    """A dropdown's own parts, beside the factory's, in the plugin folder as
+    install.sh stages it (the plugin, with the kit inside as kit/)."""
+
+    def run_staged(self, plugin_id, test_file):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        dest = os.path.join(tmp, plugin_id)
+        shutil.copytree(os.path.join(BAR, "plugin", plugin_id), dest)
+        shutil.copytree(os.path.join(BAR, "kit"), os.path.join(dest, "kit"))
+        shutil.copy(os.path.join(REPO, "tests", "qml", "bar", test_file), tmp)
+        env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+        r = subprocess.run([qmltestrunner(), "-input", os.path.join(tmp, test_file)],
+                           env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout[-3000:] + r.stderr[-2000:])
+        self.assertIn(" 0 failed", r.stdout)
+
+    def test_clock_month(self):
+        self.run_staged("fathom.clock", "tst_month_grid.qml")
 
 
 OMARCHY_PLUGINS = "/usr/share/omarchy/shell/plugins"
@@ -74,6 +96,36 @@ class Coverage(unittest.TestCase):
         for folder in glob.glob(os.path.join(BAR, "plugin", "*")):
             self.assertIn(os.path.basename(folder), listed)
 
+    def test_each_fathom_dropdown_says_what_it_follows(self):
+        for wid, item in items().items():
+            if "fathom" in item:
+                self.assertTrue(item.get("follows"), f"{wid}: the Omarchy files its Fathom dropdown copies")
+
+    def test_nothing_followed_has_changed(self):
+        """Where Omarchy is installed: each Omarchy file a dropdown copies
+        behaviour from is as it was when the dropdown was last checked
+        against it. When Omarchy changes one, review the dropdown against
+        the change, then write the new fingerprint into bar/items.json."""
+        if not os.path.isdir(OMARCHY_PLUGINS):
+            self.skipTest("Omarchy isn't installed here")
+        with open(os.path.join(BAR, "items.json")) as f:
+            data = json.load(f)
+        followed = [("the popup frame", data.get("kitFollows", {}))]
+        followed += [(i["fathom"] + " (" + wid + ")", i.get("follows", {})) for wid, i in data["omarchy"].items() if "fathom" in i]
+        changed = []
+        for who, files in followed:
+            for path, want in files.items():
+                full = os.path.join("/usr/share/omarchy", path)
+                if not os.path.isfile(full):
+                    changed.append(f"{who}: {path} is gone")
+                    continue
+                with open(full, "rb") as f:
+                    got = hashlib.sha256(f.read()).hexdigest()[:16]
+                if got != want:
+                    changed.append(f"{who}: {path} changed ({want} -> {got})")
+        self.assertEqual(changed, [], "Omarchy changed what these dropdowns copy; review them (checked with "
+                         + data.get("checkedWith", "?") + ")")
+
     def test_every_omarchy_bar_item_is_listed(self):
         """Where Omarchy is installed: a bar item it has that the list
         doesn't name fails here, so a new one gets a Fathom dropdown."""
@@ -113,23 +165,23 @@ class Install(unittest.TestCase):
         with open(self.box.path(".config", "omarchy", "shell.json")) as f:
             return json.load(f)["bar"]["layout"]["right"]
 
-    def test_display_takes_the_monitor_s_place_and_gives_it_back(self):
+    def test_dropdowns_take_their_items_places_and_give_them_back(self):
         self.bar(self.LAYOUT)
         r = self.box.run("install.sh", "--desk")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.right(), [{"id": "omarchy.tray"}, {"id": "fathom.display", "note": "kept"},
-                                        {"id": "omarchy.clock"}, {"id": "fathom.desk"}])
+                                        {"id": "fathom.clock"}, {"id": "fathom.desk"}])
         plugin = self.box.path(".config", "omarchy", "plugins", "fathom.display")
         self.assertTrue(os.path.isfile(os.path.join(plugin, "kit", "DropCard.qml")), "the kit goes in as kit/")
-        self.assertIn("Fathom's dropdowns on the bar: fathom.display.", r.stdout)
-        self.assertIn("Bar items without a Fathom dropdown yet: omarchy.clock, omarchy.tray.", r.stdout)
+        self.assertIn("Fathom's dropdowns on the bar: fathom.display fathom.clock.", r.stdout)
+        self.assertIn("Bar items without a Fathom dropdown yet: omarchy.tray.", r.stdout)
         r = self.box.run("uninstall.sh")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.right(), self.LAYOUT)
         self.assertFalse(os.path.exists(plugin))
 
     def test_no_monitor_on_the_bar_no_display(self):
-        self.bar([{"id": "omarchy.clock"}])
+        self.bar([{"id": "omarchy.weather"}])
         r = self.box.run("install.sh", "--desk")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("omarchy plugin enable fathom.display", self.box.calls())

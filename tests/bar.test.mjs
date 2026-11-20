@@ -120,8 +120,63 @@ test("bar: each dropdown has the words it asks for", () => {
     const used = new Set(["drop.on", "drop.off"]);
     for (const file of readdirSync(new URL(`plugin/${id}/`, bar))) {
       if (!/\.(qml|js)$/.test(file)) continue;
-      for (const m of read(`plugin/${id}/${file}`).matchAll(/\bt\("([a-z][\w.]*)"\)/g)) used.add(m[1]);
+      // Not Omarchy's own catalog (I18n.t): the clock's label keeps
+      // Omarchy's tooltip, in every language Omarchy has.
+      for (const m of read(`plugin/${id}/${file}`).matchAll(/(?<!I18n\.)\bt\("([a-z][\w.]*)"\)/g)) used.add(m[1]);
     }
     for (const key of used) assert.ok(key in strings, `${id}: ${key} is in i18n/en.json`);
   }
+});
+
+const C = load("plugin/fathom.clock/Calendar.js", ["sections", "keyAction"]);
+const M = load("plugin/fathom.clock/Model.js", ["monthGrid", "isoWeek", "yearProgressPercent", "stepMonth",
+  "normalizedWeekStart", "weekStartSettingName", "toggledWeekStart"]);
+
+test("clock: under the month, the year; the life bar once a birth year is set", () => {
+  const t = (k) => `[${k}]`;
+  const v = { year: 2026, yearDone: 0.884, yearPercent: 88, birthYear: 0, age: 0, lifeExpectancy: 90,
+    lifeDone: 0, lifePercent: 0, editing: false };
+  let s = plain(C.sections(v, t));
+  assert.deepEqual(s.map((x) => [x.type, x.key, !!x.hidden]),
+    [["meter", "year", false], ["meter", "life", true], ["fields", "lifeEdit", true]]);
+  assert.equal(s[0].label, "2026");
+  assert.equal(s[0].trail, "88%");
+  s = plain(C.sections({ ...v, birthYear: 1980, age: 46, lifeDone: 46 / 90, lifePercent: 51 }, t));
+  assert.equal(s[1].hidden, false);
+  assert.equal(s[1].trail, "51%");
+  // Setting one: the fields, filled with what's set, and no bars.
+  s = plain(C.sections({ ...v, birthYear: 1980, editing: true }, t));
+  assert.deepEqual(s.map((x) => !!x.hidden), [true, true, false]);
+  assert.deepEqual(s[2].fields.map((f) => [f.key, f.value, f.digits]), [["born", "1980", true], ["expectancy", "90", true]]);
+  assert.equal(plain(C.sections({ ...v, editing: true }, t))[2].fields[0].value, "", "no birth year: an empty field");
+});
+
+test("clock: the keys, as Omarchy's calendar takes them", () => {
+  const Key = { Left: 0x01000012, Up: 0x01000013, Right: 0x01000014, Down: 0x01000015, Return: 0x01000004, Enter: 0x01000005 };
+  assert.equal(C.keyAction(Key.Left, ""), "month-1");
+  assert.equal(C.keyAction(Key.Right, ""), "month+1");
+  assert.equal(C.keyAction(Key.Up, ""), "year-1");
+  assert.equal(C.keyAction(Key.Down, ""), "year+1");
+  assert.equal(C.keyAction(Key.Return, ""), "today");
+  assert.equal(C.keyAction(Key.Enter, ""), "today");
+  for (const [text, act] of [["h", "month-1"], ["l", "month+1"], ["[", "month-1"], ["]", "month+1"], ["k", "year-1"],
+    ["j", "year+1"], ["{", "year-1"], ["}", "year+1"], ["t", "today"], ["T", "today"], ["w", "weekStart"], ["W", "weekStart"]])
+    assert.equal(C.keyAction(0x41, text), act, text);
+  assert.equal(C.keyAction(0x41, "a"), "");
+  assert.equal(C.keyAction(0x01000001, ""), "", "Tab is the card's");
+});
+
+test("clock: the month as the calendar draws it (Omarchy's arithmetic)", () => {
+  const weeks = plain(M.monthGrid(2026, 10, 1, "2026-11-20"));
+  assert.equal(weeks.length, 6);
+  assert.equal(weeks[0].days[0].key, "2026-10-26");
+  assert.deepEqual(weeks.map((w) => w.week), [44, 45, 46, 47, 48, 49]);
+  assert.deepEqual(weeks.flatMap((w) => w.days).filter((d) => d.today).map((d) => d.key), ["2026-11-20"]);
+  // Sunday first: the row starts on the Sunday before.
+  assert.equal(plain(M.monthGrid(2026, 10, 0, ""))[0].days[0].key, "2026-11-01");
+  assert.equal(M.isoWeek(2026, 10, 20), 47);
+  assert.deepEqual(plain(M.stepMonth(2026, 11, 1)), { year: 2027, month: 0 });
+  assert.deepEqual(plain(M.stepMonth(2026, 0, -12)), { year: 2025, month: 0 });
+  assert.equal(M.weekStartSettingName(M.toggledWeekStart(1)), "sunday");
+  assert.equal(M.normalizedWeekStart("monday", 0), 1);
 });
