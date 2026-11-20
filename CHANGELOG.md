@@ -14,6 +14,12 @@ Each line names its commit.
 
 ### Added
 
+- An offer to set up Ward, which checks this machine against the published
+  CVEs daily: `./install.sh --sentinel` asks once at a terminal, Care's
+  Warnings lists it (Set up, Not now), and Sentinel's page has a Set up
+  button; once it's installed, Sentinel shows what its last check found and
+  Care warns about CVEs it rated "now". `fathom-care ward status|setup|install|dismiss`
+  (282060c).
 - `fathom-update channel prereleases`: the newest tag, pre-releases such
   as `v0.4.0-rc.1` included, and the release once it's tagged; the
   releases channel still never offers a pre-release (6b362da).
