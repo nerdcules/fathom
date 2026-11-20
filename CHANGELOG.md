@@ -45,6 +45,9 @@ Each line names its commit.
 - Start: clicking Lock, Sign out or Restart in the power menu no longer
   also opens the Recent project under it (#13, 97c3478); no TapHandler is
   left in the deck, and a test keeps it that way (eb8d811).
+- Start and Confirm: the row under the power menu, the About card or a
+  Confirm dialog no longer lights up as the pointer passes over it
+  (dfb166e).
 
 ## [0.3.0] - 2026-11-20
 
