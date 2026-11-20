@@ -135,7 +135,7 @@ Item {
     search.forceActiveFocus()
   }
 
-  onShownChanged: if (shown) { search.text = ""; allApps = false; focusSearch() }
+  onShownChanged: if (shown) { search.text = ""; allApps = false; powerMenu.visible = false; powerAsk = ""; focusSearch() }
 
   // ---------------------------------------------------------------- parts
 
@@ -490,45 +490,159 @@ Item {
           id: powerButton
           glyph: ""
           tip: Skin.t("start.power")
-          onClicked: powerMenu.visible = !powerMenu.visible
+          onClicked: powerMenu.visible ? start.closePowerMenu() : start.openPowerMenu()
         }
       }
     }
   }
 
-  // The power menu, opening upward from its button. Esc or a click
-  // elsewhere closes it.
+  // The power menu, opening upward from its button. It is placed each time
+  // it opens: mapToItem() isn't a binding QML follows, so a placement worked
+  // out once, before the footer was laid out, left it at the top of the
+  // card. Shut down, Restart and Sign out ask in the menu itself, where the
+  // pointer already is. Keys: Up/Down pick, Enter does it, Esc backs out.
+  readonly property var powerIds: ["lock", "suspend", "logout", "reboot", "shutdown"]
+  property string powerAsk: ""              // the action waiting for a yes
+  property int powerCurrent: 0
+
+  function actionFor(id) {
+    for (var i = 0; i < actions.length; i++) if (actions[i].id === id) return actions[i]
+    return null
+  }
+
+  function openPowerMenu() {
+    var p = powerButton.mapToItem(start, 0, 0)
+    powerAsk = ""
+    powerCurrent = 0
+    powerMenu.edgeRight = Math.min(start.width - 8 * Skin.u, p.x + powerButton.width)
+    powerMenu.edge = p.y - 8 * Skin.u
+    powerMenu.visible = true
+    powerMenu.forceActiveFocus()
+  }
+
+  function closePowerMenu() {
+    powerMenu.visible = false
+    powerAsk = ""
+    focusSearch()
+  }
+
+  function choosePower(id) {
+    var a = actionFor(id)
+    if (!a) return
+    if (a.confirm) { powerAsk = id; powerYes.forceActiveFocus(); return }
+    closePowerMenu()
+    actionRequested(id)
+  }
+
+  function confirmPower() {
+    var id = powerAsk
+    closePowerMenu()
+    if (id !== "") actionRequested(id)
+  }
+
+  // A click anywhere else closes the menu.
+  MouseArea {
+    anchors.fill: parent
+    z: 49
+    visible: powerMenu.visible
+    onClicked: start.closePowerMenu()
+  }
+
   Rectangle {
     id: powerMenu
+    // Where its bottom and right sides sit, set as it opens ("bottom" and
+    // "right" would clash with Item's FINAL properties).
+    property real edge: 0
+    property real edgeRight: 0
     visible: false
     z: 50
-    width: 200 * Skin.u
-    height: powerColumn.implicitHeight + 16 * Skin.u
+    width: (start.powerAsk !== "" ? 280 : 200) * Skin.u
+    height: (start.powerAsk !== "" ? askColumn.implicitHeight + 28 * Skin.u : powerColumn.implicitHeight + 16 * Skin.u)
+    y: edge - height
+    x: Math.max(8 * Skin.u, edgeRight - width)
     radius: 14 * Skin.u
     color: Skin.tint(Skin.bg, 0.97)
     border.width: 1
     border.color: Skin.tint(Skin.accent, 0.3)
-    x: {
-      var p = powerButton.mapToItem(start, powerButton.width, 0)
-      return Math.min(start.width - width - 8, p.x - width)
+    MouseArea { anchors.fill: parent }       // clicks inside stay inside
+
+    Keys.onPressed: function(e) {
+      if (e.key === Qt.Key_Escape) {
+        if (start.powerAsk !== "") { start.powerAsk = ""; powerMenu.forceActiveFocus() }
+        else start.closePowerMenu()
+      } else if (start.powerAsk !== "") {
+        return
+      } else if (e.key === Qt.Key_Down || e.key === Qt.Key_Tab) {
+        start.powerCurrent = (start.powerCurrent + 1) % start.powerIds.length
+      } else if (e.key === Qt.Key_Up || e.key === Qt.Key_Backtab) {
+        start.powerCurrent = (start.powerCurrent + start.powerIds.length - 1) % start.powerIds.length
+      } else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
+        start.choosePower(start.powerIds[start.powerCurrent])
+      } else return
+      e.accepted = true
     }
-    y: powerButton.mapToItem(start, 0, 0).y - height - 8 * Skin.u
+
     Column {
       id: powerColumn
+      visible: start.powerAsk === ""
       anchors.fill: parent
       anchors.margins: 8 * Skin.u
       Repeater {
-        model: ["lock", "suspend", "logout", "reboot", "shutdown"]
+        model: start.powerIds
         delegate: ListRow {
           required property var modelData
+          required property int index
           width: powerColumn.width
           showDot: false
           clickable: true
+          current: index === start.powerCurrent
           name: Skin.t("start." + modelData)
-          onClicked: {
-            powerMenu.visible = false
-            for (var i = 0; i < start.actions.length; i++) if (start.actions[i].id === modelData) start.runAction(start.actions[i])
-          }
+          onHoveredChanged: if (hovered) start.powerCurrent = index
+          onClicked: start.choosePower(modelData)
+        }
+      }
+    }
+
+    // Are you sure? In the menu's place, its yes at the bottom right, near
+    // the row just clicked.
+    Column {
+      id: askColumn
+      visible: start.powerAsk !== ""
+      anchors { left: parent.left; right: parent.right; top: parent.top; margins: 14 * Skin.u }
+      spacing: 10 * Skin.u
+      Label {
+        width: parent.width
+        text: start.powerAsk !== "" ? Skin.t("start.confirm." + start.powerAsk) : ""
+        font.pixelSize: 15 * Skin.u
+        font.weight: Font.DemiBold
+      }
+      Label {
+        width: parent.width
+        text: Skin.t("start.confirmBody")
+        color: Skin.dim
+        wrapMode: Text.WordWrap
+        elide: Text.ElideNone
+        font.pixelSize: 12 * Skin.u
+      }
+      Row {
+        anchors.right: parent.right
+        spacing: 8 * Skin.u
+        Pill {
+          id: powerNo
+          text: Skin.t("cancel")
+          onClicked: { start.powerAsk = ""; powerMenu.forceActiveFocus() }
+          KeyNavigation.right: powerYes
+          KeyNavigation.tab: powerYes
+          Keys.onEscapePressed: { start.powerAsk = ""; powerMenu.forceActiveFocus() }
+        }
+        Pill {
+          id: powerYes
+          primary: true
+          text: start.powerAsk !== "" ? Skin.t("start." + start.powerAsk) : ""
+          onClicked: start.confirmPower()
+          KeyNavigation.left: powerNo
+          KeyNavigation.tab: powerNo
+          Keys.onEscapePressed: { start.powerAsk = ""; powerMenu.forceActiveFocus() }
         }
       }
     }

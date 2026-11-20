@@ -370,8 +370,10 @@ works as before. Tap Super again or press Esc to close it.
   hover for a terminal there, Claude Code there, or Files.
 - **Along the bottom:** whether Docker is running (click for the deck),
   **Focus** (Omarchy's do-not-disturb), **About Fathom** (the ⓘ button, or
-  search "about"; Esc closes it), and power: lock, sleep, sign out,
-  restart, shut down. The last three ask first.
+  search "about"; Esc closes it), and power: a menu that opens just above
+  its button, with lock, sleep, sign out, restart and shut down (the arrow
+  keys and Enter work too; Esc closes it). The last three ask first, in the
+  menu itself, so the answer is where the pointer already is.
 
 Pins and suggestions are kept in `~/.config/fathom/start.json`.
 

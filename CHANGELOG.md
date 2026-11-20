@@ -25,6 +25,11 @@ Each line names its commit.
 
 ### Fixed
 
+- Start: the power menu opened at the top of the Start menu, not above its
+  button (its place was worked out once, before the layout, by a
+  `mapToItem()` QML doesn't follow). It is placed as it opens now, takes the
+  arrow keys, Enter and Esc, and Sign out, Restart and Shut down ask in the
+  menu itself instead of in the middle of the screen.
 - `tests/vm/run.sh` stopped at once, saying nothing, when the VM folder had
   no installer image; it needs one only for `run.sh install` now (2113525).
 
