@@ -19,7 +19,7 @@ Each line names its commit.
   releases channel still never offers a pre-release (6b362da).
 - PCs on the deck: a paired PC (Fathom for Windows) sends its own figures
   (`POST /v1/device/status`), `fathom-phone pcs` lists them, the deck shows
-  a PCs card, and a PC's warnings become alerts.
+  a PCs card, and a PC's warnings become alerts (f047529).
 - `fathom-phone` pairs PCs too: pairing takes a `kind` (`phone`, the
   default, or `pc`), `fathom-phone devices` and `status` show it, and
   `fathom-phone pair` prints its link as text to paste into the PC app
