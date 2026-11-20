@@ -163,7 +163,7 @@ it.
   nothing; the Start power menu opened above its button and asked in
   place; the screensaver preview opened and closed on a key.
 - Issue #10 (Care's updates list after updating), at b56b60e with the fix
-  uncommitted, the old and new `fathom-care` copied into the VM: a check
+  uncommitted (committed unchanged as 812c4d1), the old and new `fathom-care` copied into the VM: a check
   found 2 repo updates (aether, mise-bin). `sudo pacman -Syu` was refused by
   Omarchy's pacman hook ("Omarchy updates should normally run through:
   omarchy update"); `omarchy-update -y` upgraded both in 6 s. Then the old

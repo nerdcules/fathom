@@ -38,7 +38,7 @@ Each line names its commit.
   Omarchy's update ends, and a list from before pacman's last change to
   what's installed (by Care, Omarchy's menu, pacman or yay) isn't shown:
   Care checks again, once pacman is done and once for each change. A check
-  now dates itself from when it started, not when it ended.
+  now dates itself from when it started, not when it ended (812c4d1).
 - Start: the power menu opened at the top of the Start menu, not above its
   button (its place was worked out once, before the layout, by a
   `mapToItem()` QML doesn't follow). It is placed as it opens now, takes the
