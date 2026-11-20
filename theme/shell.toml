@@ -60,10 +60,12 @@ focus-border-width = 1
 focus-border-alpha = 0.45
 
 # Selected: persistent chosen/current state.
+# Fathom (#14): filled like Quick settings' tiles when on (0.36, border
+# 0.8); were 0.22 and 0.6.
 selected-color        = "accent"
-selected-fill-alpha   = 0.22
+selected-fill-alpha   = 0.36
 selected-border-width = 1
-selected-border-alpha = 0.6
+selected-border-alpha = 0.8
 
 # Momentary fills.
 pressed-fill-alpha   = 0.22
@@ -90,14 +92,17 @@ scale-with-font = true
 # control-padding-x         = 10
 # control-padding-y         = 6
 # input-padding-y           = 7
-# control-height            = 28
+# Fathom (#14): taller buttons, as in Quick settings (Omarchy: 28).
+control-height            = 32
 # popup-row-height          = 28
-# row-gap                   = 8
+# Fathom (#14): more room between rows (Omarchy: 8).
+row-gap                   = 10
 # row-padding-x             = 12
 # label-gap                 = 4
 # panel-gap                 = 14
 # panel-padding             = 18
-# popup-padding             = 14
+# Fathom (#14): Quick settings' padding (Omarchy: 14).
+popup-padding             = 18
 # dropdown-width            = 240
 # searchable-dropdown-width = 260
 # number-field-width        = 120
@@ -116,8 +121,10 @@ base-size = 12
 # body-small    = 11
 # body          = 12
 # subtitle      = 13
-# title         = 14
-# heading       = 16
+# Fathom (#14): larger titles in the dropdowns, as in Quick settings. Only
+# sizes the bar itself doesn't use (it uses caption, body-small, body).
+title         = 15
+heading       = 17
 # display       = 24
 # display-large = 28
 # icon-small    = 11
