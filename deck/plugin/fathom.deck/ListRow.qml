@@ -36,7 +36,11 @@ Item {
       : (rowHover.hovered || actionsRow.activeFocusInside ? Skin.faint : "transparent")
   }
   HoverHandler { id: rowHover; cursorShape: row.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor }
-  TapHandler { enabled: row.clickable; onTapped: row.clicked() }
+  // A MouseArea, not a TapHandler: a TapHandler only grabs the press
+  // passively, so a click on a row drawn over another (the Start menu's
+  // power menu over Recent) clicked the row beneath as well (#13). Declared
+  // before the row's buttons so they stay on top of it.
+  MouseArea { anchors.fill: parent; enabled: row.clickable; onClicked: row.clicked() }
 
   AppIcon {
     id: rowIcon
