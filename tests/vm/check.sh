@@ -25,11 +25,22 @@ pass=0 fail=0
 vm() { "$here/vm.sh" "$@"; }
 check() { if [[ $2 == 0 ]]; then echo "PASS $1"; pass=$((pass + 1)); else echo "FAIL $1"; fail=$((fail + 1)); fi; }
 # Run a Fathom script in the VM with a terminal; log it; exit code back.
+# With $3 and $4: once the log shows the text $4 (a question), type $3 into
+# that terminal (ssh -tt passes it on as keys). Typed any sooner, it was
+# swallowed before the question came (sudo flushes the terminal's input).
 step() {
-  local name=$1 cmd=$2
+  local name=$1 cmd=$2 keys=${3:-} prompt=${4:-}
+  # The question ends without a newline, so it's looked for in a raw copy
+  # (tee writes as it reads; sed holds a line back until it ends).
+  : >"$logs/$name.raw"
   # A step that hangs (Hyprland once froze on uninstall's `hyprctl reload`
   # in the VM) fails after 5 minutes instead of stopping the check.
-  timeout 300 "$here/vm.sh" -t "$cmd 2>&1; echo \"EXIT=\$?\"" | tr -d '\r' | sed 's/\x1b\][^\\]*\\//g' >"$logs/$name.log" 2>&1
+  {
+    if [[ -n $prompt ]]; then
+      for _ in $(seq 290); do grep -qF -- "$prompt" "$logs/$name.raw" && break; sleep 1; done
+      printf '%s' "$keys"
+    fi
+  } | timeout 300 "$here/vm.sh" -t "$cmd 2>&1; echo \"EXIT=\$?\"" | tee "$logs/$name.raw" | tr -d '\r' | sed 's/\x1b\][^\\]*\\//g' >"$logs/$name.log" 2>&1
   grep -q '^EXIT=0$' "$logs/$name.log" || { echo "  ($name: no EXIT=0 within 5 minutes; see $logs/$name.log)"; return 1; }
 }
 # Compare a capture with the baseline. Allowed: the hyprland.lua backups
@@ -87,8 +98,11 @@ vm 'sleep 2; journalctl --user -u fathom-mail.service -n 5 --no-pager -o cat | g
 check "  ...Mail with no account says so and stops" $?
 
 vm -t 'python3 -I -c "import grpc, google.protobuf, opentelemetry.proto" 2>/dev/null || omarchy pkg add python-opentelemetry-proto python-grpcio python-protobuf' >"$logs/pulse-deps.log" 2>&1
-step optional 'cd ~/fathom-new && ./install.sh --sentinel --pulse --crumbs --signin'
+# --sentinel asks once whether to set up Ward (282060c); this answers no.
+step optional 'cd ~/fathom-new && ./install.sh --sentinel --pulse --crumbs --signin' $'n\r' 'Also set up Ward'
 check "opt-in parts: --sentinel --pulse --crumbs --signin" $?
+grep -q "Not setting up Ward" "$logs/optional.log"
+check "  ...asked about Ward once; no is remembered" $?
 if vm 'cat /etc/sddm.conf /etc/sddm.conf.d/*.conf 2>/dev/null | grep -q "^User=$USER$"'; then
   grep -q "signs you in" "$logs/optional.log"
 else
