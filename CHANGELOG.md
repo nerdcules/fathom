@@ -17,6 +17,14 @@ Each line names its commit.
 - `fathom-update channel prereleases`: the newest tag, pre-releases such
   as `v0.4.0-rc.1` included, and the release once it's tagged; the
   releases channel still never offers a pre-release (6b362da).
+- `fathom-phone` pairs PCs too: pairing takes a `kind` (`phone`, the
+  default, or `pc`), `fathom-phone devices` and `status` show it, and
+  `fathom-phone pair` prints its link as text to paste into the PC app.
+
+### Changed
+
+- The test alert says it reached "this device", and an item marked done in
+  Sankofa from a paired device names that device instead of "the phone".
 
 ## [0.3.0] - 2026-11-20
 

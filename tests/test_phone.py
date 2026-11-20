@@ -142,6 +142,45 @@ class PhoneTest(unittest.TestCase):
         # The same secret again: the window closed when it was used.
         self.assertEqual(self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"]})[0], 403)
 
+    def test_a_pc_pairs_as_a_pc(self):
+        w = self.window()
+        code, body = self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"], "name": "DELL-01", "kind": "pc"})
+        self.assertEqual((code, body["kind"]), (200, "pc"))
+        listed = self.run_phone("devices").stdout
+        self.assertIn("DELL-01 (pc)", listed)
+        [d] = json.loads(self.run_phone("status").stdout)["devices"]
+        self.assertEqual((d["name"], d["kind"]), ("DELL-01", "pc"))
+
+    def test_a_device_with_no_kind_is_a_phone(self):
+        w = self.window()
+        code, body = self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"]})
+        self.assertEqual((code, body["kind"]), (200, "phone"))
+        self.assertIn("Phone (phone)", self.run_phone("devices").stdout)
+        # Records from before kinds existed have no "kind" at all.
+        path = os.path.join(self.home, ".config/fathom/phone.json")
+        with open(path) as f:
+            saved = json.load(f)
+        for dev in (saved["devices"] if isinstance(saved, dict) else saved):
+            dev.pop("kind")
+        with open(path, "w") as f:
+            json.dump(saved, f)
+        [d] = json.loads(self.run_phone("status").stdout)["devices"]
+        self.assertEqual(d["kind"], "phone")
+
+    def test_an_unknown_kind_is_refused_and_the_window_stays_open(self):
+        w = self.window()
+        code, body = self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"], "kind": "toaster"})
+        self.assertEqual(code, 400, body)
+        code, body = self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"], "kind": "pc"})
+        self.assertEqual(code, 200, body)
+
+    def test_pair_prints_the_link_to_paste(self):
+        r = self.run_phone("pair", "--no-wait")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        [line] = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("fathom://pair?")]
+        self.assertIn("v=1&", line)
+        self.assertIn("&fp=", line)
+
     def test_no_window_no_pairing(self):
         fp = self.window()["fingerprint"]
         os.remove(os.path.join(self.home, ".local/state/fathom/phone/pairing.json"))
@@ -317,7 +356,7 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual([l["glob"] for l in r["leases"]], ["src/*"])
         self.assertEqual(r["last"]["text"], "Shipped the parser")
 
-    def test_sankofa_waiting_on_you_is_an_alert_marked_done_from_the_phone(self):
+    def test_sankofa_waiting_on_you_is_an_alert_marked_done_by_the_device(self):
         repo = self.sankofa_repo()
         fp, dev = self.paired()
         code, body = self.call("GET", "/v1/alerts", fp, token=dev["token"])
@@ -325,7 +364,7 @@ class PhoneTest(unittest.TestCase):
         self.assertEqual((a["title"], a["detail"]), ("proj needs you", "Run the install yourself"))
         code, _ = self.call("POST", "/v1/action", fp, {"alert": a["id"], "action": "done"}, token=dev["token"])
         self.assertEqual(code, 200)
-        self.assertEqual(self.recorded(), [f"sankofa done e1 done, from the phone in {repo}"])
+        self.assertEqual(self.recorded(), [f"sankofa done e1 done, from Pixel in {repo}"])
 
 
     def test_a_phone_can_unpair_itself_and_only_itself(self):

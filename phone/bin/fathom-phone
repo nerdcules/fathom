@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Fathom for your phone: the laptop side. The phone app (fathom-android)
-pairs with it once, then reads what the Command Deck shows.
+"""Fathom for your phone and your PC: the laptop side. The phone app
+(fathom-android) and the PC app (fathom-windows) pair with it once, then
+read what the Command Deck shows.
 
   fathom-phone serve            run the service (fathom-phone.service does)
   fathom-phone pair             open a 2-minute pairing window and show its
-                                QR code; scan it with the phone app
-  fathom-phone devices          the phones paired, and when each last called
-  fathom-phone unpair <id>|all  forget a phone (its token stops working)
+                                QR code and link; scan the code with the
+                                phone app, or paste the link into the PC app
+  fathom-phone devices          the phones and PCs paired, and when each last called
+  fathom-phone unpair <id>|all  forget a device (its token stops working)
   fathom-phone status           the service, its fingerprint and devices, as JSON
   fathom-phone alerts           what the phone would be told about now, as JSON
   fathom-phone health [week]    each phone's health (battery, heat, storage,
@@ -805,19 +807,28 @@ def alerts(read=None, now=None):
     test = read_json(TEST_ALERT, None)
     if test and now < test.get("expires", 0):
         add(f"test:{test.get('time')}", "Fathom", "test", "info", "A test from Fathom",
-            "If you can read this, alerts reach this phone.", test.get("time"))
+            "If you can read this, alerts reach this device.", test.get("time"))
     return out
 
 
-# What each action runs, with the arguments its alert carries.
+# What each action runs, with the arguments its alert carries, for the
+# device that asked.
 ACTIONS = {
-    "trust": lambda a: ["fathom-sentinel", "trust", a[0]] if MAC.match(a[0]) else None,
-    "restart": lambda a: ["fathom-care", "restart", a[0], a[1]] if a[0] in ("user", "system") and UNIT.match(a[1]) else None,
-    "block": lambda a: ["fathom-sentinel", "block", str(ipaddress.ip_address(a[0]))],
+    "trust": lambda a, d: ["fathom-sentinel", "trust", a[0]] if MAC.match(a[0]) else None,
+    "restart": lambda a, d: ["fathom-care", "restart", a[0], a[1]] if a[0] in ("user", "system") and UNIT.match(a[1]) else None,
+    "block": lambda a, d: ["fathom-sentinel", "block", str(ipaddress.ip_address(a[0]))],
     # Resolve an item someone waits on you for; runs in its repo.
-    "done": lambda a: (["sankofa", "done", a[1], "done, from the phone"], a[0])
+    "done": lambda a, d: (["sankofa", "done", a[1], f"done, from {d.get('name') or 'the ' + kind_of(d)}"], a[0])
     if SANKOFA_ID.match(a[1]) and os.path.isdir(os.path.join(a[0], ".sankofa")) else None,
 }
+
+# What can pair, and the name one gets when it doesn't send its own.
+KINDS = {"phone": "Phone", "pc": "PC"}
+
+
+def kind_of(device):
+    """Devices paired before kinds existed are phones."""
+    return device.get("kind") or "phone"
 
 
 def act(alert_id, action_id, device):
@@ -829,7 +840,7 @@ def act(alert_id, action_id, device):
     if action is None or action_id not in ACTIONS:
         return 400, {"error": "that alert doesn't offer that"}
     try:
-        cmd = ACTIONS[action_id](action["args"])
+        cmd = ACTIONS[action_id](action["args"], device)
     except (ValueError, IndexError):
         cmd = None
     if cmd is None:
@@ -970,7 +981,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
             secret = str(body.get("secret", ""))
-            name = str(body.get("name", "Phone"))[:60] or "Phone"
+            kind = str(body.get("kind", "phone"))
+            if kind not in KINDS:
+                return self.reply(400, {"error": f"unknown kind; one of {', '.join(KINDS)}"})
+            name = str(body.get("name", KINDS[kind]))[:60] or KINDS[kind]
         except (ValueError, AttributeError):
             return self.reply(400, {"error": "bad request"})
         with LOCK:
@@ -988,15 +1002,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                       f"(try {window['tries']} of {PAIR_TRIES})", flush=True)
                 return self.reply(403, {"error": "wrong secret"})
             token = secrets.token_urlsafe(32)
-            dev = {"id": secrets.token_hex(4), "name": name, "tokenHash": digest(token),
+            dev = {"id": secrets.token_hex(4), "name": name, "kind": kind, "tokenHash": digest(token),
                    "pairedAt": int(time.time()), "lastSeen": int(time.time())}
             devs = devices()
             devs.append(dev)
             save_devices(devs)
             window.update(closed="paired", device=dev["id"], deviceName=name)
             write_private(PAIRING, window)
-            print(f"fathom-phone: paired {name!r} ({dev['id']}) from {who}", flush=True)
-        return self.reply(200, {"deviceId": dev["id"], "token": token, "host": socket.gethostname(), "api": API})
+            print(f"fathom-phone: paired {name!r} ({dev['id']}, {kind}) from {who}", flush=True)
+        return self.reply(200, {"deviceId": dev["id"], "token": token, "host": socket.gethostname(), "api": API,
+                                "kind": kind})
 
 
 def serve():
@@ -1065,7 +1080,9 @@ def pair(args):
         if shutil.which("qrencode"):
             subprocess.run(["qrencode", "-t", "ANSIUTF8", "-m", "2", w["uri"]])
         until = datetime.datetime.fromtimestamp(w["expires"]).strftime("%H:%M:%S")
-        print(f"Scan this with Fathom on your phone (open until {until}).")
+        print(f"Scan this with Fathom on your phone, or paste this link into Fathom on your PC")
+        print(f"(open until {until}):")
+        print(f"  {w['uri']}")
         print(f"Or type: addresses {', '.join(w['addresses'])}, port {w['port']},")
         print(f"         fingerprint {w['fingerprint']}")
         print(f"         secret {w['secret']}")
@@ -1109,9 +1126,9 @@ def main(argv):
         elif cmd == "devices":
             devs = devices()
             if not devs:
-                print("No phone is paired. Pair one with: fathom-phone pair")
+                print("No device is paired. Pair a phone or PC with: fathom-phone pair")
             for d in devs:
-                print(f"{d['id']}  {d['name']}  paired {ago(d['pairedAt'])}, last seen {ago(d['lastSeen'])}")
+                print(f"{d['id']}  {d['name']} ({kind_of(d)})  paired {ago(d['pairedAt'])}, last seen {ago(d['lastSeen'])}")
         elif cmd == "unpair":
             if len(args) != 1:
                 raise PhoneError("unpair takes a device id (see fathom-phone devices) or all")
@@ -1136,12 +1153,14 @@ def main(argv):
             private_dir(DIR)
             t = int(time.time())
             write_private(TEST_ALERT, {"time": t, "expires": t + 600})
-            print("A test alert is up for 10 minutes; the phone shows it at its next check (up to about 15 minutes).")
+            print("A test alert is up for 10 minutes; each paired device shows it at its next check "
+                  "(the phone's comes up to about 15 minutes apart).")
         elif cmd == "status":
             ensure_cert()
             print(json.dumps({"running": service_up(), "port": PORT, "fingerprint": fingerprint(),
                               "addresses": addresses(),
-                              "devices": [{k: d[k] for k in ("id", "name", "pairedAt", "lastSeen")} for d in devices()]}))
+                              "devices": [{**{k: d[k] for k in ("id", "name", "pairedAt", "lastSeen")}, "kind": kind_of(d)}
+                                          for d in devices()]}))
         else:
             raise PhoneError(f"unknown command '{cmd}'; see fathom-phone --help")
     except PhoneError as e:

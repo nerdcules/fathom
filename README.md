@@ -860,8 +860,9 @@ a home screen for your phone in Fathom's look. Install it with
 `./install.sh --phone`, then pair a phone once:
 
 ```bash
-fathom-phone pair        # shows a QR code for 2 minutes; scan it in the app
-fathom-phone devices     # the phones paired
+fathom-phone pair        # shows a QR code and a link for 2 minutes; scan the
+                         # code in the app, or paste the link in the PC app
+fathom-phone devices     # the phones and PCs paired, each with its kind
 fathom-phone unpair <id> # forget one; its token stops working (forgetting
                          # the laptop in the app does the same)
 fathom-phone alerts      # what a phone would be told about now, as JSON
@@ -874,7 +875,11 @@ certificate it made itself. The QR code carries the laptop's addresses (Wi-Fi
 or wired first, then Tailscale's), the certificate's SHA-256 fingerprint and
 a one-time secret: the phone connects only to a laptop showing that
 certificate, and proves the secret to be given its own token. The window
-closes after 2 minutes, after one pairing, or after 5 wrong secrets. Fathom
+closes after 2 minutes, after one pairing, or after 5 wrong secrets. The
+same link is printed as text, for [Fathom for Windows](https://github.com/nerdcules/fathom-windows)
+(a PC app in the making; its repository is private for now), which pairs
+the same way and says it's a PC (`"kind": "pc"`; a device that doesn't say
+is a phone, as is every device paired before kinds existed). Fathom
 keeps only each token's SHA-256 (`~/.config/fathom/phone.json`, readable by
 you alone). A 6-digit code isn't used: on a network someone else can watch,
 all million codes could be tried against what they saw.
