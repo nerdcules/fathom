@@ -5,11 +5,18 @@ What changed in each Fathom release. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html): a release is a
 git tag `vMAJOR.MINOR.PATCH`, which `fathom-update` offers on its default
 releases channel. Pre-release tags such as `v0.2.0-rc1` are never offered
-there.
+there; the prereleases channel offers them, and the release once it's
+tagged.
 
 Each line names its commit.
 
 ## [Unreleased]
+
+### Added
+
+- `fathom-update channel prereleases`: the newest tag, pre-releases such
+  as `v0.4.0-rc.1` included, and the release once it's tagged; the
+  releases channel still never offers a pre-release (6b362da).
 
 ## [0.3.0] - 2026-11-20
 
