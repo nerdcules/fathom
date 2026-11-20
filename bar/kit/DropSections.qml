@@ -1,0 +1,173 @@
+import QtQuick
+import "."
+
+// The factory's renderer (#14): draws a dropdown's body from a description,
+// so a new bar item needs a list of sections, not a new screen. Each
+// section is an object with a `type`:
+//
+//   slider   {key, glyph, tip, value (0..1), label, steps}      -> moved(key, value)
+//   choices  {key, title, options: [{value, label}], chosen}    -> picked(key, value)
+//   rows     {key, title, rows: [{key, glyph, name, detail,
+//             trail, active, busy, clickable}], busyLabel}      -> picked(key, row key)
+//   switch   {key, glyph, name, detail, on}                     -> toggled(key, !on)
+//   actions  {key, buttons: [{key, label, glyph, primary}]}     -> picked(key, button key)
+//   text     {text, dim}
+//
+// `hidden: true` leaves a section out. Every part is the kit's, in the Quick
+// settings look, and every control can be reached with the keys (DropCard).
+Column {
+  id: sections
+  property var model: []
+  signal moved(string key, real value)
+  signal picked(string key, string value)
+  signal toggled(string key, bool on)
+
+  spacing: 14 * DropSkin.u
+
+  // Counted, not handed the list: a new description (every value change
+  // makes one) then updates the parts in place instead of building them
+  // again, so the control with the keyboard or under a drag keeps it (seen
+  // in the test VM: a text size change lost the keyboard). Inner lists are
+  // counted the same way.
+  Repeater {
+    model: Array.isArray(sections.model) ? sections.model.length : 0
+    delegate: Loader {
+      id: slot
+      required property int index
+      readonly property var spec: sections.model[index] || ({})
+      width: sections.width
+      visible: !spec.hidden
+      active: !spec.hidden
+      sourceComponent: ({ slider: sliderPart, choices: choicesPart, rows: rowsPart, "switch": switchPart,
+                          actions: actionsPart, text: textPart })[spec.type] || null
+    }
+  }
+
+  Component {
+    id: sliderPart
+    DropSlider {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      glyph: spec.glyph || ""
+      glyphTip: spec.tip || ""
+      value: Number(spec.value) || 0
+      label: spec.label || ""
+      steps: spec.steps || 0
+      onMoved: function(v) { sections.moved(spec.key, v) }
+    }
+  }
+
+  Component {
+    id: choicesPart
+    Column {
+      property var spec: parent ? parent.spec : ({})
+      width: sections.width
+      spacing: 8 * DropSkin.u
+      DropLabel {
+        visible: text !== ""
+        text: spec.title || ""
+        color: DropSkin.dim
+        font.pixelSize: 12 * DropSkin.u
+      }
+      Flow {
+        width: parent.width
+        spacing: 8 * DropSkin.u
+        Repeater {
+          model: (spec.options || []).length
+          delegate: DropButton {
+            required property int index
+            readonly property var modelData: spec.options[index] || ({})
+            objectName: spec.key + " " + modelData.value
+            text: modelData.label
+            primary: String(modelData.value) === String(spec.chosen)
+            Accessible.checked: primary
+            onClicked: sections.picked(spec.key, String(modelData.value))
+          }
+        }
+      }
+    }
+  }
+
+  Component {
+    id: rowsPart
+    Column {
+      property var spec: parent ? parent.spec : ({})
+      width: sections.width
+      spacing: 6 * DropSkin.u
+      DropLabel {
+        visible: text !== ""
+        text: spec.title || ""
+        color: DropSkin.dim
+        font.pixelSize: 12 * DropSkin.u
+      }
+      Repeater {
+        model: (spec.rows || []).length
+        delegate: DropRow {
+          required property int index
+          readonly property var modelData: spec.rows[index] || ({})
+          objectName: spec.key + " " + modelData.key
+          glyph: modelData.glyph || ""
+          name: modelData.name || ""
+          detail: modelData.detail || ""
+          trail: modelData.trail || ""
+          active: modelData.active === true
+          busy: modelData.busy === true
+          busyLabel: spec.busyLabel || ""
+          clickable: modelData.clickable !== false
+          onClicked: sections.picked(spec.key, String(modelData.key))
+        }
+      }
+    }
+  }
+
+  Component {
+    id: switchPart
+    DropRow {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      glyph: spec.glyph || ""
+      name: spec.name || ""
+      detail: spec.detail || ""
+      trail: spec.on ? DropSkin.t("drop.on") : DropSkin.t("drop.off")
+      active: spec.on === true
+      Accessible.role: Accessible.CheckBox
+      Accessible.checked: spec.on === true
+      onClicked: sections.toggled(spec.key, !(spec.on === true))
+    }
+  }
+
+  Component {
+    id: actionsPart
+    Flow {
+      property var spec: parent ? parent.spec : ({})
+      width: sections.width
+      spacing: 8 * DropSkin.u
+      Repeater {
+        model: (spec.buttons || []).length
+        delegate: DropButton {
+          required property int index
+          readonly property var modelData: spec.buttons[index] || ({})
+          objectName: spec.key + " " + modelData.key
+          text: modelData.label || ""
+          glyph: modelData.glyph || ""
+          primary: modelData.primary === true
+          onClicked: sections.picked(spec.key, String(modelData.key))
+        }
+      }
+    }
+  }
+
+  Component {
+    id: textPart
+    DropLabel {
+      property var spec: parent ? parent.spec : ({})
+      width: sections.width
+      text: spec.text || ""
+      color: spec.dim ? DropSkin.dim : DropSkin.fg
+      wrapMode: Text.WordWrap
+      font.pixelSize: 12 * DropSkin.u
+    }
+  }
+}

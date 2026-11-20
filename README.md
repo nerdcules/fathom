@@ -36,7 +36,7 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
-| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings (see [Desk](#desk)) |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display so far (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
@@ -186,6 +186,8 @@ part it finds:
   `~/.local/share/fathom`. The root parts go as in the table above.
 - **The bar's cluster:** Omarchy's Bluetooth, network, volume and battery
   widgets go back where `install.sh` found them, with any settings they had.
+- **The bar's Fathom dropdowns:** each is turned off, and Omarchy's item
+  comes back in its place, with any settings it had.
 
 These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
 
@@ -406,6 +408,8 @@ Windows' ways of handling windows, on Hyprland. Install it with `--desk`
 | **Super+Tab** | Task view: every window and workspace; Tab again, Super held, steps through the workspaces |
 | **Super+Z** | Snap layouts for the focused window |
 | **Super+Alt+A** | Quick settings |
+| **Super+Ctrl+A** or **P**, **Super+Ctrl+N**, **Super+Ctrl+B** | Quick settings; on its Wi-Fi list; on its Bluetooth list (Omarchy's keys for the four widgets the cluster replaces) |
+| **Super+Ctrl+D** | The Display dropdown (Omarchy's key, which reaches Fathom's) |
 
 **Alt+Tab** shows every window as a card with a live picture of it, most
 recently used first, with the window you used before this one picked. Tab
@@ -468,6 +472,22 @@ the connection itself, so it shows connected or not, never "limited".
 If the cluster doesn't go on the bar, the four stay. Once it's there,
 reinstalling or updating leaves it where you put it.
 
+**The bar's dropdowns.** Every item on the bar gets Fathom's own dropdown,
+in Quick settings' look, in place of Omarchy's: so far **Display**
+(brightness, text size, the scale presets for the display in use, and, with
+more than one display, a row for each that turns it on or off; the same
+controls as Omarchy's, with each scale labelled as the screen really gets
+it). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
+so `install.sh --desk` puts it where Omarchy's was, with its settings, and
+Omarchy's keys and scripts for it reach Fathom's; an item that isn't on
+the bar isn't touched. The install ends by naming the bar items that don't
+have a Fathom dropdown yet. In a dropdown, the arrows (or h j k l) walk its
+controls, Left and Right move a slider, Return presses, Tab goes to the
+next dropdown on the bar, and Esc closes it. `bar/items.json` lists every
+Omarchy bar item with its Fathom dropdown or what's planned for it, and a
+test fails when Omarchy has one the list doesn't name; `bar/README.md`
+says how a dropdown is made.
+
 The addresses are every interface that is up, named Wi-Fi, Ethernet,
 Tailscale or VPN (or by its own name), with its IPv4 and IPv6 addresses, up
 to six in all; each has a button that copies it. Link-local and deprecated
@@ -499,8 +519,9 @@ fathom-desk set brightness 40          # also wifi, focus, nightlight, awake on|
 
 Installing adds `~/.local/bin/fathom-desk`, `~/.config/hypr/fathom-desk.lua`
 (loaded from Fathom's marked block in `hyprland.lua`) and the `fathom.desk`
-shell plugin. Uninstalling removes them, and Hyprland's reload puts Omarchy's
-own Alt+Tab and Super+Tab back.
+shell plugin, and a plugin for each bar dropdown (`fathom.display`).
+Uninstalling removes them, and Hyprland's reload puts Omarchy's own Alt+Tab,
+Super+Tab and Super+Ctrl keys back.
 
 ## Command Deck
 

@@ -34,7 +34,10 @@ class Cluster(unittest.TestCase):
             return [e if isinstance(e, str) else e["id"] for e in json.load(f)["bar"]["layout"]["right"]]
 
     def plugin_calls(self):
-        return [c for c in self.box.calls() if c.startswith("omarchy plugin ") or c.startswith("omarchy bar set")]
+        # The monitor on these bars gets Fathom's Display too (#14), which
+        # test_bar.py checks; these are about the cluster.
+        return [c for c in self.box.calls() if (c.startswith("omarchy plugin ") or c.startswith("omarchy bar set"))
+                and "fathom.display" not in c]
 
     def kept(self):
         path = self.box.path(".local", "state", "fathom", "desk-cluster")
@@ -68,7 +71,7 @@ class Cluster(unittest.TestCase):
         self.bar(self.LAYOUT)
         self.run_ok("install.sh", "--desk")
         first = self.kept()
-        self.assertEqual(self.right(), ["seunarayan.sysmon", "omarchy.tray", "omarchy.monitor", "fathom.desk"])
+        self.assertEqual(self.right(), ["seunarayan.sysmon", "omarchy.tray", "fathom.display", "fathom.desk"])
         self.box.clear_calls()
         r = self.run_ok("install.sh", "--desk")
         calls = [c for c in self.plugin_calls() if not c.startswith("omarchy plugin validate")]
@@ -85,7 +88,7 @@ class Cluster(unittest.TestCase):
         calls = [c for c in self.plugin_calls() if not c.startswith("omarchy plugin validate")]
         self.assertEqual(calls, ["omarchy plugin enable fathom.desk --after omarchy.network",
                                  "omarchy plugin disable omarchy.network"])
-        self.assertEqual(self.right(), ["omarchy.monitor", "fathom.desk"], "the cluster stays where it was")
+        self.assertEqual(self.right(), ["fathom.display", "fathom.desk"], "the cluster stays where it was")
         self.assertEqual(sorted(e["id"] for e in self.kept()), sorted(FOUR), "one record per widget")
 
     def test_a_bar_without_them_gets_no_cluster_record(self):

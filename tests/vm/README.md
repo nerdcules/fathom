@@ -139,6 +139,38 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, the bar's dropdowns: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (a copy of
+it in a scratch checkout on the PC, so `check.sh` labels it
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- `./install.sh --desk` on the VM's bar: Fathom's Display took
+  `omarchy.monitor`'s place (`[omarchy.tray, omarchy.keyboard-layout,
+  omarchy.agents, fathom.display, fathom.desk]`), and the install named the
+  ten bar items still without a Fathom dropdown. `uninstall.sh` put
+  `omarchy.monitor` back: `shell.json` the same as the baseline, no plugin
+  left. `omarchy plugin disable fathom.display` and `enable` swapped them
+  back and forth in place.
+- Real input through QMP: a click on the Display icon opened Fathom's
+  dropdown (no brightness slider: the VM has no backlight). Down then
+  Right set the text size from 12 to 14 px; Left set it back; Esc closed
+  it. Clicking 1.25× set the scale to 1.25. Super+Ctrl+D opened it; Tab
+  went on to Omarchy's Agents dropdown. `omarchy-shell shell toggle
+  omarchy.monitor` opened it, and `omarchy-shell omarchy.monitor state`
+  was answered by it.
+- Found and fixed on the way: after a text size change the dropdown lost
+  the keyboard (Esc did nothing), because each new description rebuilt
+  every control; the factory now updates them in place, and the card is a
+  focus scope. Omarchy's own Display panel kept the keyboard through the
+  same change. The scale buttons said 3× where Omarchy's say 3.2× (what
+  1280×800 really gets); they now say what the screen gets.
+- Super+Ctrl+N opened Quick settings on its Wi-Fi list, but Omarchy's own
+  bind ran too ("summon: no live bar widget for: omarchy.network"):
+  `o.bind` adds a bind beside Omarchy's. With `o.rebind` there is one bind
+  each for Super+Ctrl+A, B, D, N and P, and no warning.
+
 ### Issue #14: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH

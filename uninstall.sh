@@ -69,6 +69,18 @@ if [[ -e $HOME/.local/bin/fathom-player || -d $PLUGINS/fathom.player ]]; then
   echo "Removed the mini-player."
 fi
 
+# The bar's Fathom dropdowns (#14): each is a clone of an Omarchy item, and
+# turning it off puts Omarchy's back where it was, with its settings.
+restored=()
+for dir in "$PLUGINS"/fathom.*; do
+  [[ -f $dir/manifest.json ]] || continue
+  jq -e '.omarchy.clonedFrom // empty' "$dir/manifest.json" >/dev/null 2>&1 || continue
+  omarchy plugin disable "${dir##*/}" >/dev/null 2>&1 || true
+  rm -rf "$dir"
+  restored+=("${dir##*/}")
+done
+((${#restored[@]})) && echo "Removed Fathom's bar dropdowns (${restored[*]}); Omarchy's own are back."
+
 # Desk: close it, then remove the plugin, keys and command. Hyprland's
 # reload at the end puts Omarchy's own Alt+Tab and Super+Tab back.
 if [[ -e $HOME/.local/bin/fathom-desk || -d $PLUGINS/fathom.desk ]]; then

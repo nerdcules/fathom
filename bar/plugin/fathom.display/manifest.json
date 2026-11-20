@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.display",
+  "name": "Display (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's Display button with Fathom's dropdown: brightness, text size, scale and displays, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Display.qml"
+  },
+  "barWidget": {
+    "displayName": "Display (Fathom)",
+    "description": "Brightness, text size, scale and displays, in Fathom's look",
+    "category": "System",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.monitor"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "about": "Every Omarchy bar item and its Fathom dropdown (#14). fathom: the Fathom plugin that replaces it (a clone of it, see bar/README.md); planned: what its dropdown will hold; none: why it has none. tests/test_bar.py fails when Omarchy has a bar item this list doesn't name.",
+  "omarchy": {
+    "omarchy.monitor": { "fathom": "fathom.display" },
+    "omarchy.audio": { "fathom": "fathom.desk", "how": "the bar's cluster: one button for Bluetooth, network, volume and battery, opening Quick settings" },
+    "omarchy.bluetooth": { "fathom": "fathom.desk", "how": "the bar's cluster" },
+    "omarchy.network": { "fathom": "fathom.desk", "how": "the bar's cluster" },
+    "omarchy.power": { "fathom": "fathom.desk", "how": "the bar's cluster" },
+    "omarchy.clock": { "planned": "the calendar" },
+    "omarchy.weather": { "planned": "the forecast" },
+    "omarchy.tailscale": { "planned": "the tailnet: on or off, exit node, machines, copy an address" },
+    "omarchy.agents": { "planned": "each AI agent's usage, limits and balance" },
+    "omarchy.elsewhen": { "planned": "the world clock: the time in each city" },
+    "omarchy.dropbox": { "planned": "Dropbox's status, storage and recent files" },
+    "omarchy.media": { "planned": "what's playing, with its controls" },
+    "omarchy.keyboard-layout": { "planned": "the layouts, to pick one (a click cycles them today)" },
+    "omarchy.microphone": { "planned": "the microphone: mute, level and input (a click mutes it today)" },
+    "omarchy.indicators": { "planned": "each indicator (Do not disturb, night light, stay awake, ...) with its switch" },
+    "omarchy.system-update": { "planned": "what the update brings, and Update now (a click starts it today)" },
+    "omarchy.tray": { "planned": "each app's tray menu in Fathom's look" },
+    "omarchy.menu": { "planned": "to be decided: Omarchy's menu, or Fathom's Start" },
+    "omarchy.workspaces": { "planned": "to be decided (a click goes to the workspace today)" },
+    "omarchy.active-window": { "planned": "to be decided: the window's actions (snap, float, close, move)" },
+    "omarchy.spacer": { "none": "blank space between items, with nothing to open" }
+  }
+}

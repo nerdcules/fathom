@@ -19,6 +19,17 @@ Each line names its commit.
   settings (right-click: its Wi-Fi list; middle-click: mute; scroll:
   volume). `install.sh --desk` puts it where the last of them was and keeps
   their places; `uninstall.sh` puts them back (fb23edb, 2e6cc26, 137102b).
+- Fathom's own dropdowns for the bar's items (#14), in Quick settings'
+  look, starting with Display: brightness, text size, scale presets
+  (labelled as the screen gets them) and, with more than one display, a
+  row for each. Each is a clone of Omarchy's item, so `install.sh --desk`
+  puts it in that item's place with its settings, Omarchy's key
+  (Super+Ctrl+D) and IPC (`omarchy-shell omarchy.monitor state`) reach it,
+  and `uninstall.sh` puts Omarchy's back. Built from a shared kit
+  (`bar/kit`) whose factory draws a dropdown from a list of sections.
+  `bar/items.json` lists every Omarchy bar item with its Fathom dropdown
+  or plan, and a test fails when Omarchy has one it doesn't name; the
+  install names the bar items still without one.
 - Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
   the arrows on their tiles: join, leave, a password field, pair, connect
   (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.
@@ -32,6 +43,9 @@ Each line names its commit.
 ### Fixed
 
 - `fathom-desk --help` no longer prints `set -euo pipefail` (b52638d).
+- Super+Ctrl+A, B, N and P did nothing once the cluster had taken
+  Omarchy's audio, Bluetooth, network and power widgets off the bar; they
+  open Quick settings now (B and N on their lists).
 
 ## [0.4.0] - 2026-11-20
 

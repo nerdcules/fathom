@@ -392,7 +392,13 @@ stage_plugin() {
   local id=$1
   rm -rf "${STAGE:?}/$id"
   mkdir -p "$STAGE"
-  cp -r "$REPO/${id#fathom.}/plugin/$id" "$STAGE/$id"
+  if [[ -d $REPO/bar/plugin/$id ]]; then
+    # A bar dropdown (#14): its own folder, with the kit they share as kit/.
+    cp -r "$REPO/bar/plugin/$id" "$STAGE/$id"
+    cp -r "$REPO/bar/kit" "$STAGE/$id/kit"
+  else
+    cp -r "$REPO/${id#fathom.}/plugin/$id" "$STAGE/$id"
+  fi
   [[ -f $STAGE/$id/Version.js ]] && write_version_js "$STAGE/$id/Version.js"
   if ! omarchy plugin validate "$STAGE/$id" >/dev/null; then
     rm -rf "${STAGE:?}/$id"
@@ -537,8 +543,42 @@ install_desk() {
     done
   fi
 
+  install_bar_dropdowns
+
   echo "Desk installed. Alt+Tab switches windows, Super+Tab shows Task view, Super+Z snaps a window, Super+Alt+A opens Quick settings."
   [[ $found == "[]" ]] || echo "Bluetooth, network, volume and battery are one button on the bar now; it opens Quick settings."
+}
+
+# Fathom's own dropdowns for the bar's items (#14; bar/items.json). Each is
+# a clone of the Omarchy item it replaces, so turning it on puts it where
+# that one was, with its settings, and keys and scripts that name Omarchy's
+# reach it; turning it off (uninstall.sh) puts Omarchy's back. Only items on
+# the bar are swapped. Ends by naming the bar items that still have
+# Omarchy's dropdown or someone else's.
+install_bar_dropdowns() {
+  local config="$HOME/.config/omarchy/shell.json" source id on_bar swapped=() others
+  [[ -f $config ]] || return 0
+  on_bar=$(jq -c '[(.bar.layout // {})[][]? | if type == "object" then .id else . end]' "$config" 2>/dev/null) || return 0
+  while IFS=$'\t' read -r source id; do
+    if jq -e --arg a "$source" --arg b "$id" 'index($a) or index($b)' <<<"$on_bar" >/dev/null; then
+      if install_plugin "$id" && jq -e --arg id "$id" \
+          '[(.bar.layout // {})[][]? | if type == "object" then .id else . end] | index($id)' "$config" >/dev/null 2>&1; then
+        swapped+=("$id")
+      else
+        echo "install.sh: $id didn't take $source's place on the bar; Omarchy's stays" >&2
+      fi
+    fi
+  done < <(jq -r '.omarchy | to_entries[] | select(.value.fathom and .value.fathom != "fathom.desk")
+    | [.key, .value.fathom] | @tsv' "$REPO/bar/items.json")
+  ((${#swapped[@]})) && echo "Fathom's dropdowns on the bar: ${swapped[*]}."
+  # What's on the bar without one yet: Omarchy's items not done, and other
+  # people's widgets.
+  others=$(jq -r --slurpfile items "$REPO/bar/items.json" '
+    [(.bar.layout // {})[][]? | if type == "object" then .id else . end]
+    | map(select(startswith("fathom.") | not)
+          | select(($items[0].omarchy[.] // {}) | has("fathom") or has("none") | not))
+    | unique | join(", ")' "$config" 2>/dev/null)
+  [[ -z $others ]] || echo "Bar items without a Fathom dropdown yet: $others."
 }
 
 # Whether the cluster is on the bar. `omarchy plugin enable` answers ok

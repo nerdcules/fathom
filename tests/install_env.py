@@ -79,7 +79,31 @@ if name == "omarchy":
             ident = lambda e: e if isinstance(e, str) else e.get("id")
             where = [(sec, i) for sec, items in layout.items() for i, e in enumerate(items or []) if ident(e) == wid]
             plugins = shell.setdefault("plugins", [])
-            if args[1] == "disable":
+            # A clone (manifest omarchy.clonedFrom) takes its source's place
+            # and settings on enable, and gives them back on disable.
+            source = None
+            try:
+                with open(os.path.join(os.environ["HOME"], ".config", "omarchy", "plugins", wid, "manifest.json")) as f:
+                    source = (json.load(f).get("omarchy") or {}).get("clonedFrom")
+            except (OSError, ValueError):
+                pass
+            src_where = [(sec, i) for sec, items in layout.items() for i, e in enumerate(items or [])
+                         if source and ident(e) == source]
+            if args[1] == "disable" and source and where:
+                sec, i = where[0]
+                entry = layout[sec][i]
+                back = dict(entry) if isinstance(entry, dict) else {}
+                back["id"] = source
+                for s2, items in layout.items():
+                    layout[s2] = [e for e in items or [] if ident(e) != source]
+                layout[sec][i] = back
+            elif args[1] == "enable" and source and not where and src_where and not os.environ.get("STUB_NO_PLACE"):
+                sec, i = src_where[0]
+                entry = layout[sec][i]
+                taken = dict(entry) if isinstance(entry, dict) else {}
+                taken["id"] = wid
+                layout[sec][i] = taken
+            elif args[1] == "disable":
                 # One entry a call, the bar's first, then a plugins record.
                 if where:
                     del layout[where[0][0]][where[0][1]]

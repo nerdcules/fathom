@@ -1,0 +1,8 @@
+singleton DropSkin 1.0 DropSkin.qml
+DropLabel 1.0 DropLabel.qml
+DropButton 1.0 DropButton.qml
+DropSlider 1.0 DropSlider.qml
+DropRow 1.0 DropRow.qml
+DropCard 1.0 DropCard.qml
+DropTheme 1.0 DropTheme.qml
+DropSections 1.0 DropSections.qml

@@ -201,3 +201,13 @@ end)
 
 o.bind("SUPER + Z", "Snap layouts for this window", bin .. "fathom-desk snap")
 o.bind("SUPER + ALT + A", "Quick settings", bin .. "fathom-desk quick")
+
+-- Omarchy's keys for its audio, Bluetooth, network and power panels (#14):
+-- the bar's cluster takes those four off the bar, so their keys open Quick
+-- settings instead, on the list that matches. o.rebind takes Omarchy's off
+-- first (o.bind would add a second bind, and both would run: seen in the
+-- test VM); uninstall.sh's Hyprland reload puts them back.
+o.rebind("SUPER + CTRL + A", "Quick settings", bin .. "fathom-desk quick")
+o.rebind("SUPER + CTRL + B", "Bluetooth", bin .. "fathom-desk quick bluetooth")
+o.rebind("SUPER + CTRL + N", "Network", bin .. "fathom-desk quick wifi")
+o.rebind("SUPER + CTRL + P", "Quick settings", bin .. "fathom-desk quick")
