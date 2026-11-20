@@ -492,7 +492,7 @@
   "look.px": "%1 px",
   "look.opacity": "Panel opacity",
   "look.percent": "%1%",
-  "look.opacityDetail": "Lower shows more of what's behind panels, blurred.",
+  "look.opacityDetail": "Lower shows more of what's behind Fathom's panels and Omarchy's menus and notifications, blurred. The bar's own panels stay solid: Hyprland doesn't blur behind them.",
   "look.opacityNoBlur": "Blur is off, so panels are solid and this has no effect. The glassy bar turns blur on.",
   "look.glow": "Glow along the top of panels",
   "look.on": "On",

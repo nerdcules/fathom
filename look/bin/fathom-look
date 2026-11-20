@@ -59,8 +59,10 @@ CORNERS = (0, 30)
 OPACITY = (60, 100)
 BAR_MODES = ("glassy", "opaque", "none")
 # The shell surfaces drawn as panels: their background-alpha follows opacity.
-# The bar, the lock screen and the password prompt keep theirs.
-PANEL_SECTIONS = ("popups", "tooltip", "notifications", "launcher", "menu")
+# The bar, the lock screen and the password prompt keep theirs, and so do
+# the bar's flyouts and tooltips ([popups], [tooltip]): Hyprland doesn't blur
+# behind them, so theme/shell.toml keeps them solid.
+PANEL_SECTIONS = ("notifications", "launcher", "menu")
 IMAGE_TYPES = (".png", ".jpg", ".jpeg", ".webp")
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 

@@ -30,6 +30,11 @@ Each line names its commit.
   `mapToItem()` QML doesn't follow). It is placed as it opens now, takes the
   arrow keys, Enter and Esc, and Sign out, Restart and Shut down ask in the
   menu itself instead of in the middle of the screen.
+- Theme: Omarchy's bar panels (Wi-Fi, Bluetooth, sound and the rest) didn't
+  look like Fathom: their switches, picked buttons and lists were grey, and
+  at 90% opacity with no blur behind them the text under them read
+  through. Their controls take the accent now, and the panels and tooltips
+  are solid (`fathom-look`'s opacity leaves them alone).
 - `tests/vm/run.sh` stopped at once, saying nothing, when the VM folder had
   no installer image; it needs one only for `run.sh install` now (2113525).
 

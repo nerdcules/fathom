@@ -91,7 +91,8 @@ class LookTest(unittest.TestCase):
         self.assertIn('cyan = "#4cc9f0"', colors)
         self.assertNotIn("4cc9f0", shell.lower())
         self.assertIn('active-border            = "rgba(ff6b81ee) rgba(3ddc97ee) 45deg"', shell)
-        self.assertEqual(shell.count("background-alpha = 0.75"), 3)          # popups, tooltip, notifications
+        self.assertEqual(shell.count("background-alpha = 0.75"), 1)          # notifications
+        self.assertEqual(shell.count("background-alpha = 1.0"), 2)           # bar flyouts and tooltips stay solid
         self.assertEqual(shell.count("background-alpha          = 0.75"), 2)  # launcher, menu
         self.assertIn("background-alpha = 0.6", shell)                       # the bar keeps its own
         self.assertIn("background-alpha = 0.95", shell)                      # and the password prompt

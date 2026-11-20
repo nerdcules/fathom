@@ -33,7 +33,7 @@ cd ~/Work/fathom
 
 | Option | What it does |
 |---|---|
-| `--skin` | The desktop theme, with a glassy bar: its bar, panels and menus are frosted glass, so Hyprland's blur goes on. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) |
+| `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
@@ -1051,9 +1051,12 @@ or search Start for "personalise". It changes how Fathom looks:
 - **Corners:** 0 to 30 px (Fathom's is 22). Windows, Fathom's panels and
   Omarchy's menus and notifications share them.
 - **Panel opacity:** 60 to 100% (Fathom's is 90%) for Fathom's panels and
-  Omarchy's menus, launcher, popups, tooltips and notifications. It shows
-  only while Hyprland's blur is on; with blur off, panels are solid, and the
-  page says so.
+  Omarchy's menus, launcher and notifications. It shows only while
+  Hyprland's blur is on; with blur off, panels are solid, and the page says
+  so. The bar's own panels (Wi-Fi, Bluetooth, sound and the rest) and its
+  tooltips stay solid: they are popups of the bar, and Hyprland didn't blur
+  behind them here (Omarchy 4.5, blur on, glassy bar), so at 90% the text
+  behind them read through.
 - **Glow** along the top of Fathom's panels, on or off.
 - **Bar:** Omarchy's bar background, glassy, solid or clear. This one, and
   the **wallpaper**, change as soon as you click.

@@ -37,30 +37,33 @@ normal-color        = "#e6f0ff"
 normal-fill-alpha   = 0.04
 normal-border       = "#e6f0ff"
 normal-border-width = 1
-normal-border-alpha = 0.4
+normal-border-alpha = 0.18
 
+# Fathom: hover, focus and selected states take the accent, as Fathom's own
+# panels do (the Start menu, the deck, the desk), so switches, picked
+# buttons and the connected network light up in it. "accent" is a role
+# Omarchy resolves from colors.toml, so it follows fathom-look's accent.
+# Their *-border lines are left out: a border token is a colour, not a role,
+# and without one the border takes the state's colour, the accent.
 # Hover-cursor: mouse hover and the panel keyboard cursor.
-hover-cursor-color        = "#e6f0ff"
-hover-cursor-fill-alpha   = 0.08
-hover-cursor-border       = "#e6f0ff"
+hover-cursor-color        = "accent"
+hover-cursor-fill-alpha   = 0.12
 hover-cursor-border-width = 1
-hover-cursor-border-alpha = 0.25
+hover-cursor-border-alpha = 0.45
 
 # Focus: Qt activeFocus. Mirror the hover-cursor values by default so
 # mouse hover, keyboard cursor, and tab focus all read as the same state
 # — themes that want focus to stand out override these four lines.
-focus-color        = "#e6f0ff"
-focus-fill-alpha   = 0.08
-focus-border       = "#e6f0ff"
+focus-color        = "accent"
+focus-fill-alpha   = 0.12
 focus-border-width = 1
-focus-border-alpha = 0.25
+focus-border-alpha = 0.45
 
 # Selected: persistent chosen/current state.
-selected-color        = "#e6f0ff"
-selected-fill-alpha   = 0.18
-selected-border       = "#e6f0ff"
-selected-border-width = 0
-selected-border-alpha = 1.0
+selected-color        = "accent"
+selected-fill-alpha   = 0.22
+selected-border-width = 1
+selected-border-alpha = 0.6
 
 # Momentary fills.
 pressed-fill-alpha   = 0.22
@@ -126,8 +129,12 @@ base-size = 12
 # Border accepts either a solid color or a Hyprland-style gradient. Border
 # widths accept one CSS-style scalar/list: N, "Y X", "T X B", or "T R B L";
 # individual border-width-top/right/bottom/left keys override the list.
+# Fathom: solid. The flyouts are popup windows of the bar, and Hyprland
+# didn't blur behind them (Omarchy 4.5, blur on, bar glassy: terminal text
+# stayed sharp under the Wi-Fi panel even at blur size 14), so at 0.9 the
+# text behind read through. fathom-look's opacity leaves these alone.
 background       = "#0a1020"
-background-alpha = 0.9
+background-alpha = 1.0
 text             = "#e6f0ff"
 border           = "#4cc9f0"
 border-alpha     = 0.25
@@ -137,8 +144,9 @@ border-width     = 1
 [tooltip]
 # Hover tooltips across the bar, panels, and buttons. background-alpha of
 # 0.97 mirrors the legacy hard-coded tooltip opacity.
+# Fathom: solid, as [popups] is, for the same reason.
 background       = "#0a1020"
-background-alpha = 0.9
+background-alpha = 1.0
 text             = "#e6f0ff"
 border           = "#4cc9f0"
 border-alpha     = 0.25
