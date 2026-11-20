@@ -4,7 +4,8 @@ import "."
 import "Format.js" as F
 
 // The Deck page: System (with this machine's IP addresses), Containers,
-// .NET and AI cards, from `fathom-deck status`.
+// .NET and AI cards, from `fathom-deck status`, and a card for paired PCs
+// (Fathom for Windows) when there are any.
 GridLayout {
   id: page
 
@@ -26,6 +27,7 @@ GridLayout {
   readonly property var dotnetApps: net ? F.byKind(net.processes, "app") : []
   readonly property var dotnetTooling: net ? F.byKind(net.processes, "tooling") : []
   readonly property var agents: ai && Array.isArray(ai.agents) ? ai.agents : []
+  readonly property var pcs: info && Array.isArray(info.pcs) ? info.pcs : []
   readonly property var addressRows: F.addressRows(sys ? sys.addresses : null, 8)
   // The address just copied, ticked for a moment.
   property string copied: ""
@@ -47,6 +49,58 @@ GridLayout {
   }
 
   Timer { id: copiedTimer; interval: 1500; onTriggered: page.copied = "" }
+
+  // A PC that sent within 3 minutes (it sends about once a minute) is online.
+  function pcFresh(pc) { return Number(pc.age) < 180 }
+
+  function pcHeard(pc) {
+    if (pcFresh(pc)) return Skin.t("pcs.online")
+    var a = F.ago(0, pc.age)
+    return Skin.t("pcs.heard").arg(Skin.tn("care.ago." + a.unit, a.n).arg(Skin.n(a.n)))
+  }
+
+  // The PC card's rows, every PC one after another.
+  function pcRows() {
+    var out = []
+    for (var i = 0; i < pcs.length; i++) {
+      var pc = pcs[i], st = pc.status || {}, deck = st.deck || {}, sys = deck.system || {}, care = st.care || {}
+      var fresh = pcFresh(pc)
+      out.push({
+        tone: fresh ? Skin.ok : Skin.dim, name: pc.name, detail: (st.os ? st.os + " · " : "") + pcHeard(pc),
+        right1: typeof sys.cpu === "number" ? Skin.t("pcs.cpu").arg(Skin.n(sys.cpu)) : "",
+        right2: sys.memTotal ? Skin.t("pcs.mem").arg(Skin.size(sys.memUsed)).arg(Skin.size(sys.memTotal)) : ""
+      })
+      var disks = Array.isArray(sys.disks) ? sys.disks : []
+      for (var d = 0; d < disks.length; d++) {
+        var pct = F.percent(disks[d].used, disks[d].size)
+        var lv = F.level(pct)
+        out.push({
+          tone: lv === "bad" ? Skin.urgent : lv === "warn" ? Skin.warn : Skin.accent,
+          name: Skin.t("pcs.disk").arg(disks[d].mount), detail: Skin.t("pcs.free").arg(Skin.size(disks[d].free)),
+          right1: Skin.n(pct) + "%", right2: ""
+        })
+      }
+      var docker = deck.docker || {}, list = Array.isArray(docker.containers) ? docker.containers : []
+      if (docker.state === "ok")
+        out.push({ tone: Skin.accent, name: Skin.t("docker.title"), detail: "",
+                   right1: Skin.t("pcs.running").arg(Skin.n(F.countRunning(list))).arg(Skin.n(list.length)), right2: "" })
+      else if (docker.state === "down")
+        out.push({ tone: Skin.dim, name: Skin.t("docker.title"), detail: Skin.t("pcs.dockerDown"), right1: "", right2: "" })
+      var agents = deck.ai && Array.isArray(deck.ai.agents) ? deck.ai.agents : []
+      if (agents.length > 0)
+        out.push({ tone: Skin.accent, name: "Claude Code", detail: "",
+                   right1: Skin.tn("pcs.sessions", agents.length).arg(Skin.n(agents.length)), right2: "" })
+      var upd = care.updates && Array.isArray(care.updates.winget) ? care.updates.winget : []
+      if (upd.length > 0)
+        out.push({ tone: Skin.warn, name: Skin.t("pcs.updates"), detail: "winget",
+                   right1: Skin.n(upd.length), right2: "" })
+      var warn = Array.isArray(care.warnings) ? care.warnings : []
+      for (var w = 0; w < warn.length; w++)
+        out.push({ tone: warn[w].level === "bad" ? Skin.urgent : Skin.warn, name: warn[w].title,
+                   detail: warn[w].detail || "", right1: "", right2: "" })
+    }
+    return out
+  }
 
   function uptimeText(seconds) {
     var up = F.uptime(seconds)
@@ -350,6 +404,26 @@ GridLayout {
       text: page.ai && page.ai.ollama ? Skin.tn("ai.models", page.ai.ollama.models.length).arg(Skin.n(page.ai.ollama.models.length)) : ""
       color: Skin.dim
       font.pixelSize: 12 * Skin.u
+    }
+  }
+
+  // ------------------------------------------------ PCs
+  Card {
+    visible: page.pcs.length > 0
+    title: Skin.t("pcs.title")
+    glyph: ""
+    subtitle: page.pcs.length === 1 ? page.pcHeard(page.pcs[0]) : Skin.tn("pcs.count", page.pcs.length).arg(Skin.n(page.pcs.length))
+
+    Repeater {
+      model: page.pcRows()
+      delegate: ListRow {
+        required property var modelData
+        tone: modelData.tone
+        name: modelData.name
+        detail: modelData.detail
+        right1: modelData.right1
+        right2: modelData.right2
+      }
     }
   }
 }

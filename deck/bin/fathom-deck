@@ -3,14 +3,16 @@
 # The deck overlay (plugin fathom.deck) calls this; you can too.
 #
 #   fathom-deck                          open or close the deck
-#   fathom-deck status                   print system, Docker, .NET and AI state as JSON
+#   fathom-deck status                   print system, Docker, .NET and AI state, and paired
+#                                        PCs' (from fathom-phone), as JSON
 #   fathom-deck brief                    the few counts the bar's pill shows, as JSON
 #   fathom-deck container start <name>   start a container (also stop, restart)
 #   fathom-deck logs <name>              follow a container's logs in a terminal
 #   fathom-deck docker                   open lazydocker
 #
-# Everything is read from this machine. Nothing is sent anywhere; the only
-# network call is to Ollama on 127.0.0.1, if it is running.
+# Everything is read from this machine (a paired PC's figures are what it
+# sent fathom-phone). Nothing is sent anywhere; the only network call is to
+# Ollama on 127.0.0.1, if it is running.
 set -euo pipefail
 
 SAMPLE=0.4        # seconds between the two CPU readings
@@ -22,7 +24,7 @@ DRM=${FATHOM_DECK_DRM:-/sys/class/drm}   # graphics cards (the tests point this 
 # whole deck.
 
 usage() {
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 notify() {
@@ -200,6 +202,16 @@ json_doc() {
   jq -c 'objects' "$1" 2>/dev/null || true
 }
 
+# Paired PCs (Fathom for Windows): what each last sent, as fathom-phone
+# keeps it. [] without fathom-phone, or for anything but a list from it.
+pcs_json() {
+  local out=""
+  if command -v fathom-phone >/dev/null; then
+    out=$(timeout 5 fathom-phone pcs 2>/dev/null) || out=""
+  fi
+  jq -ce 'if type == "array" then . else empty end' <<<"$out" 2>/dev/null || echo '[]'
+}
+
 ollama_get() {
   curl -fsS --max-time 0.6 --max-filesize 1000000 "http://127.0.0.1:11434/api/$1" 2>/dev/null
 }
@@ -338,6 +350,7 @@ status() {
     --argjson cores "$(nproc)" \
     --arg uptime "$(cut -d' ' -f1 /proc/uptime)" \
     --argjson addresses "$(addresses_json)" \
+    --argjson pcs "$(pcs_json)" \
     --arg dockerState "$docker_state" \
     --rawfile disks "$tmp/disks" \
     --rawfile dotnet "$tmp/dotnet" \
@@ -388,6 +401,7 @@ status() {
         })),
         checkedAt: (if (.checkedAt | type) == "number" then .checkedAt else null end)
       }),
+      pcs: $pcs,
       ai: {
         agents: ($agents | rows | map({
           pid: (.[0] | num), name: (.[1] | s(32)), where: .[2], folder: (.[3] // "" | s(64)),

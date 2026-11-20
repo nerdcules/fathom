@@ -181,6 +181,76 @@ class PhoneTest(unittest.TestCase):
         self.assertIn("v=1&", line)
         self.assertIn("&fp=", line)
 
+    # PCs (Fathom for Windows)
+    def paired_pc(self, name="DELL-01"):
+        w = self.window()
+        code, body = self.call("POST", "/v1/pair", w["fingerprint"], {"secret": w["secret"], "name": name, "kind": "pc"})
+        self.assertEqual(code, 200, body)
+        return w["fingerprint"], body
+
+    PC_STATUS = {
+        "host": "DELL-01", "os": "Windows 11", "time": 1795171091, "junk": "dropped",
+        "deck": {"system": {"cpu": 21.5, "gpu": "lots", "memTotal": 34000000000, "memUsed": 15000000000,
+                            "disks": [{"mount": "C:", "size": 2000000000000, "used": 400000000000, "free": 1600000000000}]},
+                 "docker": {"state": "down", "containers": []},
+                 "ai": {"agents": [{"name": "Claude Code", "folder": "x" * 500, "status": "busy"}, "not a row"]}},
+        "care": {"disk": {"wsl": [{"name": "Ubuntu", "size": 15000000000}], "docker": 16500000000},
+                 "updates": {"winget": [{"name": "Tailscale", "id": "Tailscale.Tailscale", "from": "1.104.5", "to": "1.104.7"}],
+                             "checkedAt": 1795170000, "restart": False},
+                 "warnings": [{"id": "disk:D:", "level": "bad", "title": "Disk D: 96% full", "detail": "18 GB free"}]},
+    }
+
+    def test_a_pc_sends_its_status_and_the_deck_reads_it_back_cleaned(self):
+        fp, dev = self.paired_pc()
+        code, body = self.call("POST", "/v1/device/status", fp, self.PC_STATUS, token=dev["token"])
+        self.assertEqual((code, body), (200, {"kept": True}))
+        [pc] = json.loads(self.run_phone("pcs").stdout)
+        self.assertEqual((pc["id"], pc["name"]), (dev["deviceId"], "DELL-01"))
+        s = pc["status"]
+        self.assertNotIn("junk", s)
+        self.assertEqual(s["deck"]["system"]["cpu"], 21.5)
+        self.assertIsNone(s["deck"]["system"]["gpu"])
+        self.assertEqual(len(s["deck"]["ai"]["agents"]), 1)
+        self.assertEqual(len(s["deck"]["ai"]["agents"][0]["folder"]), 64)
+        self.assertEqual(s["care"]["updates"]["winget"][0]["to"], "1.104.7")
+        self.assertLess(pc["age"], 60)
+        mode = os.stat(os.path.join(self.home, ".local/state/fathom/phone/pcs", dev["deviceId"] + ".json")).st_mode
+        self.assertEqual(mode & 0o777, 0o600)
+
+    def test_only_a_pc_sends_a_status(self):
+        fp, dev = self.paired()
+        code, _ = self.call("POST", "/v1/device/status", fp, self.PC_STATUS, token=dev["token"])
+        self.assertEqual(code, 403)
+        self.assertEqual(json.loads(self.run_phone("pcs").stdout), [])
+        code, _ = self.call("POST", "/v1/device/status", fp, self.PC_STATUS)
+        self.assertEqual(code, 401)
+
+    def test_a_pcs_warnings_are_alerts_while_its_status_is_fresh(self):
+        fp, dev = self.paired_pc()
+        self.call("POST", "/v1/device/status", fp, self.PC_STATUS, token=dev["token"])
+        [a] = [x for x in self.alert_list(fp, dev["token"]).values() if x["part"] == "PC"]
+        self.assertEqual((a["id"], a["category"], a["level"], a["title"]),
+                         (f"pc:{dev['deviceId']}:disk:D:", "pc.care", "bad", "DELL-01: Disk D: 96% full"))
+        path = os.path.join(self.home, ".local/state/fathom/phone/pcs", dev["deviceId"] + ".json")
+        with open(path) as f:
+            kept = json.load(f)
+        kept["receivedAt"] -= 16 * 60
+        with open(path, "w") as f:
+            json.dump(kept, f)
+        self.assertEqual([x for x in self.alert_list(fp, dev["token"]).values() if x["part"] == "PC"], [])
+
+    def test_unpairing_a_pc_deletes_its_status(self):
+        fp, dev = self.paired_pc()
+        self.call("POST", "/v1/device/status", fp, self.PC_STATUS, token=dev["token"])
+        self.assertEqual(self.call("POST", "/v1/unpair", fp, {}, token=dev["token"])[0], 200)
+        self.assertFalse(os.path.exists(os.path.join(self.home, ".local/state/fathom/phone/pcs", dev["deviceId"] + ".json")))
+        self.assertEqual(json.loads(self.run_phone("pcs").stdout), [])
+
+    def test_a_status_too_large_is_refused(self):
+        fp, dev = self.paired_pc()
+        code, _ = self.call("POST", "/v1/device/status", fp, raw=b"{" + b" " * (64 * 1024) + b"}", token=dev["token"])
+        self.assertEqual(code, 413)
+
     def test_no_window_no_pairing(self):
         fp = self.window()["fingerprint"]
         os.remove(os.path.join(self.home, ".local/state/fathom/phone/pairing.json"))

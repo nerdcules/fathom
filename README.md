@@ -503,11 +503,16 @@ Press it again, or Esc, or click outside the cards, to close it.
   idle. Claude Code says which itself (the status it keeps in
   `~/.claude/sessions/`); the others count as working while they use 3% or
   more of a CPU core. If Ollama is running, its loaded models and their VRAM.
+- **PCs:** shown once a PC is paired with [Fathom for Windows](#phone).
+  Each PC's CPU, memory, disks, Docker, Claude Code sessions, winget
+  updates and warnings, as it last sent them (about once a minute), and
+  whether it's online (heard from in the last 3 minutes).
 
 Above the cards, a summary line puts whatever needs attention first.
 
 The deck reads the machine only while it's open, every few seconds, and only
-locally; the one network call is to Ollama on `127.0.0.1`.
+locally; the one network call is to Ollama on `127.0.0.1`. The PCs card
+reads what the PCs sent `fathom-phone`; the deck itself asks them nothing.
 
 ### In the bar
 
@@ -879,7 +884,15 @@ closes after 2 minutes, after one pairing, or after 5 wrong secrets. The
 same link is printed as text, for [Fathom for Windows](https://github.com/nerdcules/fathom-windows)
 (a PC app in the making; its repository is private for now), which pairs
 the same way and says it's a PC (`"kind": "pc"`; a device that doesn't say
-is a phone, as is every device paired before kinds existed). Fathom
+is a phone, as is every device paired before kinds existed). A paired PC
+sends what it sees of itself about once a minute (`POST
+/v1/device/status`): CPU, memory, disks, Docker, Claude Code sessions,
+what fills its disk, winget's updates and its warnings. `fathom-phone`
+keeps the latest per PC in `~/.local/state/fathom/phone/pcs/` (readable by
+you alone; only those fields, each checked and cut to length, at most
+64 kB), `fathom-phone pcs` prints them for the deck's PCs card, and a PC's
+warnings become alerts (part "PC", category `pc.care`) while its last
+word is under 15 minutes old. Unpairing a PC deletes what it sent. Fathom
 keeps only each token's SHA-256 (`~/.config/fathom/phone.json`, readable by
 you alone). A 6-digit code isn't used: on a network someone else can watch,
 all million codes could be tried against what they saw.

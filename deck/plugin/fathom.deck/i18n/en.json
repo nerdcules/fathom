@@ -670,5 +670,23 @@
     "one": "%1 change",
     "other": "%1 changes"
   },
-  "care.updateFathom": "Update Fathom"
+  "care.updateFathom": "Update Fathom",
+  "pcs.title": "PCs",
+  "pcs.count": {
+    "one": "%1 PC",
+    "other": "%1 PCs"
+  },
+  "pcs.online": "online",
+  "pcs.heard": "last heard %1",
+  "pcs.cpu": "CPU %1%",
+  "pcs.mem": "%1 of %2",
+  "pcs.disk": "Disk %1",
+  "pcs.free": "%1 free",
+  "pcs.running": "%1 of %2 running",
+  "pcs.dockerDown": "not running",
+  "pcs.sessions": {
+    "one": "%1 session",
+    "other": "%1 sessions"
+  },
+  "pcs.updates": "Updates"
 }

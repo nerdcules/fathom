@@ -11,6 +11,7 @@ read what the Command Deck shows.
   fathom-phone unpair <id>|all  forget a device (its token stops working)
   fathom-phone status           the service, its fingerprint and devices, as JSON
   fathom-phone alerts           what the phone would be told about now, as JSON
+  fathom-phone pcs              each paired PC's latest snapshot (what it sends), as JSON
   fathom-phone health [week]    each phone's health (battery, heat, storage,
                                 apps), if it sends it, as JSON
   fathom-phone test-alert       a test alert for the next 10 minutes, so the
@@ -332,6 +333,99 @@ def health_add(dev_id, raw, now=None):
             json.dump({"samples": keep}, f, separators=(",", ":"))
         os.replace(tmp, path)
     return len(new)
+
+
+# ---------------------------------------------------------------- PCs
+
+# A paired PC (Fathom for Windows) sends what its own deck and Care see,
+# about once a minute; the laptop keeps the latest, for its deck's PC card
+# and for alerts. Only fields the deck shows are kept, each checked and cut.
+PCS_DIR = os.path.join(DIR, "pcs")
+PC_BODY = 64 * 1024
+PC_FRESH = 15 * 60  # a snapshot older than this raises no alerts
+
+
+def pc_path(dev_id):
+    return os.path.join(PCS_DIR, f"{dev_id}.json")
+
+
+def clean_pc(raw):
+    """A PC's snapshot, down to known fields with the right types, strings cut and lists capped."""
+    def obj(x):
+        return x if isinstance(x, dict) else {}
+
+    def num(x, hi=1e16):
+        return x if isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= hi else None
+
+    def text(x, n):
+        return str(x)[:n] if isinstance(x, (str, int, float)) and not isinstance(x, bool) else ""
+
+    def rows(x, cap):
+        return [r for r in (x if isinstance(x, list) else [])[:cap] if isinstance(r, dict)]
+
+    raw = obj(raw)
+    deck, care = obj(raw.get("deck")), obj(raw.get("care"))
+    system, docker, ai = obj(deck.get("system")), obj(deck.get("docker")), obj(deck.get("ai"))
+    disk, updates = obj(care.get("disk")), obj(care.get("updates"))
+    return {
+        "host": text(raw.get("host"), 64),
+        "os": text(raw.get("os"), 80),
+        "time": num(raw.get("time")),
+        "deck": {
+            "system": {
+                "cpu": num(system.get("cpu"), 100), "gpu": num(system.get("gpu"), 100), "cores": num(system.get("cores"), 4096),
+                "memTotal": num(system.get("memTotal")), "memUsed": num(system.get("memUsed")), "uptime": num(system.get("uptime")),
+                "disks": [{"mount": text(d.get("mount"), 16), "size": num(d.get("size")), "used": num(d.get("used")),
+                           "free": num(d.get("free"))} for d in rows(system.get("disks"), 8)],
+            },
+            "docker": {
+                "state": text(docker.get("state"), 16),
+                "containers": [{"name": text(c.get("name"), 128), "state": text(c.get("state"), 16),
+                                "status": text(c.get("status"), 64), "image": text(c.get("image"), 96)}
+                               for c in rows(docker.get("containers"), 40)],
+            },
+            "ai": {"agents": [{"name": text(a.get("name"), 32), "folder": text(a.get("folder"), 64),
+                               "status": a.get("status") if a.get("status") in ("busy", "idle") else None}
+                              for a in rows(ai.get("agents"), 40)]},
+        },
+        "care": {
+            "disk": {"wsl": [{"name": text(w.get("name"), 64), "size": num(w.get("size"))} for w in rows(disk.get("wsl"), 16)],
+                     "docker": num(disk.get("docker")), "caches": num(disk.get("caches"))},
+            "updates": {"winget": [{"name": text(u.get("name"), 80), "id": text(u.get("id"), 96),
+                                    "from": text(u.get("from"), 32), "to": text(u.get("to"), 32)}
+                                   for u in rows(updates.get("winget"), 100)],
+                        "checkedAt": num(updates.get("checkedAt")), "restart": updates.get("restart") is True},
+            "warnings": [{"id": text(w.get("id"), 64), "level": "bad" if w.get("level") == "bad" else "warn",
+                          "title": text(w.get("title"), 160), "detail": text(w.get("detail"), 200)}
+                         for w in rows(care.get("warnings"), 20) if text(w.get("id"), 64)],
+        },
+    }
+
+
+def pc_save(dev, raw, now=None):
+    write_private(pc_path(dev["id"]), {"receivedAt": int(now or time.time()), "status": clean_pc(raw)})
+
+
+def pc_forget(dev_id):
+    try:
+        os.remove(pc_path(dev_id))
+    except FileNotFoundError:
+        pass
+
+
+def pcs(now=None):
+    """Each paired PC's latest snapshot: id, name, receivedAt, age (s), status."""
+    now = int(now or time.time())
+    out = []
+    for d in devices():
+        if kind_of(d) != "pc":
+            continue
+        kept = read_json(pc_path(d["id"]), None)
+        if not isinstance(kept, dict) or not isinstance(kept.get("status"), dict):
+            continue
+        out.append({"id": d["id"], "name": d.get("name") or "PC", "receivedAt": kept.get("receivedAt", 0),
+                    "age": max(0, now - int(kept.get("receivedAt", 0))), "status": kept["status"]})
+    return out
 
 
 def health_forget(dev_id):
@@ -799,6 +893,12 @@ def alerts(read=None, now=None):
             add(f"phone:{d['id']}:{f['id']}:{now // 86400}", "Phone", "phone.health", f["level"],
                 f"{d.get('name') or 'Phone'}: {f['title']}", f["detail"])
 
+    for pc in pcs(now):
+        if pc["age"] > PC_FRESH:
+            continue
+        for w in pc["status"]["care"]["warnings"]:
+            add(f"pc:{pc['id']}:{w['id']}", "PC", "pc.care", w["level"], f"{pc['name']}: {w['title']}", w["detail"])
+
     update = read("update") or {}
     if update.get("available") and update.get("target"):
         add(f"update:{update['target']}", "Fathom", "fathom.update", "info",
@@ -927,11 +1027,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path not in ("/v1/pair", "/v1/action", "/v1/unpair", "/v1/health/samples", "/v1/health/forget",
-                             "/v1/health/ask"):
+                             "/v1/health/ask", "/v1/device/status"):
             return self.reply(404, {"error": "no such thing"})
         length = int(self.headers.get("Content-Length") or 0)
-        if length > (HEALTH_BODY if self.path == "/v1/health/samples" else MAX_BODY):
+        limit = {"/v1/health/samples": HEALTH_BODY, "/v1/device/status": PC_BODY}.get(self.path, MAX_BODY)
+        if length > limit:
             return self.reply(413, {"error": "too large"})
+        if self.path == "/v1/device/status":
+            # A paired PC telling the laptop how it is (Fathom for Windows).
+            dev = self.device()
+            if dev is None:
+                return self.reply(401, {"error": "not paired"})
+            if kind_of(dev) != "pc":
+                return self.reply(403, {"error": "only a PC sends its status"})
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError
+            except ValueError:
+                return self.reply(400, {"error": "bad request"})
+            pc_save(dev, body)
+            return self.reply(200, {"kept": True})
         if self.path.startswith("/v1/health/"):
             dev = self.device()
             if dev is None:
@@ -964,6 +1080,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             with LOCK:
                 save_devices([d for d in devices() if d["id"] != dev["id"]])
             health_forget(dev["id"])
+            pc_forget(dev["id"])
             print(f"fathom-phone: {dev.get('name')} ({dev.get('id')}) unpaired itself", flush=True)
             return self.reply(200, {"unpaired": True})
         if self.path == "/v1/action":
@@ -1141,6 +1258,7 @@ def main(argv):
             for d in devs:
                 if d not in keep:
                     health_forget(d["id"])
+                    pc_forget(d["id"])
             print(f"Forgot {len(devs) - len(keep)} device{'s' if len(devs) - len(keep) != 1 else ''}.")
         elif cmd == "health":
             # For you, or Claude on the laptop, to read: each phone's health summary.
@@ -1149,6 +1267,9 @@ def main(argv):
                               for d in devices()}, indent=2))
         elif cmd == "alerts":
             print(json.dumps(alerts()))
+        elif cmd == "pcs":
+            # For the deck's PC card: each paired PC's latest snapshot.
+            print(json.dumps(pcs()))
         elif cmd == "test-alert":
             private_dir(DIR)
             t = int(time.time())

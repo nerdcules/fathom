@@ -47,6 +47,16 @@ class Stubbed(unittest.TestCase):
 
 
 class DeckTest(Stubbed):
+    def test_paired_pcs_from_fathom_phone(self):
+        stub(self.bin, "fathom-phone", '[ "$1" = pcs ] && echo \'[{"id": "07f3b08e", "name": "DELL-01", "age": 30, "status": {}}]\'\n')
+        self.assertEqual(self.deck()["pcs"], [{"id": "07f3b08e", "name": "DELL-01", "age": 30, "status": {}}])
+
+    def test_no_pcs_when_fathom_phone_fails_or_says_something_else(self):
+        stub(self.bin, "fathom-phone", "echo 'not json'; exit 3\n")
+        self.assertEqual(self.deck()["pcs"], [])
+        stub(self.bin, "fathom-phone", "echo '{\"a\": 1}'\n")
+        self.assertEqual(self.deck()["pcs"], [])
+
     def test_one_unreadable_mount_doesnt_lose_the_rest(self):
         # df prints the mounts it could read and exits 1 when one can't be
         # read, as with a FUSE mount whose program died.
