@@ -139,6 +139,27 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #13: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH
+from the laptop, with real keys and clicks through QMP (`input-send-event`,
+the usb-tablet's absolute pointer) at 1280x800. Six git projects in
+`~/Work`, so Start's Recent showed five rows under the power menu. Only
+`./install.sh --deck`; `check.sh` was not run.
+
+- At 0a2d56f (before the fix): Super, the power button (948, 703), then
+  Restart (830, 630) once. Start closed and Neovim opened on
+  `~/Work/bravo`, the Recent row under Restart (journal:
+  `xdg-terminal-exec --app-id=org.omarchy.nvim -e nvim -- /home/alan/Work/bravo`);
+  no windows were open before the click.
+- At eb8d811 (the fix): the same clicks. "Restart now?" showed in the menu,
+  no window opened, no app launched in the next 20 s. The yes button
+  (920, 661) then restarted the VM: the screen went black within 1.5 s,
+  `omarchy-system reboot` was the only thing started after 17:44:40, and
+  the boot id changed. The row under the menu still shows its hover
+  highlight (seen on the screenshot); that's cosmetic and not changed.
+- Then `~/fathom-new/uninstall.sh` (exit 0) and the six projects removed.
+
 ### 0.3.0: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM (Omarchy 4.5.0-3), at 8ce564e (the 0.3.0 changelog; this
