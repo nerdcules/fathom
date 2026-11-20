@@ -139,6 +139,28 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH
+from the laptop. The VM's bar carries Omarchy's Bluetooth, network, audio
+and power widgets, with Display between audio and power.
+
+- At fb23edb (the cluster): `check.sh` 25 passed, 2 failed, both "back to
+  the state before Fathom": the bar itself came back exactly, but
+  `shell.json` kept `"plugins": [{"id": "fathom.desk"}]` (a desk installed
+  before it had a bar widget has that record; `plugin disable` removed only
+  the bar entry). Fixed in `uninstall.sh` (2e6cc26).
+- At 2e6cc26: `check.sh` 27 passed, 0 failed, in 110 s.
+- Real clicks through QMP at 2e6cc26, `./install.sh --desk` alone: the
+  cluster went after Display, showing Ethernet and volume only (the VM has
+  no Bluetooth and no battery). Click: Quick settings. Right-click: Quick
+  settings on its Wi-Fi list ("No Wi-Fi on this machine."). Middle-click:
+  `wpctl` said MUTED, then not after another. Scroll: no change (1.00);
+  fixed in 137102b.
+- At 137102b, reinstalled over it: the cluster stayed where it was; one
+  scroll down 0.95, another 0.90, one up 0.95. `uninstall.sh` (exit 0):
+  the four back in their places and `shell.json` the same as the baseline.
+
 ### 0.4.0: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH

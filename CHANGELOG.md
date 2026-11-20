@@ -12,6 +12,27 @@ Each line names its commit.
 
 ## [Unreleased]
 
+### Added
+
+- The bar's cluster (#14): Omarchy's Bluetooth, network, volume and
+  battery widgets become one button, with their glyphs, that opens Quick
+  settings (right-click: its Wi-Fi list; middle-click: mute; scroll:
+  volume). `install.sh --desk` puts it where the last of them was and keeps
+  their places; `uninstall.sh` puts them back (fb23edb, 2e6cc26, 137102b).
+- Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
+  the arrows on their tiles: join, leave, a password field, pair, connect
+  (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.
+
+### Changed
+
+- The theme brings the bar's dropdowns closer to Quick settings (#14):
+  more padding and row room, taller buttons, larger titles, and the
+  selected state filled like Quick settings' tiles (41e603a).
+
+### Fixed
+
+- `fathom-desk --help` no longer prints `set -euo pipefail` (b52638d).
+
 ## [0.4.0] - 2026-11-20
 
 The Ward offer, a prereleases channel, PCs on the deck, and Start's power
