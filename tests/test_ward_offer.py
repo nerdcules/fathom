@@ -90,12 +90,13 @@ class WardOffer(unittest.TestCase):
              finding("CVE-2", "openssh", "later", "no", kev=True),   # exploited, but ruled out
              finding("CVE-3", "glibc", "soon", "unclear", kev=True),
              finding("CVE-4", "ffmpeg"),                             # not triaged
+             finding("CVE-6", "python:3.8", "later", "unclear", kev=True),  # exploited, settled as later
              dict(finding("CVE-5", "x"), verdict="unknown")],        # versions unreadable
             kernels=[{"package": "linux", "branch": "7.2", "eol": True, "stable": "7.3.5"}])
         s = self.ward_status()
         self.assertTrue(s["installed"])
         self.assertTrue(s["scheduled"])
-        self.assertEqual(s["results"], {"checkedAt": "2026-11-20T12:00:00Z", "affected": 4, "packages": 3,
+        self.assertEqual(s["results"], {"checkedAt": "2026-11-20T12:00:00Z", "affected": 5, "packages": 4,
                                         "now": 1, "soon": 1, "open": 1, "exploited": 1,
                                         "kernel": {"package": "linux", "branch": "7.2", "stable": "7.3.5"}})
 

@@ -524,7 +524,7 @@ ward_status() {
           now: ($a | map(select(.priority == "now")) | length),
           soon: ($a | map(select(.priority == "soon")) | length),
           open: ($a | map(select((.applies // "") == "")) | length),
-          exploited: ($a | map(select(.kev == true and .applies != "no")) | length),
+          exploited: ($a | map(select(.kev == true and .applies != "no" and .priority != "later")) | length),
           kernel: ((.kernels // []) | map(select(.eol == true)) | .[0] // null
                    | if . then {package, branch, stable} else null end)
         }' "$WARD_FINDINGS" 2>/dev/null) || results=null

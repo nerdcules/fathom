@@ -704,7 +704,8 @@ install_sentinel() {
 # "no". A "no" is remembered, as Care's "Not now" is: Care stops offering it,
 # and Sentinel's row keeps its Set up button.
 offer_ward() {
-  command -v ward >/dev/null && return 0
+  # FATHOM_WARD names a stand-in, for tests, as it does for fathom-care.
+  command -v "${FATHOM_WARD:-ward}" >/dev/null && return 0
   [[ -t 0 && -t 1 ]] || return 0
   local dismissed="$STATE_DIR/ward-dismissed" answer
   [[ -e $dismissed ]] && return 0
