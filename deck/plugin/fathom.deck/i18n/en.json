@@ -31,6 +31,13 @@
   "system.free": "%1 free",
   "system.diskFilling": "Getting full. Docker's build cache and old images are the usual culprits.",
   "system.diskFull": "Nearly full. Free some space soon or apps will start failing.",
+  "system.addresses": "Addresses",
+  "system.copy": "Copy %1",
+  "system.copied": "Copied",
+  "system.net.wifi": "Wi-Fi",
+  "system.net.ethernet": "Ethernet",
+  "system.net.tailscale": "Tailscale",
+  "system.net.vpn": "VPN",
   "system.dockerSpace": "Docker's disk use",
   "system.dockerSpaceLine": "Images %1 · build cache %2 · volumes %3",
   "system.upDays": {

@@ -673,3 +673,25 @@ function crumbsExpiry(expires, now) {
   if (s < 86400 * 730) return { unit: "months", n: Math.floor(s / (86400 * 30)) }
   return { unit: "years", n: Math.floor(s / (86400 * 365)) }
 }
+
+// One row per address from the `addresses` list (`fathom-desk settings`,
+// `fathom-deck status`): { name, kind, address, first }, IPv4 before IPv6,
+// `first` on an interface's first row, at most `max` rows in all. The same
+// helper is in the other plugin; keep the two alike.
+function addressRows(list, max) {
+  var rows = []
+  var cap = Math.max(0, Number(max) || 0)
+  if (!Array.isArray(list)) return rows
+  for (var i = 0; i < list.length && rows.length < cap; i++) {
+    var iface = list[i]
+    if (!iface || typeof iface.name !== "string" || iface.name === "") continue
+    var addrs = [].concat(Array.isArray(iface.ipv4) ? iface.ipv4 : [], Array.isArray(iface.ipv6) ? iface.ipv6 : [])
+    var first = true
+    for (var j = 0; j < addrs.length && rows.length < cap; j++) {
+      if (typeof addrs[j] !== "string" || addrs[j] === "") continue
+      rows.push({ name: iface.name, kind: String(iface.kind || "other"), address: addrs[j], first: first })
+      first = false
+    }
+  }
+  return rows
+}

@@ -6,7 +6,10 @@ import os
 import subprocess
 import tempfile
 import time
+import re
 import unittest
+
+from test_desk import ADDRESSES, IP_ADDR, ip_stub
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECK = os.path.join(REPO, "deck", "bin", "fathom-deck")
@@ -79,6 +82,21 @@ esac
         # Something else on 11434 answering with a page, not JSON.
         stub(self.bin, "curl", "echo '<html>hello</html>'\n")
         self.assertIsNone(self.deck()["ai"]["ollama"])
+
+    def test_this_machines_addresses(self):
+        net = ip_stub(self.bin, IP_ADDR)
+        self.assertEqual(self.deck(env={"FATHOM_NET": net})["system"]["addresses"], ADDRESSES)
+        stub(self.bin, "ip", "echo nonsense\n")
+        self.assertIsNone(self.deck()["system"]["addresses"])
+
+    def test_the_desk_reads_addresses_the_same_way(self):
+        # The deck and the desk install apart, so each has its own copy.
+        def reader(path):
+            with open(path) as f:
+                body = re.search(r"^addresses_json\(\) \{\n.*?^\}\n", f.read(), re.M | re.S)
+            self.assertIsNotNone(body, path)
+            return body.group(0)
+        self.assertEqual(reader(DECK), reader(os.path.join(REPO, "desk", "bin", "fathom-desk")))
 
     def test_a_docker_that_doesnt_answer(self):
         stub(self.bin, "docker", "exec sleep 60\n")

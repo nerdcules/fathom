@@ -1,4 +1,4 @@
-"""fathom-desk, run with stand-ins for hyprctl, nmcli and Omarchy's own
+"""fathom-desk, run with stand-ins for hyprctl, nmcli, ip and Omarchy's own
 commands: what it reads, that one failing tool doesn't blank the rest, and
 that `set` turns things on or off only when they aren't already, and
 refuses values it doesn't know."""
@@ -32,6 +32,55 @@ esac
 """
 
 
+# What `ip -j addr show` gives, cut down, with documentation addresses
+# (RFC 5737, RFC 3849). test_deck_status.py uses it too.
+IP_ADDR = [
+    {"ifname": "lo", "operstate": "UNKNOWN", "link_type": "loopback", "addr_info": [
+        {"family": "inet", "local": "127.0.0.1", "scope": "host"}]},
+    {"ifname": "wlan0", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "192.0.2.10", "scope": "global", "dynamic": True},
+        {"family": "inet6", "local": "2001:db8::10", "scope": "global", "dynamic": True},
+        {"family": "inet6", "local": "2001:db8::dead", "scope": "global", "deprecated": True},
+        {"family": "inet6", "local": "fe80::1", "scope": "link"}]},
+    {"ifname": "enp1s0", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "198.51.100.7", "scope": "global"}]},
+    {"ifname": "enp2s0", "operstate": "DOWN", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "198.51.100.8", "scope": "global"}]},
+    {"ifname": "tailscale0", "operstate": "UNKNOWN", "link_type": "none", "addr_info": [
+        {"family": "inet", "local": "100.64.0.5", "scope": "global"},
+        {"family": "inet6", "local": "2001:db8:ffff::5", "scope": "global"}]},
+    {"ifname": "wg0", "operstate": "UNKNOWN", "link_type": "none", "addr_info": [
+        {"family": "inet", "local": "203.0.113.2", "scope": "global"}]},
+    {"ifname": "docker0", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "172.17.0.1", "scope": "global"}]},
+    {"ifname": "veth1a2b", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "172.17.0.9", "scope": "global"}]},
+    {"ifname": "eth9", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet", "local": "$(reboot)", "scope": "global"}]},
+    {"ifname": "eth8", "operstate": "UP", "link_type": "ether", "addr_info": [
+        {"family": "inet6", "local": "fe80::2", "scope": "link"}]},
+]
+
+# What it should make of it: interfaces that are up, global addresses that
+# aren't deprecated, no loopback, Docker or veth, nothing that isn't an
+# address, and none left with no address.
+ADDRESSES = [
+    {"name": "wlan0", "kind": "wifi", "ipv4": ["192.0.2.10"], "ipv6": ["2001:db8::10"]},
+    {"name": "enp1s0", "kind": "ethernet", "ipv4": ["198.51.100.7"], "ipv6": []},
+    {"name": "tailscale0", "kind": "tailscale", "ipv4": ["100.64.0.5"], "ipv6": ["2001:db8:ffff::5"]},
+    {"name": "wg0", "kind": "vpn", "ipv4": ["203.0.113.2"], "ipv6": []},
+]
+
+
+def ip_stub(folder, data):
+    """A stand-in for ip, and a /sys/class/net where wlan0 is wireless."""
+    stub(folder, "ip", "cat <<'EOF'\n" + json.dumps(data) + "\nEOF\n")
+    net = os.path.join(os.path.dirname(folder), "net")
+    os.makedirs(os.path.join(net, "wlan0", "wireless"), exist_ok=True)
+    os.makedirs(os.path.join(net, "enp1s0"), exist_ok=True)
+    return net
+
+
 class DeskTest(unittest.TestCase):
     def setUp(self):
         self._dir = tempfile.TemporaryDirectory()
@@ -44,7 +93,7 @@ class DeskTest(unittest.TestCase):
         # Every tool the desk might touch, logging its arguments.
         for name in ["nmcli", "omarchy-shell", "omarchy-toggle-nightlight", "omarchy-toggle-idle",
                      "omarchy-toggle-notification-silencing", "omarchy-brightness-display",
-                     "omarchy-powerprofiles-set", "omarchy-powerprofiles-list", "powerprofilesctl", "hyprctl"]:
+                     "omarchy-powerprofiles-set", "omarchy-powerprofiles-list", "powerprofilesctl", "hyprctl", "ip"]:
             stub(self.bin, name, f'echo "{name} $*" >> "{self.log}"\n')
 
     def tearDown(self):
@@ -119,7 +168,18 @@ esac
         self.assertIsNone(s["brightness"])
         self.assertIsNone(s["battery"])
         self.assertIsNone(s["profile"])
+        self.assertIsNone(s["addresses"])
         self.assertFalse(s["awake"])
+
+    def test_addresses_from_ip(self):
+        net = ip_stub(self.bin, IP_ADDR)
+        self.assertEqual(self.settings(FATHOM_NET=net)["addresses"], ADDRESSES)
+
+    def test_addresses_when_ip_says_something_odd(self):
+        for out, want in [("not json", None), ('{"ifname":"wlan0"}', None), ("[]", []),
+                          ('[1, "x", {"ifname": 3, "addr_info": "no"}]', []), ("[]\n[]", [])]:
+            stub(self.bin, "ip", f"cat <<'EOF'\n{out}\nEOF\n")
+            self.assertEqual(self.settings()["addresses"], want, out)
 
     # ------------------------------------------------ set
 

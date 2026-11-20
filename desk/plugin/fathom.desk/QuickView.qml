@@ -7,7 +7,8 @@ import "Desk.js" as D
 import "Version.js" as Build
 
 // Quick settings (Super+Alt+A): Wi-Fi, Bluetooth, Focus, night light, stay
-// awake and the power profile as tiles; volume and brightness as sliders;
+// awake and the power profile as tiles; this machine's IP addresses, each
+// with a copy button; volume and brightness as sliders;
 // the battery, lock and Omarchy's menu along the bottom. Under the bar at
 // the top right, as on Windows.
 //
@@ -51,6 +52,11 @@ Item {
   onShownChanged: pending = ({})
 
   function g(cp) { return String.fromCodePoint(cp) }
+
+  // What to call an interface: Wi-Fi, Ethernet, Tailscale, VPN, or its name.
+  function kindName(row) {
+    return row.kind === "other" ? row.name : Skin.t("quick.net." + row.kind)
+  }
 
   function toggle(what, on) {
     host.setSetting(what, on ? "on" : "off")
@@ -171,6 +177,56 @@ Item {
             if (!next) return
             view.setValue("profile", { current: next, all: profile.all })
             view.host.setSetting("profile", next)
+          }
+        }
+      }
+
+      // This machine's addresses, from `fathom-desk settings`: each
+      // interface that's up, IPv4 then IPv6, each with a copy button.
+      Column {
+        id: addressList
+        width: parent.width
+        spacing: 2 * Skin.u
+        readonly property var rows: D.addressRows(view.value("addresses", null), 6)
+        property string copied: ""
+        visible: rows.length > 0
+
+        Timer { id: copiedTimer; interval: 1500; onTriggered: addressList.copied = "" }
+
+        Repeater {
+          model: addressList.rows
+          delegate: Item {
+            id: addressRow
+            required property var modelData
+            width: addressList.width
+            height: 30 * Skin.u
+            Label {
+              id: kindLabel
+              anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+              width: 96 * Skin.u
+              text: addressRow.modelData.first ? view.kindName(addressRow.modelData) : ""
+              color: Skin.dim
+              font.pixelSize: 12 * Skin.u
+              elide: Text.ElideRight
+            }
+            Label {
+              anchors { left: kindLabel.right; right: copyButton.left; rightMargin: 8 * Skin.u; verticalCenter: parent.verticalCenter }
+              text: addressRow.modelData.address
+              font.pixelSize: 13 * Skin.u
+              elide: Text.ElideMiddle
+            }
+            Button {
+              id: copyButton
+              anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+              readonly property bool done: addressList.copied === addressRow.modelData.address
+              glyph: done ? view.g(0xF012C) : view.g(0xF018F)
+              Accessible.name: Skin.t("quick.copy").arg(addressRow.modelData.address)
+              onClicked: {
+                Quickshell.execDetached(["wl-copy", addressRow.modelData.address])
+                addressList.copied = addressRow.modelData.address
+                copiedTimer.restart()
+              }
+            }
           }
         }
       }

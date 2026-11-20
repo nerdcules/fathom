@@ -64,6 +64,40 @@ wifi_json() {
     'if $radio == "" then null else {on: ($radio == "enabled"), ssid: ($ssid | .[0:64]), signal: ($signal | tonumber? // 0)} end'
 }
 
+# This machine's own addresses, per interface that is up: its global IPv4
+# and IPv6 ones (not link-local, not deprecated). No loopback, and none of
+# the bridges and veth pairs Docker, libvirt and the like make. Its kind
+# (wifi, ethernet, tailscale, vpn or other) says what to call it. The same
+# reading is in fathom-deck; keep the two alike.
+addresses_json() {
+  command -v ip >/dev/null || { echo null; return; }
+  local wireless="" d out
+  for d in "${FATHOM_NET:-/sys/class/net}"/*/wireless; do
+    [[ -d $d ]] && wireless+="$(basename "$(dirname "$d")") "
+  done
+  # Nothing, or not JSON, from ip reads as null.
+  out=$({ timeout 3 ip -j addr show 2>/dev/null || true; } | jq -sc --arg wireless "$wireless" '
+    ($wireless | split(" ") | map(select(length > 0))) as $wl
+    | .[0] | if type != "array" then null else [
+        .[] | objects
+        | (.ifname // "" | tostring) as $name
+        | select($name != "" and (.operstate // "") != "DOWN" and (.link_type // "") != "loopback")
+        | select($name | test("^(lo$|docker|br-|veth|virbr|vnet|cni|flannel|lxc)") | not)
+        | [.addr_info[]? | objects | select(.scope == "global" and .deprecated != true and .tentative != true)] as $a
+        | {
+            name: ($name | .[0:32]),
+            kind: (if ($wl | any(. == $name)) then "wifi"
+                   elif ($name | startswith("tailscale")) then "tailscale"
+                   elif .link_type == "none" or ($name | test("^(wg|tun|tap|ppp)")) then "vpn"
+                   elif .link_type == "ether" then "ethernet" else "other" end),
+            ipv4: [$a[] | select(.family == "inet") | .local | strings | select(test("^[0-9.]{7,15}$"))][0:4],
+            ipv6: [$a[] | select(.family == "inet6") | .local | strings | select(test("^[0-9a-fA-F:.]{2,45}$"))][0:4]
+          }
+        | select((.ipv4 | length) + (.ipv6 | length) > 0)
+      ] | .[0:8] end' 2>/dev/null || true)
+  echo "${out:-null}"
+}
+
 battery_json() {
   local bat
   for bat in "${FATHOM_DESK_POWER:-/sys/class/power_supply}"/BAT*; do
@@ -94,9 +128,11 @@ settings() {
     --arg focus "$focus" --argjson nightlight "${nightlight:-null}" --argjson awake "$awake" \
     --arg brightness "$brightness" \
     --argjson wifi "$(wifi_json)" --argjson battery "$(battery_json)" --argjson profiles "$(profiles_json)" \
+    --argjson addresses "$(addresses_json)" \
     '{
       time: now | floor,
       wifi: $wifi,
+      addresses: $addresses,
       focus: (if $focus == "on" then true elif $focus == "off" then false else null end),
       nightlight: $nightlight,
       awake: $awake,

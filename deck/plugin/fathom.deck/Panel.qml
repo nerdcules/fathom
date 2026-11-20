@@ -562,6 +562,7 @@ Item {
         onContainerAction: function(action, name) { root.containerAction(action, name) }
         onLogsRequested: function(name) { root.handOff([root.deckTool, "logs", name]) }
         onDockerRequested: root.handOff([root.deckTool, "docker"])
+        onCopyRequested: function(text) { Quickshell.execDetached(["wl-copy", text]) }
         onCleanRequested: function(ids, needsRoot) { root.clean(ids, needsRoot) }
         onRestartRequested: function(scope, unit) { root.restartUnit(scope, unit) }
         onUnitLogRequested: function(scope, unit) { root.handOff([root.careTool, "log", scope, unit]) }

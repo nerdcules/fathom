@@ -19,7 +19,7 @@ vm.runInNewContext(read("Desk.js").replace(/^\.pragma library\s*$/m, "") + `
   this.LAYOUTS = LAYOUTS; this.usableArea = usableArea; this.zoneRect = zoneRect; this.zoneOrder = zoneOrder;
   this.focusWindow = focusWindow; this.focusWorkspace = focusWorkspace; this.moveToWorkspace = moveToWorkspace;
   this.closeWindow = closeWindow; this.activate = activate; this.snap = snap; this.tile = tile;
-  this.nextProfile = nextProfile; this.clampPercent = clampPercent;`, D);
+  this.nextProfile = nextProfile; this.clampPercent = clampPercent; this.addressRows = addressRows;`, D);
 // Values made inside the vm context: compare plain copies.
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
@@ -181,4 +181,24 @@ test("every string the desk asks for is in en.json", () => {
   for (const l of D.LAYOUTS) used.add(`snap.layout.${l.id}`);
   for (const p of ["power-saver", "balanced", "performance"]) used.add(`quick.profile.${p}`);
   for (const key of used) if (!key.endsWith(".")) assert.ok(key in en, `${key} missing from en.json`);
+});
+
+// The addresses Quick settings and the deck's System card list.
+test("addressRows: one row per address, IPv4 first, capped, odd entries skipped", () => {
+  const list = [
+    { name: "wlan0", kind: "wifi", ipv4: ["192.0.2.10"], ipv6: ["2001:db8::10", "2001:db8::11"] },
+    null, { kind: "ethernet", ipv4: ["198.51.100.1"] }, { name: "", ipv4: ["198.51.100.2"] },
+    { name: "tailscale0", kind: "tailscale", ipv4: [3, "", "100.64.0.5"], ipv6: "no" },
+    { name: "eth9", ipv4: ["198.51.100.9"] },
+  ];
+  assert.deepEqual(plain(D.addressRows(list, 10)), [
+    { name: "wlan0", kind: "wifi", address: "192.0.2.10", first: true },
+    { name: "wlan0", kind: "wifi", address: "2001:db8::10", first: false },
+    { name: "wlan0", kind: "wifi", address: "2001:db8::11", first: false },
+    { name: "tailscale0", kind: "tailscale", address: "100.64.0.5", first: true },
+    { name: "eth9", kind: "other", address: "198.51.100.9", first: true },
+  ]);
+  assert.equal(D.addressRows(list, 2).length, 2);
+  assert.deepEqual(plain(D.addressRows(null, 6)), []);
+  assert.deepEqual(plain(D.addressRows(list, 0)), []);
 });

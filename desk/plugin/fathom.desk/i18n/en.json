@@ -47,5 +47,10 @@
   "quick.muted": "Muted",
   "quick.battery": "%1% · %2",
   "quick.lock": "Lock",
-  "quick.menu": "Menu"
+  "quick.menu": "Menu",
+  "quick.copy": "Copy %1",
+  "quick.net.wifi": "Wi-Fi",
+  "quick.net.ethernet": "Ethernet",
+  "quick.net.tailscale": "Tailscale",
+  "quick.net.vpn": "VPN"
 }

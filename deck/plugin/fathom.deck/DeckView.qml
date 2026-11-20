@@ -45,6 +45,7 @@ Item {
   signal containerAction(string action, string name)
   signal logsRequested(string name)
   signal dockerRequested()
+  signal copyRequested(string text)
   signal cleanRequested(var ids, bool needsRoot)
   signal restartRequested(string scope, string unit)
   signal unitLogRequested(string scope, string unit)
@@ -220,6 +221,7 @@ Item {
         onContainerAction: function(action, name) { deck.containerAction(action, name) }
         onLogsRequested: function(name) { deck.logsRequested(name) }
         onDockerRequested: deck.dockerRequested()
+        onCopyRequested: function(text) { deck.copyRequested(text) }
       }
 
       CarePage {

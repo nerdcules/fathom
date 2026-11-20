@@ -13,6 +13,10 @@ Each line names its commit.
 
 ### Added
 
+- Quick settings and the deck's System card list this machine's IP
+  addresses: each interface that is up (Wi-Fi, Ethernet, Tailscale, VPN),
+  its IPv4 and IPv6 ones, each with a copy button. From `ip -j addr`, in
+  `fathom-desk settings` and `fathom-deck status` as `addresses`.
 - Task view: hold Super and press Tab again to step through the
   workspaces, and let go of Super to go there (Hyprland submap
   `fathom-tasks`); with Task view open, Tab and Shift+Tab look at the other

@@ -204,6 +204,40 @@ ollama_get() {
   curl -fsS --max-time 0.6 --max-filesize 1000000 "http://127.0.0.1:11434/api/$1" 2>/dev/null
 }
 
+# This machine's own addresses, per interface that is up: its global IPv4
+# and IPv6 ones (not link-local, not deprecated). No loopback, and none of
+# the bridges and veth pairs Docker, libvirt and the like make. Its kind
+# (wifi, ethernet, tailscale, vpn or other) says what to call it. The same
+# reading is in fathom-desk; keep the two alike.
+addresses_json() {
+  command -v ip >/dev/null || { echo null; return; }
+  local wireless="" d out
+  for d in "${FATHOM_NET:-/sys/class/net}"/*/wireless; do
+    [[ -d $d ]] && wireless+="$(basename "$(dirname "$d")") "
+  done
+  # Nothing, or not JSON, from ip reads as null.
+  out=$({ timeout 3 ip -j addr show 2>/dev/null || true; } | jq -sc --arg wireless "$wireless" '
+    ($wireless | split(" ") | map(select(length > 0))) as $wl
+    | .[0] | if type != "array" then null else [
+        .[] | objects
+        | (.ifname // "" | tostring) as $name
+        | select($name != "" and (.operstate // "") != "DOWN" and (.link_type // "") != "loopback")
+        | select($name | test("^(lo$|docker|br-|veth|virbr|vnet|cni|flannel|lxc)") | not)
+        | [.addr_info[]? | objects | select(.scope == "global" and .deprecated != true and .tentative != true)] as $a
+        | {
+            name: ($name | .[0:32]),
+            kind: (if ($wl | any(. == $name)) then "wifi"
+                   elif ($name | startswith("tailscale")) then "tailscale"
+                   elif .link_type == "none" or ($name | test("^(wg|tun|tap|ppp)")) then "vpn"
+                   elif .link_type == "ether" then "ethernet" else "other" end),
+            ipv4: [$a[] | select(.family == "inet") | .local | strings | select(test("^[0-9.]{7,15}$"))][0:4],
+            ipv6: [$a[] | select(.family == "inet6") | .local | strings | select(test("^[0-9a-fA-F:.]{2,45}$"))][0:4]
+          }
+        | select((.ipv4 | length) + (.ipv6 | length) > 0)
+      ] | .[0:8] end' 2>/dev/null || true)
+  echo "${out:-null}"
+}
+
 status() {
   local tmp
   tmp=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/fathom-deck.XXXXXX")
@@ -303,6 +337,7 @@ status() {
     --argjson memTotal "$((mem_total * 1024))" --argjson memAvail "$((mem_avail * 1024))" \
     --argjson cores "$(nproc)" \
     --arg uptime "$(cut -d' ' -f1 /proc/uptime)" \
+    --argjson addresses "$(addresses_json)" \
     --arg dockerState "$docker_state" \
     --rawfile disks "$tmp/disks" \
     --rawfile dotnet "$tmp/dotnet" \
@@ -325,6 +360,7 @@ status() {
         cpu: $cpu, gpu: $gpu, cores: $cores,
         memTotal: $memTotal, memUsed: ($memTotal - $memAvail),
         uptime: ($uptime | num | floor),
+        addresses: $addresses,
         disks: ($disks | split("\n") | map(select(length > 0) | split(" ") | map(select(length > 0)))
                 | map({mount: (.[1] | s(64)), size: (.[2] | num), used: (.[3] | num), free: (.[4] | num)}))
       },

@@ -3,8 +3,8 @@ import QtQuick.Layouts
 import "."
 import "Format.js" as F
 
-// The Deck page: System, Containers, .NET and AI cards, from
-// `fathom-deck status`.
+// The Deck page: System (with this machine's IP addresses), Containers,
+// .NET and AI cards, from `fathom-deck status`.
 GridLayout {
   id: page
 
@@ -16,6 +16,7 @@ GridLayout {
   signal containerAction(string action, string name)
   signal logsRequested(string name)
   signal dockerRequested()
+  signal copyRequested(string text)
 
   readonly property var sys: info ? info.system : null
   readonly property var dock: info ? info.docker : null
@@ -25,6 +26,9 @@ GridLayout {
   readonly property var dotnetApps: net ? F.byKind(net.processes, "app") : []
   readonly property var dotnetTooling: net ? F.byKind(net.processes, "tooling") : []
   readonly property var agents: ai && Array.isArray(ai.agents) ? ai.agents : []
+  readonly property var addressRows: F.addressRows(sys ? sys.addresses : null, 8)
+  // The address just copied, ticked for a moment.
+  property string copied: ""
   readonly property var mainDisk: sys && sys.disks && sys.disks.length > 0 ? sys.disks[0] : null
 
   columns: columnCount
@@ -36,6 +40,13 @@ GridLayout {
     for (var i = 0; i < agents.length; i++) if (F.agentBusy(agents[i])) c++
     return c
   }
+
+  // What to call an interface: Wi-Fi, Ethernet, Tailscale, VPN, or its name.
+  function kindName(row) {
+    return row.kind === "other" ? row.name : Skin.t("system.net." + row.kind)
+  }
+
+  Timer { id: copiedTimer; interval: 1500; onTriggered: page.copied = "" }
 
   function uptimeText(seconds) {
     var up = F.uptime(seconds)
@@ -127,6 +138,43 @@ GridLayout {
           wrapMode: Text.WordWrap
           elide: Text.ElideNone
           Layout.fillWidth: true
+        }
+      }
+    }
+
+    SectionTitle {
+      visible: page.addressRows.length > 0
+      text: Skin.t("system.addresses")
+    }
+    Repeater {
+      model: page.addressRows
+      delegate: RowLayout {
+        id: addressRow
+        required property var modelData
+        readonly property bool done: page.copied === modelData.address
+        Layout.fillWidth: true
+        spacing: 8 * Skin.u
+        Label {
+          text: addressRow.modelData.first ? page.kindName(addressRow.modelData) : ""
+          color: Skin.dim
+          font.pixelSize: 12 * Skin.u
+          Layout.preferredWidth: 80 * Skin.u
+        }
+        Label {
+          text: addressRow.modelData.address
+          font.pixelSize: 13 * Skin.u
+          elide: Text.ElideMiddle
+          Layout.fillWidth: true
+        }
+        Pill {
+          glyph: String.fromCodePoint(addressRow.done ? 0xF012C : 0xF018F)
+          tip: addressRow.done ? Skin.t("system.copied") : Skin.t("system.copy").arg(addressRow.modelData.address)
+          implicitHeight: 26 * Skin.u
+          onClicked: {
+            page.copyRequested(addressRow.modelData.address)
+            page.copied = addressRow.modelData.address
+            copiedTimer.restart()
+          }
         }
       }
     }

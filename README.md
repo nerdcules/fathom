@@ -431,15 +431,24 @@ tiling** puts it back in the tiling.
 
 **Quick settings** opens under the bar at the top right: Wi-Fi, Bluetooth,
 Focus (Omarchy's do-not-disturb), night light, stay awake and the power
-profile as tiles, volume and brightness as sliders, and the battery, Lock and
-Omarchy's menu along the bottom. The arrows on Wi-Fi and Bluetooth open
-Omarchy's own panels for choosing a network or a device.
+profile as tiles; this machine's IP addresses; volume and brightness as
+sliders; and the battery, Lock and Omarchy's menu along the bottom. The
+arrows on Wi-Fi and Bluetooth open Omarchy's own panels for choosing a
+network or a device.
+
+The addresses are every interface that is up, named Wi-Fi, Ethernet,
+Tailscale or VPN (or by its own name), with its IPv4 and IPv6 addresses, up
+to six in all; each has a button that copies it. Link-local and deprecated
+IPv6 addresses, loopback, and the bridges and veth pairs Docker and libvirt
+make are left out. They come from `ip -j addr`. The deck's System card
+shows the same list.
 
 The desk's panel stays loaded in the shell so Alt+Tab opens without waiting.
 It reads the windows (`fathom-desk state`: 64 to 72 ms over five runs here)
 when a view opens and again as windows open, close and move while one shows;
-Quick settings reads its state (`fathom-desk settings`: 565 to 623 ms over
-three runs) on opening and every 4 seconds while it shows. Nothing is read
+Quick settings reads its state (`fathom-desk settings`: 338 to 358 ms over
+five runs here on 20 November 2026, 9 to 12 ms of it the addresses) on
+opening and every 4 seconds while it shows. Nothing is read
 while nothing shows.
 
 Alt+Tab is driven from Hyprland: while the switcher is up, Hyprland is in a
@@ -468,8 +477,10 @@ Press **Super+Alt+D** for a glass overlay showing your dev machine at a glance.
 Press it again, or Esc, or click outside the cards, to close it.
 
 - **System:** CPU, GPU, memory and each disk. A disk over 85% full turns amber,
-  over 95% red. It also shows how much space Docker's images, build cache and
-  volumes take, since that's usually where a disk goes.
+  over 95% red. Then this machine's IP addresses, up to eight, each with a
+  button that copies it (the same list as [Quick settings](#desk)). It also
+  shows how much space Docker's images, build cache and volumes take, since
+  that's usually where a disk goes.
 - **Containers:** every Docker container, grouped by Compose project, with its
   ports, CPU and memory. Red means unhealthy or crashed. Hover a row to start,
   stop or restart it, or to follow its logs in a terminal. The lazydocker
