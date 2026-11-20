@@ -12,6 +12,11 @@ Each line names its commit.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-20
+
+The Ward offer, a prereleases channel, PCs on the deck, and Start's power
+menu clicking only what's on top.
+
 ### Added
 
 - An offer to set up Ward, which checks this machine against the published
@@ -25,7 +30,8 @@ Each line names its commit.
   releases channel still never offers a pre-release (6b362da).
 - PCs on the deck: a paired PC (Fathom for Windows) sends its own figures
   (`POST /v1/device/status`), `fathom-phone pcs` lists them, the deck shows
-  a PCs card, and a PC's warnings become alerts (f047529).
+  a PCs card (a disk with room in green, not the accent), and a PC's
+  warnings become alerts (f047529, 3d70d60).
 - `fathom-phone` pairs PCs too: pairing takes a `kind` (`phone`, the
   default, or `pc`), `fathom-phone devices` and `status` show it, and
   `fathom-phone pair` prints its link as text to paste into the PC app
@@ -209,7 +215,8 @@ The first release: everything Fathom had on 17 November 2026.
 - Care's own description said its check runs hourly; it runs every 3 hours
   (332a7c4).
 
-[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/nerdcules/fathom/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nerdcules/fathom/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nerdcules/fathom/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nerdcules/fathom/releases/tag/v0.1.0
