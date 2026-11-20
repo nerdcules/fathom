@@ -1,0 +1,7426 @@
+{
+  "diagrams": [
+    {
+      "id": "observer",
+      "title": "OBSERVER PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-001",
+      "notes": [
+        "SUBJECT HOLDS A LIST OF OBSERVERS AND NOTIFIES EACH ONE WHEN ITS STATE CHANGES.",
+        "OBSERVERS ATTACH AND DETACH AT RUN TIME; THE SUBJECT NEVER DEPENDS ON CONCRETE TYPES.",
+        "CONCRETE OBSERVERS PULL THE STATE THEY NEED AFTER UPDATE() IS CALLED."
+      ],
+      "nodes": [
+        {
+          "id": "subject",
+          "label": "SUBJECT",
+          "stereotype": "«INTERFACE»",
+          "detail": "ATTACH(OBSERVER)\nDETACH(OBSERVER)\nNOTIFY()",
+          "x": 6,
+          "y": 6,
+          "w": 28,
+          "h": 14
+        },
+        {
+          "id": "concrete",
+          "label": "CONCRETE SUBJECT",
+          "detail": "STATE\nGET_STATE()",
+          "x": 6,
+          "y": 42,
+          "w": 28,
+          "h": 12
+        },
+        {
+          "id": "observer",
+          "label": "OBSERVER",
+          "stereotype": "«INTERFACE»",
+          "detail": "UPDATE()",
+          "x": 86,
+          "y": 4,
+          "w": 28,
+          "h": 14
+        },
+        {
+          "id": "obsA",
+          "label": "OBSERVER A",
+          "x": 70,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "obsB",
+          "label": "OBSERVER B",
+          "x": 96,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "subject",
+          "to": "observer",
+          "label": "0..* OBSERVERS"
+        },
+        {
+          "from": "concrete",
+          "to": "subject",
+          "head": "triangle"
+        },
+        {
+          "from": "obsA",
+          "to": "observer",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "obsB",
+          "to": "observer",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "concrete",
+          "to": "obsA",
+          "label": "UPDATE()",
+          "style": "dashed"
+        },
+        {
+          "from": "concrete",
+          "to": "obsB",
+          "style": "dashed",
+          "points": [
+            [
+              50,
+              60
+            ],
+            [
+              106,
+              60
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "subject",
+          "to": "observer",
+          "side": "top",
+          "offset": 3,
+          "label": "ONE-TO-MANY DEPENDENCY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "subject",
+          "n": 1
+        },
+        {
+          "node": "observer",
+          "n": 2
+        },
+        {
+          "node": "obsA",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "mvc",
+      "title": "MODEL · VIEW · CONTROLLER",
+      "category": "ARCHITECTURAL PATTERN",
+      "number": "SW-ARC-001",
+      "notes": [
+        "THE CONTROLLER TRANSLATES USER INPUT INTO OPERATIONS ON THE MODEL.",
+        "THE MODEL HOLDS STATE AND RULES AND KNOWS NOTHING ABOUT THE VIEW.",
+        "THE VIEW RENDERS THE MODEL AND REFRESHES WHEN NOTIFIED OF A CHANGE."
+      ],
+      "nodes": [
+        {
+          "id": "user",
+          "label": "USER",
+          "shape": "actor",
+          "x": 4,
+          "y": 22,
+          "w": 12,
+          "h": 18
+        },
+        {
+          "id": "controller",
+          "label": "CONTROLLER",
+          "detail": "HANDLES INPUT",
+          "x": 30,
+          "y": 6,
+          "w": 28,
+          "h": 12
+        },
+        {
+          "id": "model",
+          "label": "MODEL",
+          "detail": "STATE · BUSINESS RULES",
+          "x": 84,
+          "y": 24,
+          "w": 30,
+          "h": 14
+        },
+        {
+          "id": "view",
+          "label": "VIEW",
+          "detail": "RENDERS THE MODEL",
+          "x": 30,
+          "y": 44,
+          "w": 28,
+          "h": 12
+        }
+      ],
+      "edges": [
+        {
+          "from": "user",
+          "to": "controller",
+          "label": "INPUT"
+        },
+        {
+          "from": "controller",
+          "to": "model",
+          "label": "UPDATES"
+        },
+        {
+          "from": "model",
+          "to": "view",
+          "label": "NOTIFIES",
+          "style": "dashed"
+        },
+        {
+          "from": "view",
+          "to": "user",
+          "label": "DISPLAYS"
+        },
+        {
+          "from": "controller",
+          "to": "view",
+          "label": "SELECTS",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "controller",
+          "to": "model",
+          "side": "top",
+          "offset": 3,
+          "label": "ONE REQUEST CYCLE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "controller",
+          "n": 1
+        },
+        {
+          "node": "model",
+          "n": 2
+        },
+        {
+          "node": "view",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "layered",
+      "title": "LAYERED ARCHITECTURE",
+      "category": "ARCHITECTURAL PATTERN",
+      "number": "SW-ARC-002",
+      "notes": [
+        "EACH LAYER MAY CALL ONLY THE LAYER DIRECTLY BENEATH IT.",
+        "THE DOMAIN LAYER CONTAINS THE BUSINESS RULES AND NO FRAMEWORK CODE.",
+        "INFRASTRUCTURE IMPLEMENTS THE INTERFACES THE UPPER LAYERS DECLARE."
+      ],
+      "nodes": [
+        {
+          "id": "presentation",
+          "label": "PRESENTATION",
+          "detail": "UI · API CONTROLLERS",
+          "x": 32,
+          "y": 2,
+          "w": 48,
+          "h": 10
+        },
+        {
+          "id": "application",
+          "label": "APPLICATION",
+          "detail": "USE CASES · ORCHESTRATION",
+          "x": 32,
+          "y": 18,
+          "w": 48,
+          "h": 10
+        },
+        {
+          "id": "domain",
+          "label": "DOMAIN",
+          "detail": "ENTITIES · BUSINESS RULES",
+          "x": 32,
+          "y": 34,
+          "w": 48,
+          "h": 10
+        },
+        {
+          "id": "infrastructure",
+          "label": "INFRASTRUCTURE",
+          "detail": "PERSISTENCE · MESSAGING · I/O",
+          "x": 32,
+          "y": 50,
+          "w": 48,
+          "h": 10
+        },
+        {
+          "id": "db",
+          "label": "DATABASE",
+          "shape": "cylinder",
+          "x": 98,
+          "y": 48,
+          "w": 18,
+          "h": 14
+        }
+      ],
+      "edges": [
+        {
+          "from": "presentation",
+          "to": "application"
+        },
+        {
+          "from": "application",
+          "to": "domain"
+        },
+        {
+          "from": "domain",
+          "to": "infrastructure"
+        },
+        {
+          "from": "infrastructure",
+          "to": "db",
+          "label": "SQL"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "presentation",
+          "to": "infrastructure",
+          "side": "left",
+          "offset": 8,
+          "label": "DEPENDENCIES POINT DOWNWARD ONLY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "domain",
+          "n": 2
+        },
+        {
+          "node": "infrastructure",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "hexagonal",
+      "title": "HEXAGONAL ARCHITECTURE",
+      "category": "PORTS AND ADAPTERS",
+      "number": "SW-ARC-003",
+      "notes": [
+        "THE CORE DEFINES PORTS: INTERFACES FOR EVERYTHING IT NEEDS OR OFFERS.",
+        "DRIVING ADAPTERS CALL INBOUND PORTS; DRIVEN ADAPTERS IMPLEMENT OUTBOUND PORTS.",
+        "ALL DEPENDENCIES POINT INWARD, SO THE CORE IS TESTABLE WITHOUT I/O."
+      ],
+      "nodes": [
+        {
+          "id": "core",
+          "label": "APPLICATION CORE",
+          "shape": "hexagon",
+          "detail": "DOMAIN MODEL\nUSE CASES",
+          "x": 40,
+          "y": 10,
+          "w": 40,
+          "h": 42
+        },
+        {
+          "id": "inport",
+          "label": "PORT",
+          "stereotype": "«IN»",
+          "x": 35,
+          "y": 25,
+          "w": 10,
+          "h": 12,
+          "fill": true
+        },
+        {
+          "id": "outport",
+          "label": "PORT",
+          "stereotype": "«OUT»",
+          "x": 75,
+          "y": 25,
+          "w": 10,
+          "h": 12,
+          "fill": true
+        },
+        {
+          "id": "rest",
+          "label": "REST ADAPTER",
+          "x": 2,
+          "y": 8,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "cli",
+          "label": "CLI ADAPTER",
+          "x": 2,
+          "y": 44,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "sql",
+          "label": "SQL ADAPTER",
+          "x": 94,
+          "y": 8,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "mq",
+          "label": "MESSAGE ADAPTER",
+          "x": 94,
+          "y": 44,
+          "w": 24,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "rest",
+          "to": "inport",
+          "label": "HTTP"
+        },
+        {
+          "from": "cli",
+          "to": "inport"
+        },
+        {
+          "from": "outport",
+          "to": "sql",
+          "label": "SQL"
+        },
+        {
+          "from": "outport",
+          "to": "mq",
+          "label": "AMQP"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "rest",
+          "to": "sql",
+          "side": "top",
+          "offset": 4,
+          "label": "DRIVING SIDE  ←  CORE  →  DRIVEN SIDE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "inport",
+          "n": 1,
+          "dx": -3,
+          "dy": -4
+        },
+        {
+          "node": "rest",
+          "n": 2
+        },
+        {
+          "node": "sql",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "id": "microservices",
+      "title": "MICROSERVICES",
+      "category": "DISTRIBUTED ARCHITECTURE",
+      "number": "SW-ARC-004",
+      "notes": [
+        "EACH SERVICE OWNS ITS DATA; NO OTHER SERVICE READS ITS DATABASE DIRECTLY.",
+        "THE GATEWAY HANDLES ROUTING, AUTHENTICATION AND RATE LIMITING.",
+        "SERVICES PUBLISH DOMAIN EVENTS TO THE BUS INSTEAD OF CALLING EACH OTHER."
+      ],
+      "nodes": [
+        {
+          "id": "clients",
+          "label": "CLIENTS",
+          "x": 1,
+          "y": 20,
+          "w": 11,
+          "h": 9
+        },
+        {
+          "id": "gateway",
+          "label": "API GATEWAY",
+          "x": 24,
+          "y": 20,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "id": "orders",
+          "label": "ORDER SERVICE",
+          "x": 54,
+          "y": 2,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "users",
+          "label": "USER SERVICE",
+          "x": 54,
+          "y": 20,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "payments",
+          "label": "PAYMENT SERVICE",
+          "x": 54,
+          "y": 38,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "ordersdb",
+          "label": "ORDERS DB",
+          "shape": "cylinder",
+          "x": 92,
+          "y": 1,
+          "w": 16,
+          "h": 11
+        },
+        {
+          "id": "usersdb",
+          "label": "USERS DB",
+          "shape": "cylinder",
+          "x": 92,
+          "y": 19,
+          "w": 16,
+          "h": 11
+        },
+        {
+          "id": "paymentsdb",
+          "label": "PAYMENTS DB",
+          "shape": "cylinder",
+          "x": 92,
+          "y": 37,
+          "w": 16,
+          "h": 11
+        },
+        {
+          "id": "bus",
+          "label": "EVENT BUS",
+          "shape": "queue",
+          "x": 54,
+          "y": 55,
+          "w": 54,
+          "h": 7
+        }
+      ],
+      "edges": [
+        {
+          "from": "clients",
+          "to": "gateway",
+          "label": "HTTPS"
+        },
+        {
+          "from": "gateway",
+          "to": "orders"
+        },
+        {
+          "from": "gateway",
+          "to": "users"
+        },
+        {
+          "from": "gateway",
+          "to": "payments"
+        },
+        {
+          "from": "orders",
+          "to": "ordersdb"
+        },
+        {
+          "from": "users",
+          "to": "usersdb"
+        },
+        {
+          "from": "payments",
+          "to": "paymentsdb"
+        },
+        {
+          "from": "payments",
+          "to": "bus",
+          "style": "dashed",
+          "label": "EVENTS"
+        },
+        {
+          "from": "orders",
+          "to": "bus",
+          "style": "dashed",
+          "points": [
+            [
+              49,
+              6.5
+            ],
+            [
+              49,
+              58.5
+            ]
+          ]
+        },
+        {
+          "from": "users",
+          "to": "bus",
+          "style": "dashed",
+          "points": [
+            [
+              51.5,
+              24.5
+            ],
+            [
+              51.5,
+              52
+            ],
+            [
+              62,
+              52
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "orders",
+          "to": "ordersdb",
+          "side": "top",
+          "offset": 0.5,
+          "label": "ONE DATABASE PER SERVICE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "ordersdb",
+          "n": 1,
+          "dx": 4,
+          "dy": 4
+        },
+        {
+          "node": "gateway",
+          "n": 2,
+          "dx": -26,
+          "dy": 12
+        },
+        {
+          "node": "bus",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "event-sourcing",
+      "title": "EVENT SOURCING",
+      "category": "DATA ARCHITECTURE PATTERN",
+      "number": "SW-ARC-005",
+      "notes": [
+        "STATE IS NEVER STORED DIRECTLY; IT IS DERIVED BY REPLAYING EVENTS IN ORDER.",
+        "EVENTS ARE IMMUTABLE FACTS. THE APPEND-ONLY LOG IS THE SOURCE OF TRUTH.",
+        "PROJECTIONS MAY BE DROPPED AND REBUILT FROM THE LOG AT ANY TIME."
+      ],
+      "nodes": [
+        {
+          "id": "command",
+          "label": "COMMAND",
+          "x": 2,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "aggregate",
+          "label": "AGGREGATE",
+          "detail": "VALIDATES · EMITS EVENTS",
+          "x": 30,
+          "y": 25,
+          "w": 24,
+          "h": 12
+        },
+        {
+          "id": "store",
+          "label": "EVENT STORE",
+          "shape": "cylinder",
+          "detail": "APPEND-ONLY LOG",
+          "x": 64,
+          "y": 23,
+          "w": 24,
+          "h": 16
+        },
+        {
+          "id": "projector",
+          "label": "PROJECTOR",
+          "x": 64,
+          "y": 52,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "read",
+          "label": "READ MODEL",
+          "shape": "cylinder",
+          "x": 98,
+          "y": 49,
+          "w": 20,
+          "h": 14
+        }
+      ],
+      "edges": [
+        {
+          "from": "command",
+          "to": "aggregate",
+          "label": "HANDLE"
+        },
+        {
+          "from": "aggregate",
+          "to": "store",
+          "label": "APPEND"
+        },
+        {
+          "from": "store",
+          "to": "projector",
+          "label": "STREAM"
+        },
+        {
+          "from": "projector",
+          "to": "read",
+          "label": "UPSERT"
+        },
+        {
+          "from": "store",
+          "to": "aggregate",
+          "label": "REPLAY",
+          "style": "dashed",
+          "points": [
+            [
+              76,
+              10
+            ],
+            [
+              42,
+              10
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "command",
+          "to": "aggregate",
+          "side": "bottom",
+          "offset": 6,
+          "label": "WRITE SIDE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "store",
+          "n": 2
+        },
+        {
+          "node": "projector",
+          "n": 3
+        },
+        {
+          "node": "aggregate",
+          "n": 1
+        }
+      ]
+    },
+    {
+      "id": "cqrs",
+      "title": "CQRS",
+      "category": "COMMAND QUERY RESPONSIBILITY SEGREGATION",
+      "number": "SW-ARC-006",
+      "notes": [
+        "COMMANDS CHANGE STATE AND RETURN NOTHING; QUERIES RETURN DATA AND CHANGE NOTHING.",
+        "THE READ STORE IS DENORMALIZED FOR THE SCREENS THAT READ IT.",
+        "THE TWO SIDES ARE EVENTUALLY CONSISTENT; THE DELAY IS A DESIGN DECISION."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 26,
+          "w": 16,
+          "h": 10
+        },
+        {
+          "id": "cmd",
+          "label": "COMMAND HANDLER",
+          "x": 34,
+          "y": 6,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "query",
+          "label": "QUERY HANDLER",
+          "x": 34,
+          "y": 46,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "writedb",
+          "label": "WRITE STORE",
+          "shape": "cylinder",
+          "x": 78,
+          "y": 3,
+          "w": 20,
+          "h": 15
+        },
+        {
+          "id": "readdb",
+          "label": "READ STORE",
+          "shape": "cylinder",
+          "x": 78,
+          "y": 44,
+          "w": 20,
+          "h": 15
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "cmd",
+          "label": "COMMANDS"
+        },
+        {
+          "from": "client",
+          "to": "query",
+          "label": "QUERIES"
+        },
+        {
+          "from": "cmd",
+          "to": "writedb",
+          "label": "WRITE"
+        },
+        {
+          "from": "readdb",
+          "to": "query",
+          "label": "DTOs"
+        },
+        {
+          "from": "writedb",
+          "to": "readdb",
+          "label": "EVENTS",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "cmd",
+          "to": "writedb",
+          "side": "top",
+          "offset": 2,
+          "label": "WRITE SIDE"
+        },
+        {
+          "from": "query",
+          "to": "readdb",
+          "side": "bottom",
+          "offset": 2,
+          "label": "READ SIDE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "cmd",
+          "n": 1
+        },
+        {
+          "node": "readdb",
+          "n": 2
+        },
+        {
+          "node": "writedb",
+          "n": 3,
+          "dx": 3,
+          "dy": -1
+        }
+      ]
+    },
+    {
+      "id": "pubsub",
+      "title": "PUBLISH · SUBSCRIBE",
+      "category": "MESSAGING PATTERN",
+      "number": "SW-ARC-007",
+      "notes": [
+        "PUBLISHERS WRITE TO A TOPIC AND NEVER LEARN WHO, IF ANYONE, IS LISTENING.",
+        "THE BROKER FANS EACH MESSAGE OUT TO EVERY CURRENT SUBSCRIBER.",
+        "SUBSCRIBERS CAN BE ADDED WITHOUT TOUCHING THE PUBLISHERS."
+      ],
+      "nodes": [
+        {
+          "id": "pubA",
+          "label": "PUBLISHER A",
+          "x": 4,
+          "y": 10,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "id": "pubB",
+          "label": "PUBLISHER B",
+          "x": 4,
+          "y": 42,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "id": "topic",
+          "label": "TOPIC: ORDERS",
+          "shape": "queue",
+          "detail": "BROKER",
+          "x": 44,
+          "y": 24,
+          "w": 30,
+          "h": 13
+        },
+        {
+          "id": "sub1",
+          "label": "SUBSCRIBER 1",
+          "x": 96,
+          "y": 4,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "id": "sub2",
+          "label": "SUBSCRIBER 2",
+          "x": 96,
+          "y": 26,
+          "w": 20,
+          "h": 9
+        },
+        {
+          "id": "sub3",
+          "label": "SUBSCRIBER 3",
+          "x": 96,
+          "y": 48,
+          "w": 20,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "pubA",
+          "to": "topic",
+          "label": "PUBLISH"
+        },
+        {
+          "from": "pubB",
+          "to": "topic",
+          "label": "PUBLISH"
+        },
+        {
+          "from": "topic",
+          "to": "sub1",
+          "label": "DELIVER"
+        },
+        {
+          "from": "topic",
+          "to": "sub2"
+        },
+        {
+          "from": "topic",
+          "to": "sub3"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "pubB",
+          "to": "sub3",
+          "side": "bottom",
+          "offset": 4,
+          "label": "NO DIRECT COUPLING BETWEEN ENDS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "pubA",
+          "n": 1
+        },
+        {
+          "node": "topic",
+          "n": 2
+        },
+        {
+          "node": "sub1",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "title": "PIPES AND FILTERS",
+      "category": "DATA FLOW ARCHITECTURE",
+      "number": "SW-ARC-008",
+      "notes": [
+        "EVERY FILTER READS FROM ONE PIPE AND WRITES TO THE NEXT; NO SHARED STATE.",
+        "FILTERS ARE INDEPENDENT, SO THEY CAN BE REORDERED, REPLACED OR RUN IN PARALLEL.",
+        "BACKPRESSURE IN THE PIPES KEEPS A FAST PRODUCER FROM FLOODING A SLOW FILTER."
+      ],
+      "nodes": [
+        {
+          "id": "source",
+          "label": "SOURCE",
+          "x": 2,
+          "y": 24,
+          "w": 16,
+          "h": 12
+        },
+        {
+          "id": "f1",
+          "label": "PARSE",
+          "detail": "FILTER 1",
+          "x": 27,
+          "y": 24,
+          "w": 18,
+          "h": 12
+        },
+        {
+          "id": "f2",
+          "label": "VALIDATE",
+          "detail": "FILTER 2",
+          "x": 54,
+          "y": 24,
+          "w": 18,
+          "h": 12
+        },
+        {
+          "id": "f3",
+          "label": "TRANSFORM",
+          "detail": "FILTER 3",
+          "x": 81,
+          "y": 24,
+          "w": 18,
+          "h": 12
+        },
+        {
+          "id": "sink",
+          "label": "SINK",
+          "x": 106,
+          "y": 24,
+          "w": 12,
+          "h": 12
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "f1",
+          "label": "PIPE"
+        },
+        {
+          "from": "f1",
+          "to": "f2",
+          "label": "PIPE"
+        },
+        {
+          "from": "f2",
+          "to": "f3",
+          "label": "PIPE"
+        },
+        {
+          "from": "f3",
+          "to": "sink",
+          "label": "PIPE"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "f1",
+          "to": "f3",
+          "side": "bottom",
+          "offset": 8,
+          "label": "STATELESS · COMPOSABLE · TESTABLE IN ISOLATION"
+        },
+        {
+          "from": "source",
+          "to": "sink",
+          "side": "top",
+          "offset": 8,
+          "label": "DATA FLOWS ONE WAY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "f2",
+          "n": 1
+        },
+        {
+          "node": "sink",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "load-balanced",
+      "title": "LOAD-BALANCED WEB TIER",
+      "category": "DEPLOYMENT ARCHITECTURE",
+      "number": "SW-ARC-009",
+      "notes": [
+        "APP SERVERS HOLD NO SESSION STATE, SO ANY OF THEM CAN SERVE ANY REQUEST.",
+        "THE BALANCER HEALTH-CHECKS EACH SERVER AND DROPS THE ONES THAT FAIL.",
+        "READS MAY GO TO THE REPLICA; ALL WRITES GO TO THE PRIMARY."
+      ],
+      "nodes": [
+        {
+          "id": "c1",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 4,
+          "w": 14,
+          "h": 8
+        },
+        {
+          "id": "c2",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 28,
+          "w": 14,
+          "h": 8
+        },
+        {
+          "id": "c3",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 52,
+          "w": 14,
+          "h": 8
+        },
+        {
+          "id": "lb",
+          "label": "LOAD BALANCER",
+          "x": 28,
+          "y": 26,
+          "w": 22,
+          "h": 12,
+          "detail": "ROUND ROBIN"
+        },
+        {
+          "id": "app1",
+          "label": "APP SERVER 1",
+          "x": 64,
+          "y": 12,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "app2",
+          "label": "APP SERVER 2",
+          "x": 64,
+          "y": 42,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "primary",
+          "label": "PRIMARY DB",
+          "shape": "cylinder",
+          "x": 98,
+          "y": 10,
+          "w": 18,
+          "h": 14
+        },
+        {
+          "id": "replica",
+          "label": "REPLICA",
+          "shape": "cylinder",
+          "x": 98,
+          "y": 40,
+          "w": 18,
+          "h": 14
+        }
+      ],
+      "edges": [
+        {
+          "from": "c1",
+          "to": "lb",
+          "label": "HTTPS"
+        },
+        {
+          "from": "c2",
+          "to": "lb"
+        },
+        {
+          "from": "c3",
+          "to": "lb"
+        },
+        {
+          "from": "lb",
+          "to": "app1"
+        },
+        {
+          "from": "lb",
+          "to": "app2"
+        },
+        {
+          "from": "app1",
+          "to": "primary",
+          "label": "READ · WRITE"
+        },
+        {
+          "from": "app2",
+          "to": "primary"
+        },
+        {
+          "from": "app2",
+          "to": "replica",
+          "label": "READ",
+          "style": "dashed"
+        },
+        {
+          "from": "primary",
+          "to": "replica",
+          "label": "REPLICATION",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "app1",
+          "to": "app1",
+          "side": "top",
+          "offset": 4,
+          "label": "STATELESS TIER"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "app1",
+          "n": 1
+        },
+        {
+          "node": "lb",
+          "n": 2
+        },
+        {
+          "node": "replica",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "circuit-breaker",
+      "title": "CIRCUIT BREAKER",
+      "category": "RESILIENCE PATTERN",
+      "number": "SW-PAT-010",
+      "notes": [
+        "WHILE CLOSED, CALLS PASS THROUGH AND FAILURES ARE COUNTED.",
+        "WHEN THE COUNT PASSES THE THRESHOLD THE BREAKER OPENS AND FAILS FAST.",
+        "AFTER A TIMEOUT ONE PROBE CALL IS ALLOWED; SUCCESS CLOSES THE BREAKER AGAIN."
+      ],
+      "nodes": [
+        {
+          "id": "states",
+          "label": "BREAKER STATE MACHINE",
+          "shape": "group",
+          "x": 4,
+          "y": 26,
+          "w": 112,
+          "h": 37
+        },
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 6,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "breaker",
+          "label": "CIRCUIT BREAKER",
+          "x": 36,
+          "y": 6,
+          "w": 26,
+          "h": 9
+        },
+        {
+          "id": "service",
+          "label": "REMOTE SERVICE",
+          "x": 78,
+          "y": 6,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "closed",
+          "label": "CLOSED",
+          "shape": "circle",
+          "x": 12,
+          "y": 36,
+          "w": 18,
+          "h": 16
+        },
+        {
+          "id": "open",
+          "label": "OPEN",
+          "shape": "circle",
+          "x": 51,
+          "y": 36,
+          "w": 18,
+          "h": 16
+        },
+        {
+          "id": "half",
+          "label": "HALF-OPEN",
+          "shape": "circle",
+          "x": 90,
+          "y": 36,
+          "w": 18,
+          "h": 16
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "breaker",
+          "label": "CALL"
+        },
+        {
+          "from": "breaker",
+          "to": "service",
+          "label": "FORWARD"
+        },
+        {
+          "from": "service",
+          "to": "breaker",
+          "label": "ERRORS",
+          "style": "dashed",
+          "points": [
+            [
+              90,
+              21
+            ],
+            [
+              49,
+              21
+            ]
+          ]
+        },
+        {
+          "from": "closed",
+          "to": "open",
+          "label": "FAILURES ≥ THRESHOLD"
+        },
+        {
+          "from": "open",
+          "to": "half",
+          "label": "AFTER TIMEOUT"
+        },
+        {
+          "from": "half",
+          "to": "open",
+          "label": "PROBE FAILS",
+          "style": "dashed",
+          "points": [
+            [
+              99,
+              30
+            ],
+            [
+              60,
+              30
+            ]
+          ]
+        },
+        {
+          "from": "half",
+          "to": "closed",
+          "label": "PROBE SUCCEEDS",
+          "points": [
+            [
+              99,
+              59
+            ],
+            [
+              21,
+              59
+            ]
+          ]
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "closed",
+          "n": 1
+        },
+        {
+          "node": "open",
+          "n": 2
+        },
+        {
+          "node": "half",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "repository",
+      "title": "REPOSITORY PATTERN",
+      "category": "PERSISTENCE DESIGN PATTERN",
+      "number": "SW-PAT-011",
+      "notes": [
+        "THE DOMAIN TALKS TO A COLLECTION-LIKE INTERFACE, NOT TO SQL OR AN ORM.",
+        "EACH IMPLEMENTATION HIDES ONE STORAGE TECHNOLOGY BEHIND THE SAME CONTRACT.",
+        "TESTS SWAP IN THE IN-MEMORY IMPLEMENTATION AND RUN WITHOUT A DATABASE."
+      ],
+      "nodes": [
+        {
+          "id": "service",
+          "label": "DOMAIN SERVICE",
+          "x": 2,
+          "y": 24,
+          "w": 24,
+          "h": 12
+        },
+        {
+          "id": "irepo",
+          "label": "ORDER REPOSITORY",
+          "stereotype": "«INTERFACE»",
+          "detail": "FIND(ID)\nSAVE(ORDER)",
+          "x": 38,
+          "y": 22,
+          "w": 28,
+          "h": 16
+        },
+        {
+          "id": "sql",
+          "label": "SQL REPOSITORY",
+          "x": 74,
+          "y": 4,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "mem",
+          "label": "IN-MEMORY REPOSITORY",
+          "x": 78,
+          "y": 48,
+          "w": 28,
+          "h": 10
+        },
+        {
+          "id": "db",
+          "label": "SQL DB",
+          "shape": "cylinder",
+          "x": 102,
+          "y": 2,
+          "w": 16,
+          "h": 14
+        }
+      ],
+      "edges": [
+        {
+          "from": "service",
+          "to": "irepo",
+          "label": "USES"
+        },
+        {
+          "from": "sql",
+          "to": "irepo",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "mem",
+          "to": "irepo",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "sql",
+          "to": "db",
+          "label": "SQL"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "service",
+          "to": "irepo",
+          "side": "bottom",
+          "offset": 8,
+          "label": "DOMAIN KNOWS NOTHING OF PERSISTENCE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "irepo",
+          "n": 1,
+          "dx": -26,
+          "dy": -3
+        },
+        {
+          "node": "sql",
+          "n": 2
+        },
+        {
+          "node": "mem",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "saga",
+      "title": "SAGA · ORCHESTRATION",
+      "category": "DISTRIBUTED TRANSACTION PATTERN",
+      "number": "SW-ARC-012",
+      "notes": [
+        "THE ORCHESTRATOR DRIVES EACH LOCAL TRANSACTION IN TURN AND RECORDS PROGRESS.",
+        "EVERY STEP HAS A COMPENSATING ACTION THAT UNDOES IT.",
+        "ON FAILURE THE COMPLETED STEPS ARE COMPENSATED IN REVERSE ORDER."
+      ],
+      "nodes": [
+        {
+          "id": "orch",
+          "label": "SAGA ORCHESTRATOR",
+          "detail": "STATE · COMPENSATIONS",
+          "x": 44,
+          "y": 25,
+          "w": 32,
+          "h": 14
+        },
+        {
+          "id": "order",
+          "label": "ORDER SERVICE",
+          "x": 4,
+          "y": 4,
+          "w": 22,
+          "h": 9
+        },
+        {
+          "id": "payment",
+          "label": "PAYMENT SERVICE",
+          "x": 94,
+          "y": 4,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "inventory",
+          "label": "INVENTORY SERVICE",
+          "x": 4,
+          "y": 50,
+          "w": 24,
+          "h": 9
+        },
+        {
+          "id": "shipping",
+          "label": "SHIPPING SERVICE",
+          "x": 94,
+          "y": 50,
+          "w": 24,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "orch",
+          "to": "order",
+          "label": "1. CREATE"
+        },
+        {
+          "from": "orch",
+          "to": "payment",
+          "label": "2. CHARGE"
+        },
+        {
+          "from": "orch",
+          "to": "inventory",
+          "label": "3. RESERVE"
+        },
+        {
+          "from": "orch",
+          "to": "shipping",
+          "label": "4. SHIP"
+        },
+        {
+          "from": "payment",
+          "to": "orch",
+          "label": "REFUND",
+          "style": "dashed",
+          "points": [
+            [
+              112,
+              32
+            ]
+          ]
+        },
+        {
+          "from": "inventory",
+          "to": "orch",
+          "label": "RELEASE",
+          "style": "dashed",
+          "points": [
+            [
+              2,
+              54
+            ],
+            [
+              2,
+              30
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "order",
+          "to": "payment",
+          "side": "top",
+          "offset": 2,
+          "label": "EACH SERVICE COMMITS LOCALLY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "orch",
+          "n": 1,
+          "dx": -35,
+          "dy": -3
+        },
+        {
+          "node": "payment",
+          "n": 2
+        },
+        {
+          "node": "inventory",
+          "n": 3,
+          "dx": -3,
+          "dy": 8
+        }
+      ]
+    },
+    {
+      "id": "cache-aside",
+      "title": "CACHE-ASIDE",
+      "category": "PERFORMANCE PATTERN",
+      "number": "SW-PAT-013",
+      "notes": [
+        "THE APPLICATION CHECKS THE CACHE FIRST AND RETURNS ON A HIT.",
+        "ON A MISS IT READS THE DATABASE, THEN WRITES THE RESULT INTO THE CACHE.",
+        "ENTRIES EXPIRE BY TTL OR ARE EVICTED WHEN THE UNDERLYING ROW CHANGES."
+      ],
+      "nodes": [
+        {
+          "id": "app",
+          "label": "APPLICATION",
+          "x": 4,
+          "y": 25,
+          "w": 22,
+          "h": 12
+        },
+        {
+          "id": "cache",
+          "label": "CACHE",
+          "detail": "KEY → VALUE · TTL",
+          "x": 48,
+          "y": 4,
+          "w": 26,
+          "h": 13
+        },
+        {
+          "id": "db",
+          "label": "DATABASE",
+          "shape": "cylinder",
+          "x": 48,
+          "y": 44,
+          "w": 26,
+          "h": 16
+        }
+      ],
+      "edges": [
+        {
+          "from": "app",
+          "to": "cache",
+          "label": "1. GET KEY",
+          "points": [
+            [
+              15,
+              10.5
+            ]
+          ]
+        },
+        {
+          "from": "cache",
+          "to": "app",
+          "label": "2A. HIT",
+          "style": "dashed",
+          "points": [
+            [
+              61,
+              31
+            ]
+          ]
+        },
+        {
+          "from": "app",
+          "to": "db",
+          "label": "2B. MISS → READ"
+        },
+        {
+          "from": "db",
+          "to": "cache",
+          "label": "3. POPULATE",
+          "points": [
+            [
+              84,
+              52
+            ],
+            [
+              84,
+              10.5
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "cache",
+          "to": "db",
+          "side": "right",
+          "offset": 20,
+          "label": "MISS PATH"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "cache",
+          "n": 1
+        },
+        {
+          "node": "db",
+          "n": 2
+        },
+        {
+          "node": "app",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "strategy",
+      "title": "STRATEGY PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-014",
+      "notes": [
+        "THE CONTEXT DELEGATES THE VARYING STEP TO A STRATEGY OBJECT.",
+        "ALL STRATEGIES SHARE ONE INTERFACE, SO THEY ARE INTERCHANGEABLE AT RUN TIME.",
+        "THE CLIENT PICKS THE STRATEGY; THE CONTEXT NEVER BRANCHES ON TYPE."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "shape": "actor",
+          "x": 6,
+          "y": 40,
+          "w": 12,
+          "h": 18
+        },
+        {
+          "id": "context",
+          "label": "CONTEXT",
+          "detail": "STRATEGY: STRATEGY\nEXECUTE()",
+          "x": 4,
+          "y": 6,
+          "w": 26,
+          "h": 16
+        },
+        {
+          "id": "strategy",
+          "label": "STRATEGY",
+          "stereotype": "«INTERFACE»",
+          "detail": "APPLY(DATA)",
+          "x": 50,
+          "y": 6,
+          "w": 28,
+          "h": 14
+        },
+        {
+          "id": "a",
+          "label": "ZIP STRATEGY",
+          "x": 30,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "b",
+          "label": "GZIP STRATEGY",
+          "x": 56,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "c",
+          "label": "LZ4 STRATEGY",
+          "x": 82,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "context",
+          "label": "SELECTS"
+        },
+        {
+          "from": "context",
+          "to": "strategy",
+          "label": "DELEGATES"
+        },
+        {
+          "from": "a",
+          "to": "strategy",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "b",
+          "to": "strategy",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "c",
+          "to": "strategy",
+          "head": "triangle",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "a",
+          "to": "c",
+          "side": "bottom",
+          "offset": 4,
+          "label": "INTERCHANGEABLE AT RUN TIME"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "context",
+          "n": 1
+        },
+        {
+          "node": "strategy",
+          "n": 2
+        },
+        {
+          "node": "client",
+          "n": 3,
+          "dx": 2,
+          "dy": -2
+        }
+      ]
+    },
+    {
+      "id": "factory-method",
+      "title": "FACTORY METHOD",
+      "category": "GOF · CREATIONAL PATTERN",
+      "number": "SW-PAT-015",
+      "notes": [
+        "THE CREATOR DEFINES AN OPERATION THAT NEEDS A PRODUCT BUT DEFERS WHICH ONE.",
+        "SUBCLASSES OVERRIDE THE FACTORY METHOD TO RETURN THEIR OWN PRODUCT TYPE.",
+        "CLIENT CODE WORKS AGAINST THE PRODUCT INTERFACE ONLY."
+      ],
+      "nodes": [
+        {
+          "id": "creator",
+          "label": "CREATOR",
+          "stereotype": "«ABSTRACT»",
+          "detail": "FACTORY_METHOD(): PRODUCT\nOPERATION()",
+          "x": 8,
+          "y": 4,
+          "w": 32,
+          "h": 17
+        },
+        {
+          "id": "concreteCreator",
+          "label": "CONCRETE CREATOR",
+          "detail": "FACTORY_METHOD()",
+          "x": 8,
+          "y": 42,
+          "w": 32,
+          "h": 13
+        },
+        {
+          "id": "product",
+          "label": "PRODUCT",
+          "stereotype": "«INTERFACE»",
+          "detail": "USE()",
+          "x": 78,
+          "y": 4,
+          "w": 32,
+          "h": 15
+        },
+        {
+          "id": "concreteProduct",
+          "label": "CONCRETE PRODUCT",
+          "x": 78,
+          "y": 42,
+          "w": 32,
+          "h": 11
+        }
+      ],
+      "edges": [
+        {
+          "from": "concreteCreator",
+          "to": "creator",
+          "head": "triangle"
+        },
+        {
+          "from": "concreteProduct",
+          "to": "product",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "concreteCreator",
+          "to": "concreteProduct",
+          "label": "CREATES",
+          "style": "dashed"
+        },
+        {
+          "from": "creator",
+          "to": "product",
+          "label": "USES"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "creator",
+          "to": "product",
+          "side": "top",
+          "offset": 2,
+          "label": "PARALLEL CLASS HIERARCHIES"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "creator",
+          "n": 1
+        },
+        {
+          "node": "concreteCreator",
+          "n": 2
+        },
+        {
+          "node": "product",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "decorator",
+      "title": "DECORATOR PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-016",
+      "notes": [
+        "A DECORATOR IMPLEMENTS THE COMPONENT INTERFACE AND HOLDS ANOTHER COMPONENT.",
+        "IT FORWARDS EACH CALL TO THE WRAPPED OBJECT, ADDING BEHAVIOR BEFORE OR AFTER.",
+        "DECORATORS STACK, SO FEATURES COMBINE WITHOUT A SUBCLASS EXPLOSION."
+      ],
+      "nodes": [
+        {
+          "id": "component",
+          "label": "COMPONENT",
+          "stereotype": "«INTERFACE»",
+          "detail": "OPERATION()",
+          "x": 44,
+          "y": 2,
+          "w": 30,
+          "h": 14
+        },
+        {
+          "id": "concrete",
+          "label": "CONCRETE COMPONENT",
+          "x": 6,
+          "y": 30,
+          "w": 28,
+          "h": 10
+        },
+        {
+          "id": "decorator",
+          "label": "DECORATOR",
+          "stereotype": "«ABSTRACT»",
+          "detail": "WRAPPED: COMPONENT",
+          "x": 58,
+          "y": 28,
+          "w": 30,
+          "h": 14
+        },
+        {
+          "id": "decA",
+          "label": "LOGGING DECORATOR",
+          "x": 42,
+          "y": 52,
+          "w": 26,
+          "h": 9
+        },
+        {
+          "id": "decB",
+          "label": "CACHING DECORATOR",
+          "x": 76,
+          "y": 52,
+          "w": 26,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "concrete",
+          "to": "component",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "decorator",
+          "to": "component",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "decorator",
+          "to": "component",
+          "label": "WRAPS 1",
+          "points": [
+            [
+              104,
+              35
+            ],
+            [
+              104,
+              9
+            ]
+          ]
+        },
+        {
+          "from": "decA",
+          "to": "decorator",
+          "head": "triangle"
+        },
+        {
+          "from": "decB",
+          "to": "decorator",
+          "head": "triangle"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "concrete",
+          "to": "concrete",
+          "side": "left",
+          "offset": 3,
+          "label": "LEAF"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "decorator",
+          "n": 1
+        },
+        {
+          "node": "component",
+          "n": 2
+        },
+        {
+          "node": "decB",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "work-queue",
+      "title": "WORK QUEUE",
+      "category": "CONCURRENCY ARCHITECTURE",
+      "number": "SW-ARC-017",
+      "notes": [
+        "THE PRODUCER ENQUEUES JOBS AND RETURNS AT ONCE; WORKERS PULL AT THEIR OWN PACE.",
+        "ADD WORKERS TO RAISE THROUGHPUT; NOTHING ELSE CHANGES.",
+        "A JOB THAT FAILS REPEATEDLY IS PARKED IN THE DEAD LETTER QUEUE FOR INSPECTION."
+      ],
+      "nodes": [
+        {
+          "id": "producer",
+          "label": "PRODUCER",
+          "x": 2,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "queue",
+          "label": "JOB QUEUE",
+          "shape": "queue",
+          "detail": "FIFO · AT-LEAST-ONCE",
+          "x": 32,
+          "y": 24,
+          "w": 28,
+          "h": 13
+        },
+        {
+          "id": "w1",
+          "label": "WORKER 1",
+          "x": 76,
+          "y": 5,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "w2",
+          "label": "WORKER 2",
+          "x": 76,
+          "y": 26,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "w3",
+          "label": "WORKER 3",
+          "x": 76,
+          "y": 48,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "results",
+          "label": "RESULTS",
+          "shape": "cylinder",
+          "x": 102,
+          "y": 23,
+          "w": 16,
+          "h": 15
+        },
+        {
+          "id": "dlq",
+          "label": "DEAD LETTER QUEUE",
+          "shape": "queue",
+          "x": 32,
+          "y": 52,
+          "w": 28,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "producer",
+          "to": "queue",
+          "label": "ENQUEUE"
+        },
+        {
+          "from": "queue",
+          "to": "w1",
+          "label": "PULL"
+        },
+        {
+          "from": "queue",
+          "to": "w2"
+        },
+        {
+          "from": "queue",
+          "to": "w3"
+        },
+        {
+          "from": "w1",
+          "to": "results"
+        },
+        {
+          "from": "w2",
+          "to": "results",
+          "label": "STORE"
+        },
+        {
+          "from": "w3",
+          "to": "results"
+        },
+        {
+          "from": "queue",
+          "to": "dlq",
+          "label": "AFTER N RETRIES",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "w1",
+          "to": "w1",
+          "side": "top",
+          "offset": 2.5,
+          "label": "SCALE HORIZONTALLY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "producer",
+          "n": 1
+        },
+        {
+          "node": "w1",
+          "n": 2
+        },
+        {
+          "node": "dlq",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "sidecar",
+      "title": "SIDECAR",
+      "category": "DEPLOYMENT PATTERN",
+      "number": "SW-ARC-018",
+      "notes": [
+        "THE SIDECAR RUNS BESIDE THE APPLICATION, SHARING ITS HOST AND LIFECYCLE.",
+        "IT TAKES ON CROSS-CUTTING WORK: TLS, RETRIES, LOG SHIPPING, SERVICE DISCOVERY.",
+        "THE APPLICATION TALKS PLAIN HTTP TO LOCALHOST AND STAYS LANGUAGE-AGNOSTIC."
+      ],
+      "nodes": [
+        {
+          "id": "pod",
+          "label": "POD / HOST",
+          "shape": "group",
+          "x": 4,
+          "y": 6,
+          "w": 68,
+          "h": 46
+        },
+        {
+          "id": "app",
+          "label": "APPLICATION",
+          "detail": "BUSINESS LOGIC",
+          "x": 10,
+          "y": 20,
+          "w": 22,
+          "h": 14
+        },
+        {
+          "id": "sidecar",
+          "label": "SIDECAR",
+          "detail": "PROXY · LOGS · TLS",
+          "x": 44,
+          "y": 20,
+          "w": 22,
+          "h": 14
+        },
+        {
+          "id": "mesh",
+          "label": "CONTROL PLANE",
+          "detail": "SERVICE MESH",
+          "x": 86,
+          "y": 8,
+          "w": 30,
+          "h": 12
+        },
+        {
+          "id": "logs",
+          "label": "LOG STORE",
+          "shape": "cylinder",
+          "x": 88,
+          "y": 40,
+          "w": 26,
+          "h": 14
+        }
+      ],
+      "edges": [
+        {
+          "from": "app",
+          "to": "sidecar",
+          "label": "LOCALHOST"
+        },
+        {
+          "from": "sidecar",
+          "to": "mesh",
+          "label": "MTLS"
+        },
+        {
+          "from": "sidecar",
+          "to": "logs",
+          "label": "SHIP LOGS"
+        },
+        {
+          "from": "mesh",
+          "to": "sidecar",
+          "label": "CONFIG",
+          "style": "dashed",
+          "points": [
+            [
+              101,
+              30
+            ],
+            [
+              76,
+              30
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "app",
+          "to": "sidecar",
+          "side": "bottom",
+          "offset": 6,
+          "label": "SAME HOST · SAME LIFECYCLE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "sidecar",
+          "n": 1
+        },
+        {
+          "node": "mesh",
+          "n": 2
+        },
+        {
+          "node": "app",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "adapter",
+      "title": "ADAPTER PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-019",
+      "notes": [
+        "THE CLIENT SPEAKS ONLY TO THE TARGET INTERFACE IT ALREADY KNOWS.",
+        "THE ADAPTER IMPLEMENTS THAT INTERFACE AND TRANSLATES EACH CALL.",
+        "THE ADAPTEE, OFTEN A LEGACY OR THIRD-PARTY API, IS LEFT UNTOUCHED."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 25,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "target",
+          "label": "TARGET",
+          "x": 36,
+          "y": 6,
+          "w": 28,
+          "h": 13,
+          "stereotype": "«INTERFACE»",
+          "detail": "REQUEST()"
+        },
+        {
+          "id": "adapter",
+          "label": "ADAPTER",
+          "x": 36,
+          "y": 42,
+          "w": 28,
+          "h": 13,
+          "detail": "REQUEST() → SPECIFIC_REQUEST()"
+        },
+        {
+          "id": "adaptee",
+          "label": "ADAPTEE",
+          "x": 84,
+          "y": 42,
+          "w": 32,
+          "h": 13,
+          "detail": "SPECIFIC_REQUEST()\nLEGACY API"
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "target",
+          "label": "USES"
+        },
+        {
+          "from": "adapter",
+          "to": "target",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "adapter",
+          "to": "adaptee",
+          "label": "WRAPS"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "adapter",
+          "to": "adaptee",
+          "side": "bottom",
+          "offset": 6,
+          "label": "TWO INTERFACES MADE TO FIT"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "target",
+          "n": 1
+        },
+        {
+          "node": "adapter",
+          "n": 2
+        },
+        {
+          "node": "adaptee",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "facade",
+      "title": "FACADE PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-020",
+      "notes": [
+        "THE FACADE OFFERS ONE SIMPLE ENTRY POINT TO A COMPLICATED SUBSYSTEM.",
+        "CLIENTS NEVER TOUCH THE PARTS BEHIND IT, SO THOSE PARTS CAN CHANGE FREELY.",
+        "THE SUBSYSTEM STAYS USABLE DIRECTLY WHEN FINE CONTROL IS NEEDED."
+      ],
+      "nodes": [
+        {
+          "id": "sub",
+          "label": "MEDIA SUBSYSTEM",
+          "x": 78,
+          "y": 1,
+          "w": 40,
+          "h": 62,
+          "shape": "group"
+        },
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "facade",
+          "label": "PLAYER FACADE",
+          "x": 36,
+          "y": 24,
+          "w": 28,
+          "h": 14,
+          "detail": "PLAY(FILE)\nONE SIMPLE CALL"
+        },
+        {
+          "id": "s1",
+          "label": "VIDEO DECODER",
+          "x": 84,
+          "y": 5,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "s2",
+          "label": "AUDIO MIXER",
+          "x": 84,
+          "y": 20,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "s3",
+          "label": "SUBTITLE ENGINE",
+          "x": 84,
+          "y": 35,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "s4",
+          "label": "RENDERER",
+          "x": 84,
+          "y": 50,
+          "w": 30,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "facade",
+          "label": "PLAY()"
+        },
+        {
+          "from": "facade",
+          "to": "s1"
+        },
+        {
+          "from": "facade",
+          "to": "s2"
+        },
+        {
+          "from": "facade",
+          "to": "s3"
+        },
+        {
+          "from": "facade",
+          "to": "s4"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "facade",
+          "n": 1
+        },
+        {
+          "node": "client",
+          "n": 2
+        },
+        {
+          "node": "s3",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "proxy",
+      "title": "PROXY PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-021",
+      "notes": [
+        "THE PROXY IMPLEMENTS THE SAME INTERFACE AS THE REAL SUBJECT.",
+        "IT ADDS CONTROL: ACCESS CHECKS, CACHING, LAZY LOADING, REMOTE CALLS.",
+        "THE CLIENT CANNOT TELL WHICH ONE IT IS TALKING TO."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 25,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "subject",
+          "label": "SUBJECT",
+          "x": 44,
+          "y": 4,
+          "w": 30,
+          "h": 13,
+          "stereotype": "«INTERFACE»",
+          "detail": "REQUEST()"
+        },
+        {
+          "id": "proxy",
+          "label": "PROXY",
+          "x": 22,
+          "y": 42,
+          "w": 28,
+          "h": 14,
+          "detail": "ACCESS CHECK · CACHE\nLAZY LOAD"
+        },
+        {
+          "id": "real",
+          "label": "REAL SUBJECT",
+          "x": 74,
+          "y": 42,
+          "w": 30,
+          "h": 14,
+          "detail": "DOES THE WORK"
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "subject",
+          "label": "USES"
+        },
+        {
+          "from": "proxy",
+          "to": "subject",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "real",
+          "to": "subject",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "proxy",
+          "to": "real",
+          "label": "DELEGATES"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "proxy",
+          "to": "real",
+          "side": "bottom",
+          "offset": 5,
+          "label": "SAME INTERFACE, EXTRA CONTROL"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "proxy",
+          "n": 1
+        },
+        {
+          "node": "real",
+          "n": 2
+        },
+        {
+          "node": "client",
+          "n": 3,
+          "dx": -21,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "command",
+      "title": "COMMAND PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-022",
+      "notes": [
+        "A REQUEST BECOMES AN OBJECT WITH EXECUTE() AND UNDO().",
+        "THE INVOKER TRIGGERS COMMANDS WITHOUT KNOWING WHAT THEY DO.",
+        "EXECUTED COMMANDS GO ON A STACK, WHICH IS WHAT MAKES UNDO POSSIBLE."
+      ],
+      "nodes": [
+        {
+          "id": "invoker",
+          "label": "INVOKER",
+          "x": 4,
+          "y": 6,
+          "w": 24,
+          "h": 13,
+          "detail": "BUTTON · MENU · HOTKEY"
+        },
+        {
+          "id": "command",
+          "label": "COMMAND",
+          "x": 46,
+          "y": 4,
+          "w": 28,
+          "h": 16,
+          "stereotype": "«INTERFACE»",
+          "detail": "EXECUTE()\nUNDO()"
+        },
+        {
+          "id": "concrete",
+          "label": "PASTE COMMAND",
+          "x": 46,
+          "y": 42,
+          "w": 28,
+          "h": 14,
+          "detail": "EXECUTE()\nUNDO()"
+        },
+        {
+          "id": "receiver",
+          "label": "RECEIVER",
+          "x": 92,
+          "y": 42,
+          "w": 24,
+          "h": 14,
+          "detail": "DOCUMENT"
+        },
+        {
+          "id": "history",
+          "label": "UNDO STACK",
+          "x": 4,
+          "y": 44,
+          "w": 24,
+          "h": 10,
+          "shape": "queue"
+        }
+      ],
+      "edges": [
+        {
+          "from": "invoker",
+          "to": "command",
+          "label": "TRIGGERS"
+        },
+        {
+          "from": "concrete",
+          "to": "command",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "concrete",
+          "to": "receiver",
+          "label": "ACTS ON"
+        },
+        {
+          "from": "invoker",
+          "to": "history",
+          "label": "PUSHES"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "invoker",
+          "to": "command",
+          "side": "top",
+          "offset": 2,
+          "label": "A REQUEST AS AN OBJECT"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "command",
+          "n": 1
+        },
+        {
+          "node": "invoker",
+          "n": 2
+        },
+        {
+          "node": "history",
+          "n": 3,
+          "dx": 3,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "mediator",
+      "title": "MEDIATOR PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-023",
+      "notes": [
+        "COLLEAGUES TALK ONLY TO THE MEDIATOR, NEVER TO EACH OTHER.",
+        "THE MEDIATOR HOLDS THE INTERACTION RULES IN ONE PLACE.",
+        "ADDING A COLLEAGUE CHANGES ONE CLASS INSTEAD OF N."
+      ],
+      "nodes": [
+        {
+          "id": "mediator",
+          "label": "CHAT ROOM",
+          "x": 42,
+          "y": 24,
+          "w": 36,
+          "h": 16,
+          "stereotype": "«MEDIATOR»",
+          "detail": "ROUTES EVERY MESSAGE"
+        },
+        {
+          "id": "c1",
+          "label": "USER A",
+          "x": 4,
+          "y": 4,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "c2",
+          "label": "USER B",
+          "x": 94,
+          "y": 4,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "c3",
+          "label": "USER C",
+          "x": 4,
+          "y": 50,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "c4",
+          "label": "USER D",
+          "x": 94,
+          "y": 50,
+          "w": 22,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "c1",
+          "to": "mediator",
+          "head": "both",
+          "label": "SEND / RECEIVE"
+        },
+        {
+          "from": "c2",
+          "to": "mediator",
+          "head": "both"
+        },
+        {
+          "from": "c3",
+          "to": "mediator",
+          "head": "both"
+        },
+        {
+          "from": "c4",
+          "to": "mediator",
+          "head": "both"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "mediator",
+          "n": 1,
+          "dx": -40,
+          "dy": 8
+        },
+        {
+          "node": "c1",
+          "n": 2
+        },
+        {
+          "node": "c4",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "chain",
+      "title": "CHAIN OF RESPONSIBILITY",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-024",
+      "notes": [
+        "EACH HANDLER EITHER DEALS WITH THE REQUEST OR PASSES IT TO THE NEXT.",
+        "THE SENDER KNOWS ONLY THE FIRST LINK; THE CHAIN IS ASSEMBLED AT RUN TIME.",
+        "A HANDLER MAY STOP THE CHAIN, AS RATE LIMITING DOES HERE."
+      ],
+      "nodes": [
+        {
+          "id": "request",
+          "label": "REQUEST",
+          "x": 2,
+          "y": 26,
+          "w": 16,
+          "h": 10
+        },
+        {
+          "id": "h1",
+          "label": "AUTH",
+          "x": 26,
+          "y": 25,
+          "w": 20,
+          "h": 12,
+          "detail": "HANDLER 1"
+        },
+        {
+          "id": "h2",
+          "label": "RATE LIMIT",
+          "x": 54,
+          "y": 25,
+          "w": 20,
+          "h": 12,
+          "detail": "HANDLER 2"
+        },
+        {
+          "id": "h3",
+          "label": "VALIDATE",
+          "x": 82,
+          "y": 25,
+          "w": 20,
+          "h": 12,
+          "detail": "HANDLER 3"
+        },
+        {
+          "id": "app",
+          "label": "APP",
+          "x": 108,
+          "y": 26,
+          "w": 10,
+          "h": 10
+        },
+        {
+          "id": "reject",
+          "label": "REJECTED · 429",
+          "x": 50,
+          "y": 50,
+          "w": 28,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "request",
+          "to": "h1"
+        },
+        {
+          "from": "h1",
+          "to": "h2",
+          "label": "NEXT"
+        },
+        {
+          "from": "h2",
+          "to": "h3",
+          "label": "NEXT"
+        },
+        {
+          "from": "h3",
+          "to": "app"
+        },
+        {
+          "from": "h2",
+          "to": "reject",
+          "style": "dashed",
+          "label": "STOP"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "h1",
+          "to": "h3",
+          "side": "top",
+          "offset": 5,
+          "label": "EACH LINK PASSES ON OR STOPS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "h1",
+          "n": 1
+        },
+        {
+          "node": "request",
+          "n": 2
+        },
+        {
+          "node": "h2",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "builder",
+      "title": "BUILDER PATTERN",
+      "category": "GOF · CREATIONAL PATTERN",
+      "number": "SW-PAT-025",
+      "notes": [
+        "THE BUILDER ASSEMBLES A COMPLEX PRODUCT ONE STEP AT A TIME.",
+        "THE DIRECTOR KNOWS THE ORDER OF STEPS, NOT THE PRODUCT'S PARTS.",
+        "DIFFERENT BUILDERS YIELD DIFFERENT PRODUCTS FROM THE SAME STEPS."
+      ],
+      "nodes": [
+        {
+          "id": "director",
+          "label": "DIRECTOR",
+          "x": 4,
+          "y": 8,
+          "w": 24,
+          "h": 12,
+          "detail": "CONSTRUCT()"
+        },
+        {
+          "id": "builder",
+          "label": "BUILDER",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 18,
+          "stereotype": "«INTERFACE»",
+          "detail": "SET_ENGINE()\nSET_WHEELS()\nBUILD(): PRODUCT"
+        },
+        {
+          "id": "concrete",
+          "label": "SPORTS CAR BUILDER",
+          "x": 44,
+          "y": 42,
+          "w": 32,
+          "h": 14,
+          "detail": "BUILD(): CAR"
+        },
+        {
+          "id": "product",
+          "label": "CAR",
+          "x": 94,
+          "y": 42,
+          "w": 22,
+          "h": 14,
+          "detail": "PRODUCT"
+        }
+      ],
+      "edges": [
+        {
+          "from": "director",
+          "to": "builder",
+          "label": "DIRECTS"
+        },
+        {
+          "from": "concrete",
+          "to": "builder",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "concrete",
+          "to": "product",
+          "label": "ASSEMBLES",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "concrete",
+          "to": "product",
+          "side": "bottom",
+          "offset": 5,
+          "label": "STEP-BY-STEP CONSTRUCTION"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "builder",
+          "n": 1
+        },
+        {
+          "node": "director",
+          "n": 2
+        },
+        {
+          "node": "concrete",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "composite",
+      "title": "COMPOSITE PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-026",
+      "notes": [
+        "LEAVES AND COMPOSITES SHARE ONE INTERFACE, SO CLIENTS TREAT THEM ALIKE.",
+        "A COMPOSITE FORWARDS EACH OPERATION TO ITS CHILDREN.",
+        "THE RESULT IS A TREE THAT CAN BE NESTED TO ANY DEPTH."
+      ],
+      "nodes": [
+        {
+          "id": "component",
+          "label": "COMPONENT",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "RENDER()\nADD(CHILD)"
+        },
+        {
+          "id": "leaf",
+          "label": "LEAF",
+          "x": 10,
+          "y": 40,
+          "w": 26,
+          "h": 13,
+          "detail": "BUTTON · LABEL"
+        },
+        {
+          "id": "composite",
+          "label": "COMPOSITE",
+          "x": 76,
+          "y": 40,
+          "w": 32,
+          "h": 14,
+          "detail": "PANEL\nCHILDREN: COMPONENT[]"
+        }
+      ],
+      "edges": [
+        {
+          "from": "leaf",
+          "to": "component",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "composite",
+          "to": "component",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "composite",
+          "to": "component",
+          "label": "CONTAINS 0..*",
+          "points": [
+            [
+              114,
+              47
+            ],
+            [
+              114,
+              11
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "leaf",
+          "to": "composite",
+          "side": "bottom",
+          "offset": 6,
+          "label": "A TREE OF PARTS TREATED ALIKE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "component",
+          "n": 1
+        },
+        {
+          "node": "composite",
+          "n": 2
+        },
+        {
+          "node": "leaf",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "state",
+      "title": "STATE PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-027",
+      "notes": [
+        "THE CONTEXT DELEGATES EACH REQUEST TO ITS CURRENT STATE OBJECT.",
+        "EACH STATE CLASS HOLDS THE BEHAVIOUR FOR ONE STATE AND PICKS THE NEXT.",
+        "NO SWITCH STATEMENTS: A NEW STATE IS A NEW CLASS."
+      ],
+      "nodes": [
+        {
+          "id": "context",
+          "label": "CONTEXT",
+          "x": 4,
+          "y": 22,
+          "w": 24,
+          "h": 14,
+          "detail": "STATE: STATE\nREQUEST()"
+        },
+        {
+          "id": "state",
+          "label": "STATE",
+          "x": 46,
+          "y": 4,
+          "w": 28,
+          "h": 13,
+          "stereotype": "«INTERFACE»",
+          "detail": "HANDLE(CONTEXT)"
+        },
+        {
+          "id": "s1",
+          "label": "IDLE",
+          "x": 38,
+          "y": 44,
+          "w": 20,
+          "h": 11
+        },
+        {
+          "id": "s2",
+          "label": "RUNNING",
+          "x": 68,
+          "y": 44,
+          "w": 20,
+          "h": 11
+        },
+        {
+          "id": "s3",
+          "label": "DONE",
+          "x": 98,
+          "y": 44,
+          "w": 20,
+          "h": 11
+        }
+      ],
+      "edges": [
+        {
+          "from": "context",
+          "to": "state",
+          "label": "DELEGATES"
+        },
+        {
+          "from": "s1",
+          "to": "state",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "s2",
+          "to": "state",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "s3",
+          "to": "state",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "s1",
+          "to": "s2",
+          "label": "START"
+        },
+        {
+          "from": "s2",
+          "to": "s3",
+          "label": "FINISH"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "s1",
+          "to": "s3",
+          "side": "bottom",
+          "offset": 4,
+          "label": "BEHAVIOUR CHANGES WITH STATE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "context",
+          "n": 1,
+          "dx": -24,
+          "dy": -3
+        },
+        {
+          "node": "s2",
+          "n": 2
+        },
+        {
+          "node": "state",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "template-method",
+      "title": "TEMPLATE METHOD",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-028",
+      "notes": [
+        "THE BASE CLASS FIXES THE SKELETON OF THE ALGORITHM.",
+        "SUBCLASSES OVERRIDE INDIVIDUAL STEPS, NEVER THE SKELETON.",
+        "HOLLYWOOD PRINCIPLE: DON'T CALL US, WE'LL CALL YOU."
+      ],
+      "nodes": [
+        {
+          "id": "base",
+          "label": "DATA EXPORTER",
+          "x": 38,
+          "y": 4,
+          "w": 44,
+          "h": 18,
+          "stereotype": "«ABSTRACT»",
+          "detail": "EXPORT() { OPEN(); WRITE(); CLOSE(); }\nOPEN()   WRITE()   CLOSE()"
+        },
+        {
+          "id": "csv",
+          "label": "CSV EXPORTER",
+          "x": 8,
+          "y": 44,
+          "w": 28,
+          "h": 12,
+          "detail": "WRITE()"
+        },
+        {
+          "id": "json",
+          "label": "JSON EXPORTER",
+          "x": 46,
+          "y": 44,
+          "w": 28,
+          "h": 12,
+          "detail": "WRITE()"
+        },
+        {
+          "id": "xml",
+          "label": "XML EXPORTER",
+          "x": 84,
+          "y": 44,
+          "w": 28,
+          "h": 12,
+          "detail": "WRITE()"
+        }
+      ],
+      "edges": [
+        {
+          "from": "csv",
+          "to": "base",
+          "head": "triangle"
+        },
+        {
+          "from": "json",
+          "to": "base",
+          "head": "triangle"
+        },
+        {
+          "from": "xml",
+          "to": "base",
+          "head": "triangle"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "csv",
+          "to": "xml",
+          "side": "bottom",
+          "offset": 4,
+          "label": "SKELETON FIXED · STEPS OVERRIDDEN"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "base",
+          "n": 1
+        },
+        {
+          "node": "json",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "id": "dependency-injection",
+      "title": "DEPENDENCY INJECTION",
+      "category": "DESIGN PATTERN",
+      "number": "SW-PAT-029",
+      "notes": [
+        "THE COMPOSITION ROOT BUILDS THE OBJECT GRAPH; NOTHING ELSE CALLS NEW ON A DEPENDENCY.",
+        "CLASSES ASK FOR INTERFACES IN THEIR CONSTRUCTORS AND GET IMPLEMENTATIONS HANDED IN.",
+        "TESTS INJECT FAKES THROUGH THE SAME CONSTRUCTORS."
+      ],
+      "nodes": [
+        {
+          "id": "container",
+          "label": "CONTAINER",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 12,
+          "detail": "COMPOSITION ROOT"
+        },
+        {
+          "id": "service",
+          "label": "ORDER SERVICE",
+          "x": 8,
+          "y": 34,
+          "w": 30,
+          "h": 14,
+          "detail": "CTOR(REPO, CLOCK)"
+        },
+        {
+          "id": "repo",
+          "label": "REPOSITORY",
+          "x": 56,
+          "y": 34,
+          "w": 24,
+          "h": 12,
+          "stereotype": "«INTERFACE»"
+        },
+        {
+          "id": "clock",
+          "label": "CLOCK",
+          "x": 88,
+          "y": 34,
+          "w": 26,
+          "h": 12,
+          "stereotype": "«INTERFACE»"
+        },
+        {
+          "id": "impl1",
+          "label": "SQL REPOSITORY",
+          "x": 56,
+          "y": 54,
+          "w": 24,
+          "h": 8
+        },
+        {
+          "id": "impl2",
+          "label": "SYSTEM CLOCK",
+          "x": 88,
+          "y": 54,
+          "w": 26,
+          "h": 8
+        }
+      ],
+      "edges": [
+        {
+          "from": "container",
+          "to": "service",
+          "label": "CREATES"
+        },
+        {
+          "from": "container",
+          "to": "impl1",
+          "label": "BINDS",
+          "style": "dashed",
+          "points": [
+            [
+              82,
+              10
+            ],
+            [
+              82,
+              58
+            ]
+          ]
+        },
+        {
+          "from": "service",
+          "to": "repo",
+          "label": "USES"
+        },
+        {
+          "from": "service",
+          "to": "clock",
+          "label": "USES",
+          "points": [
+            [
+              47,
+              28
+            ],
+            [
+              101,
+              28
+            ]
+          ]
+        },
+        {
+          "from": "impl1",
+          "to": "repo",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "impl2",
+          "to": "clock",
+          "head": "triangle",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "container",
+          "n": 1
+        },
+        {
+          "node": "service",
+          "n": 2
+        },
+        {
+          "node": "impl1",
+          "n": 3,
+          "dx": -27,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "bulkhead",
+      "title": "BULKHEAD",
+      "category": "RESILIENCE PATTERN",
+      "number": "SW-PAT-030",
+      "notes": [
+        "EACH KIND OF WORK GETS ITS OWN POOL OF THREADS OR CONNECTIONS.",
+        "A FLOOD OR STALL IN ONE POOL CANNOT EXHAUST THE OTHER.",
+        "NAMED AFTER THE WATERTIGHT COMPARTMENTS OF A SHIP'S HULL."
+      ],
+      "nodes": [
+        {
+          "id": "poolA",
+          "label": "POOL A · 10 THREADS",
+          "x": 30,
+          "y": 3,
+          "w": 40,
+          "h": 24,
+          "shape": "group"
+        },
+        {
+          "id": "poolB",
+          "label": "POOL B · 4 THREADS",
+          "x": 30,
+          "y": 37,
+          "w": 40,
+          "h": 24,
+          "shape": "group"
+        },
+        {
+          "id": "clients",
+          "label": "CLIENTS",
+          "x": 2,
+          "y": 26,
+          "w": 16,
+          "h": 10
+        },
+        {
+          "id": "a1",
+          "label": "SEARCH",
+          "x": 34,
+          "y": 12,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "a2",
+          "label": "SEARCH",
+          "x": 52,
+          "y": 12,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "b1",
+          "label": "REPORT",
+          "x": 34,
+          "y": 46,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "b2",
+          "label": "REPORT",
+          "x": 52,
+          "y": 46,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "dsA",
+          "label": "SEARCH INDEX",
+          "x": 90,
+          "y": 8,
+          "w": 24,
+          "h": 14,
+          "shape": "cylinder"
+        },
+        {
+          "id": "dsB",
+          "label": "WAREHOUSE",
+          "x": 90,
+          "y": 42,
+          "w": 24,
+          "h": 14,
+          "shape": "cylinder"
+        }
+      ],
+      "edges": [
+        {
+          "from": "clients",
+          "to": "poolA",
+          "label": "FAST CALLS"
+        },
+        {
+          "from": "clients",
+          "to": "poolB",
+          "label": "SLOW CALLS"
+        },
+        {
+          "from": "poolA",
+          "to": "dsA"
+        },
+        {
+          "from": "poolB",
+          "to": "dsB"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "poolA",
+          "to": "dsA",
+          "side": "top",
+          "offset": 2,
+          "label": "A STALL IN B NEVER STARVES A"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "poolA",
+          "n": 1,
+          "dx": -2,
+          "dy": 5
+        },
+        {
+          "node": "poolB",
+          "n": 2,
+          "dx": -2,
+          "dy": 5
+        }
+      ]
+    },
+    {
+      "id": "retry",
+      "title": "RETRY WITH BACKOFF",
+      "category": "RESILIENCE PATTERN",
+      "number": "SW-PAT-031",
+      "notes": [
+        "ONLY TRANSIENT ERRORS ARE RETRIED; A 400 IS NOT GOING TO GET BETTER.",
+        "EACH WAIT DOUBLES, WITH JITTER, SO RETRIES DON'T ARRIVE IN A SYNCHRONISED WAVE.",
+        "AFTER THE LAST ATTEMPT THE CALLER FAILS FAST AND SAYS SO."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 24,
+          "w": 20,
+          "h": 12
+        },
+        {
+          "id": "policy",
+          "label": "RETRY POLICY",
+          "x": 40,
+          "y": 21,
+          "w": 30,
+          "h": 18,
+          "detail": "MAX 5 ATTEMPTS\nWAIT 100 MS × 2ⁿ\n± JITTER"
+        },
+        {
+          "id": "service",
+          "label": "SERVICE",
+          "x": 90,
+          "y": 24,
+          "w": 26,
+          "h": 12
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "policy",
+          "label": "CALL"
+        },
+        {
+          "from": "policy",
+          "to": "service",
+          "label": "ATTEMPT N"
+        },
+        {
+          "from": "service",
+          "to": "policy",
+          "label": "TRANSIENT ERROR",
+          "style": "dashed",
+          "points": [
+            [
+              103,
+              48
+            ],
+            [
+              55,
+              48
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "client",
+          "to": "service",
+          "side": "bottom",
+          "offset": 22,
+          "label": "GIVE UP AFTER THE LAST ATTEMPT · FAIL FAST"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "policy",
+          "n": 1
+        },
+        {
+          "node": "service",
+          "n": 2
+        },
+        {
+          "node": "client",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "outbox",
+      "title": "TRANSACTIONAL OUTBOX",
+      "category": "MESSAGING ARCHITECTURE PATTERN",
+      "number": "SW-ARC-032",
+      "notes": [
+        "THE BUSINESS ROW AND ITS EVENT ARE WRITTEN IN ONE LOCAL TRANSACTION.",
+        "A RELAY READS THE OUTBOX TABLE AND PUBLISHES, THEN MARKS EACH ROW SENT.",
+        "NO DUAL WRITE: EITHER BOTH HAPPEN OR NEITHER DOES."
+      ],
+      "nodes": [
+        {
+          "id": "service",
+          "label": "ORDER SERVICE",
+          "x": 4,
+          "y": 22,
+          "w": 24,
+          "h": 14
+        },
+        {
+          "id": "db",
+          "label": "DATABASE",
+          "x": 40,
+          "y": 5,
+          "w": 28,
+          "h": 18,
+          "shape": "cylinder",
+          "detail": "ORDERS + OUTBOX"
+        },
+        {
+          "id": "relay",
+          "label": "RELAY",
+          "x": 40,
+          "y": 44,
+          "w": 28,
+          "h": 12,
+          "detail": "POLLS THE OUTBOX"
+        },
+        {
+          "id": "broker",
+          "label": "MESSAGE BROKER",
+          "x": 84,
+          "y": 44,
+          "w": 32,
+          "h": 12,
+          "shape": "queue"
+        },
+        {
+          "id": "consumer",
+          "label": "CONSUMERS",
+          "x": 84,
+          "y": 10,
+          "w": 32,
+          "h": 12
+        }
+      ],
+      "edges": [
+        {
+          "from": "service",
+          "to": "db",
+          "label": "ONE TRANSACTION"
+        },
+        {
+          "from": "db",
+          "to": "relay",
+          "label": "READ"
+        },
+        {
+          "from": "relay",
+          "to": "broker",
+          "label": "PUBLISH"
+        },
+        {
+          "from": "broker",
+          "to": "consumer",
+          "label": "DELIVER"
+        },
+        {
+          "from": "relay",
+          "to": "db",
+          "label": "MARK SENT",
+          "style": "dashed",
+          "points": [
+            [
+              74,
+              47
+            ],
+            [
+              74,
+              15
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "db",
+          "to": "consumer",
+          "side": "top",
+          "offset": 3,
+          "label": "AT-LEAST-ONCE · CONSUMERS DEDUPLICATE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "db",
+          "n": 1,
+          "dx": 4,
+          "dy": 8
+        },
+        {
+          "node": "relay",
+          "n": 2
+        },
+        {
+          "node": "service",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "clean-architecture",
+      "title": "CLEAN ARCHITECTURE",
+      "category": "ARCHITECTURAL PATTERN",
+      "number": "SW-ARC-033",
+      "notes": [
+        "SOURCE CODE DEPENDENCIES POINT INWARD ONLY; INNER RINGS KNOW NOTHING OF OUTER ONES.",
+        "ENTITIES HOLD ENTERPRISE RULES; USE CASES HOLD APPLICATION RULES.",
+        "FRAMEWORKS, DATABASES AND THE WEB ARE DETAILS KEPT AT THE EDGE."
+      ],
+      "nodes": [
+        {
+          "id": "r4",
+          "label": "FRAMEWORKS & DRIVERS",
+          "x": 24,
+          "y": 2,
+          "w": 72,
+          "h": 60,
+          "shape": "circle",
+          "labelAt": "top"
+        },
+        {
+          "id": "r3",
+          "label": "INTERFACE ADAPTERS",
+          "x": 33,
+          "y": 9.5,
+          "w": 54,
+          "h": 45,
+          "shape": "circle",
+          "labelAt": "top"
+        },
+        {
+          "id": "r2",
+          "label": "USE CASES",
+          "x": 42,
+          "y": 17,
+          "w": 36,
+          "h": 30,
+          "shape": "circle",
+          "labelAt": "top"
+        },
+        {
+          "id": "r1",
+          "label": "ENTITIES",
+          "x": 51,
+          "y": 24.5,
+          "w": 18,
+          "h": 15,
+          "shape": "circle"
+        },
+        {
+          "id": "web",
+          "label": "WEB",
+          "x": 2,
+          "y": 4,
+          "w": 16,
+          "h": 8
+        },
+        {
+          "id": "db",
+          "label": "DB",
+          "x": 102,
+          "y": 4,
+          "w": 16,
+          "h": 8
+        },
+        {
+          "id": "ui",
+          "label": "UI",
+          "x": 2,
+          "y": 52,
+          "w": 16,
+          "h": 8
+        },
+        {
+          "id": "dev",
+          "label": "DEVICES",
+          "x": 102,
+          "y": 52,
+          "w": 16,
+          "h": 8
+        }
+      ],
+      "edges": [
+        {
+          "from": "web",
+          "to": "r4"
+        },
+        {
+          "from": "db",
+          "to": "r4"
+        },
+        {
+          "from": "ui",
+          "to": "r4"
+        },
+        {
+          "from": "dev",
+          "to": "r4"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "r4",
+          "to": "r4",
+          "side": "left",
+          "offset": 4,
+          "label": "DEPENDENCIES POINT INWARD"
+        }
+      ],
+      "callouts": []
+    },
+    {
+      "id": "microkernel",
+      "title": "MICROKERNEL · PLUG-INS",
+      "category": "ARCHITECTURAL PATTERN",
+      "number": "SW-ARC-034",
+      "notes": [
+        "THE CORE IS SMALL AND STABLE: LIFECYCLE, REGISTRY AND THE PLUG-IN CONTRACT.",
+        "FEATURES ARRIVE AS PLUG-INS THAT ARE DISCOVERED AND LOADED AT START-UP.",
+        "PLUG-INS DEPEND ON THE CORE, NEVER ON EACH OTHER."
+      ],
+      "nodes": [
+        {
+          "id": "core",
+          "label": "CORE SYSTEM",
+          "x": 40,
+          "y": 24,
+          "w": 40,
+          "h": 16,
+          "detail": "MINIMAL · STABLE\nPLUG-IN REGISTRY"
+        },
+        {
+          "id": "p1",
+          "label": "SPELL CHECK",
+          "x": 4,
+          "y": 4,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "p2",
+          "label": "GIT",
+          "x": 92,
+          "y": 4,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "p3",
+          "label": "THEMES",
+          "x": 4,
+          "y": 50,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "p4",
+          "label": "LSP CLIENT",
+          "x": 92,
+          "y": 50,
+          "w": 24,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "p1",
+          "to": "core",
+          "label": "PLUG-IN API"
+        },
+        {
+          "from": "p2",
+          "to": "core"
+        },
+        {
+          "from": "p3",
+          "to": "core"
+        },
+        {
+          "from": "p4",
+          "to": "core"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "p1",
+          "to": "p2",
+          "side": "top",
+          "offset": 2,
+          "label": "FEATURES ARRIVE AS PLUG-INS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "core",
+          "n": 1
+        },
+        {
+          "node": "p1",
+          "n": 2,
+          "dx": -2,
+          "dy": -3
+        },
+        {
+          "node": "p4",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "bff",
+      "title": "BACKEND FOR FRONTEND",
+      "category": "API ARCHITECTURE PATTERN",
+      "number": "SW-ARC-035",
+      "notes": [
+        "EACH FRONTEND GETS A BACKEND SHAPED FOR ITS SCREENS AND BANDWIDTH.",
+        "THE BFF AGGREGATES SEVERAL SERVICES INTO ONE CALL AND TRIMS THE PAYLOAD.",
+        "THE FRONTEND TEAM OWNS ITS BFF, SO IT CHANGES WITHOUT A CROSS-TEAM QUEUE."
+      ],
+      "nodes": [
+        {
+          "id": "mobile",
+          "label": "MOBILE APP",
+          "x": 4,
+          "y": 8,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "web",
+          "label": "WEB APP",
+          "x": 4,
+          "y": 46,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "bffm",
+          "label": "MOBILE BFF",
+          "x": 40,
+          "y": 8,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "bffw",
+          "label": "WEB BFF",
+          "x": 40,
+          "y": 46,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "s1",
+          "label": "CATALOG",
+          "x": 88,
+          "y": 4,
+          "w": 28,
+          "h": 9
+        },
+        {
+          "id": "s2",
+          "label": "ORDERS",
+          "x": 88,
+          "y": 20,
+          "w": 28,
+          "h": 9
+        },
+        {
+          "id": "s3",
+          "label": "USERS",
+          "x": 88,
+          "y": 36,
+          "w": 28,
+          "h": 9
+        },
+        {
+          "id": "s4",
+          "label": "PAYMENTS",
+          "x": 88,
+          "y": 52,
+          "w": 28,
+          "h": 9
+        }
+      ],
+      "edges": [
+        {
+          "from": "mobile",
+          "to": "bffm"
+        },
+        {
+          "from": "web",
+          "to": "bffw"
+        },
+        {
+          "from": "bffm",
+          "to": "s1"
+        },
+        {
+          "from": "bffm",
+          "to": "s2"
+        },
+        {
+          "from": "bffm",
+          "to": "s3"
+        },
+        {
+          "from": "bffw",
+          "to": "s2"
+        },
+        {
+          "from": "bffw",
+          "to": "s3"
+        },
+        {
+          "from": "bffw",
+          "to": "s4"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "mobile",
+          "to": "bffm",
+          "side": "top",
+          "offset": 3,
+          "label": "ONE BACKEND PER FRONTEND"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "bffm",
+          "n": 1
+        },
+        {
+          "node": "bffw",
+          "n": 2
+        },
+        {
+          "node": "s2",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "strangler-fig",
+      "title": "STRANGLER FIG",
+      "category": "MIGRATION ARCHITECTURE PATTERN",
+      "number": "SW-ARC-036",
+      "notes": [
+        "A FACADE IN FRONT OF THE MONOLITH ROUTES EACH REQUEST OLD OR NEW.",
+        "FEATURES MOVE ONE AT A TIME; EACH MOVE IS SMALL AND REVERSIBLE.",
+        "WHEN THE LAST ROUTE HAS MOVED, THE MONOLITH IS SWITCHED OFF."
+      ],
+      "nodes": [
+        {
+          "id": "clients",
+          "label": "CLIENTS",
+          "x": 4,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "facade",
+          "label": "ROUTING FACADE",
+          "x": 34,
+          "y": 25,
+          "w": 26,
+          "h": 12,
+          "detail": "PROXY"
+        },
+        {
+          "id": "legacy",
+          "label": "LEGACY MONOLITH",
+          "x": 80,
+          "y": 6,
+          "w": 34,
+          "h": 14,
+          "detail": "SHRINKING"
+        },
+        {
+          "id": "new",
+          "label": "NEW SERVICES",
+          "x": 80,
+          "y": 44,
+          "w": 34,
+          "h": 14,
+          "detail": "GROWING"
+        }
+      ],
+      "edges": [
+        {
+          "from": "clients",
+          "to": "facade"
+        },
+        {
+          "from": "facade",
+          "to": "legacy",
+          "label": "OLD ROUTES",
+          "style": "dashed"
+        },
+        {
+          "from": "facade",
+          "to": "new",
+          "label": "MIGRATED ROUTES"
+        },
+        {
+          "from": "legacy",
+          "to": "new",
+          "label": "FEATURE BY FEATURE",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "legacy",
+          "to": "new",
+          "side": "right",
+          "offset": 3,
+          "label": "UNTIL THE MONOLITH IS EMPTY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "facade",
+          "n": 1
+        },
+        {
+          "node": "new",
+          "n": 2,
+          "dx": -37,
+          "dy": 17
+        },
+        {
+          "node": "legacy",
+          "n": 3,
+          "dx": -37,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "blue-green",
+      "title": "BLUE-GREEN DEPLOYMENT",
+      "category": "DEPLOYMENT PATTERN",
+      "number": "SW-ARC-037",
+      "notes": [
+        "TWO IDENTICAL ENVIRONMENTS; ONLY ONE TAKES TRAFFIC AT A TIME.",
+        "THE NEW VERSION IS DEPLOYED AND TESTED ON THE IDLE SIDE FIRST.",
+        "THE RELEASE IS A ROUTER FLIP, AND SO IS THE ROLLBACK."
+      ],
+      "nodes": [
+        {
+          "id": "users",
+          "label": "USERS",
+          "x": 4,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "router",
+          "label": "ROUTER",
+          "x": 34,
+          "y": 25,
+          "w": 22,
+          "h": 12,
+          "detail": "LIVE: BLUE"
+        },
+        {
+          "id": "blue",
+          "label": "BLUE · V1.4",
+          "x": 76,
+          "y": 6,
+          "w": 38,
+          "h": 16,
+          "detail": "SERVING TRAFFIC"
+        },
+        {
+          "id": "green",
+          "label": "GREEN · V1.5",
+          "x": 76,
+          "y": 42,
+          "w": 38,
+          "h": 16,
+          "detail": "IDLE · WARMED UP"
+        }
+      ],
+      "edges": [
+        {
+          "from": "users",
+          "to": "router"
+        },
+        {
+          "from": "router",
+          "to": "blue",
+          "label": "100 %"
+        },
+        {
+          "from": "router",
+          "to": "green",
+          "label": "SWITCH",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "blue",
+          "to": "green",
+          "side": "right",
+          "offset": 2,
+          "label": "FLIP TO RELEASE · FLIP BACK TO RECOVER"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "router",
+          "n": 1
+        },
+        {
+          "node": "green",
+          "n": 2,
+          "dx": -41,
+          "dy": -3
+        },
+        {
+          "node": "blue",
+          "n": 3,
+          "dx": -41,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "canary",
+      "title": "CANARY RELEASE",
+      "category": "DEPLOYMENT PATTERN",
+      "number": "SW-ARC-038",
+      "notes": [
+        "A SMALL SLICE OF REAL TRAFFIC HITS THE NEW VERSION FIRST.",
+        "ERRORS AND LATENCY ARE COMPARED AGAINST THE STABLE FLEET.",
+        "THE SLICE GROWS STEP BY STEP, OR THE CANARY IS PULLED."
+      ],
+      "nodes": [
+        {
+          "id": "users",
+          "label": "USERS",
+          "x": 4,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "lb",
+          "label": "LOAD BALANCER",
+          "x": 34,
+          "y": 24,
+          "w": 24,
+          "h": 12,
+          "detail": "WEIGHTED"
+        },
+        {
+          "id": "stable",
+          "label": "STABLE · V2.0",
+          "x": 76,
+          "y": 4,
+          "w": 38,
+          "h": 18,
+          "detail": "95 % OF TRAFFIC\n9 INSTANCES"
+        },
+        {
+          "id": "canary",
+          "label": "CANARY · V2.1",
+          "x": 76,
+          "y": 40,
+          "w": 38,
+          "h": 18,
+          "detail": "5 % OF TRAFFIC\n1 INSTANCE"
+        },
+        {
+          "id": "metrics",
+          "label": "METRICS",
+          "x": 34,
+          "y": 48,
+          "w": 24,
+          "h": 12,
+          "detail": "ERRORS · LATENCY"
+        }
+      ],
+      "edges": [
+        {
+          "from": "users",
+          "to": "lb"
+        },
+        {
+          "from": "lb",
+          "to": "stable",
+          "label": "95 %"
+        },
+        {
+          "from": "lb",
+          "to": "canary",
+          "label": "5 %"
+        },
+        {
+          "from": "canary",
+          "to": "metrics",
+          "label": "COMPARE",
+          "style": "dashed"
+        },
+        {
+          "from": "metrics",
+          "to": "lb",
+          "label": "PROMOTE",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "canary",
+          "n": 1
+        },
+        {
+          "node": "metrics",
+          "n": 2
+        },
+        {
+          "node": "lb",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "service-discovery",
+      "title": "SERVICE DISCOVERY",
+      "category": "DISTRIBUTED SYSTEMS PATTERN",
+      "number": "SW-ARC-039",
+      "notes": [
+        "INSTANCES REGISTER ON START AND HEARTBEAT; SILENCE REMOVES THEM.",
+        "CLIENTS LOOK UP A NAME AND GET THE LIVE ADDRESSES BACK.",
+        "ADDRESSES CHANGE WITH EVERY DEPLOY; NAMES DO NOT."
+      ],
+      "nodes": [
+        {
+          "id": "registry",
+          "label": "SERVICE REGISTRY",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "detail": "NAME → ADDRESSES\nHEALTH"
+        },
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 24,
+          "w": 22,
+          "h": 12
+        },
+        {
+          "id": "i1",
+          "label": "INSTANCE A",
+          "x": 56,
+          "y": 40,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "i2",
+          "label": "INSTANCE B",
+          "x": 78,
+          "y": 40,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "i3",
+          "label": "INSTANCE C",
+          "x": 100,
+          "y": 40,
+          "w": 18,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "i1",
+          "to": "registry",
+          "style": "dashed"
+        },
+        {
+          "from": "i2",
+          "to": "registry",
+          "style": "dashed",
+          "label": "REGISTER · HEARTBEAT"
+        },
+        {
+          "from": "i3",
+          "to": "registry",
+          "style": "dashed"
+        },
+        {
+          "from": "client",
+          "to": "registry",
+          "label": "LOOKUP"
+        },
+        {
+          "from": "client",
+          "to": "i1",
+          "label": "CALL"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "i1",
+          "to": "i3",
+          "side": "bottom",
+          "offset": 7,
+          "label": "ADDRESSES CHANGE · NAMES DON'T"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "registry",
+          "n": 1
+        },
+        {
+          "node": "client",
+          "n": 2
+        },
+        {
+          "node": "i2",
+          "n": 3,
+          "dx": -3,
+          "dy": 13
+        }
+      ]
+    },
+    {
+      "id": "consistent-hashing",
+      "title": "CONSISTENT HASHING",
+      "category": "DISTRIBUTED SYSTEMS PATTERN",
+      "number": "SW-ARC-040",
+      "notes": [
+        "KEYS AND NODES ARE HASHED ONTO THE SAME RING; A KEY BELONGS TO THE NEXT NODE CLOCKWISE.",
+        "ADDING OR REMOVING A NODE MOVES ONLY THE KEYS IN ITS ARC, NOT 1/N OF EVERYTHING.",
+        "VIRTUAL NODES SPREAD EACH SERVER AROUND THE RING TO EVEN OUT THE LOAD."
+      ],
+      "nodes": [
+        {
+          "id": "ring",
+          "label": "HASH RING",
+          "x": 36,
+          "y": 4,
+          "w": 48,
+          "h": 56,
+          "shape": "circle"
+        },
+        {
+          "id": "n1",
+          "label": "N1",
+          "x": 56,
+          "y": 1,
+          "w": 8,
+          "h": 6,
+          "fill": true
+        },
+        {
+          "id": "n2",
+          "label": "N2",
+          "x": 80,
+          "y": 29,
+          "w": 8,
+          "h": 6,
+          "fill": true
+        },
+        {
+          "id": "n3",
+          "label": "N3",
+          "x": 56,
+          "y": 57,
+          "w": 8,
+          "h": 6,
+          "fill": true
+        },
+        {
+          "id": "n4",
+          "label": "N4",
+          "x": 32,
+          "y": 29,
+          "w": 8,
+          "h": 6,
+          "fill": true
+        },
+        {
+          "id": "k1",
+          "label": "KEY 'USER:42'",
+          "x": 4,
+          "y": 10,
+          "w": 22,
+          "h": 8
+        },
+        {
+          "id": "k2",
+          "label": "KEY 'CART:7'",
+          "x": 4,
+          "y": 46,
+          "w": 22,
+          "h": 8
+        }
+      ],
+      "edges": [
+        {
+          "from": "k1",
+          "to": "n4",
+          "label": "HASH → N4"
+        },
+        {
+          "from": "k2",
+          "to": "n3",
+          "label": "HASH → N3"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "n2",
+          "n": 1,
+          "dx": 3,
+          "dy": 3
+        },
+        {
+          "node": "k1",
+          "n": 2
+        },
+        {
+          "node": "n1",
+          "n": 3,
+          "dx": 4,
+          "dy": 3
+        }
+      ]
+    },
+    {
+      "id": "leader-election",
+      "title": "LEADER ELECTION",
+      "category": "CONSENSUS · RAFT",
+      "number": "SW-ARC-041",
+      "notes": [
+        "ONE LEADER PER TERM ACCEPTS WRITES AND REPLICATES THEM TO FOLLOWERS.",
+        "A FOLLOWER THAT HEARS NO HEARTBEAT STARTS AN ELECTION FOR THE NEXT TERM.",
+        "A WRITE IS COMMITTED ONCE A MAJORITY HAS IT, SO TWO LEADERS CAN NEVER BOTH WIN."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 4,
+          "y": 8,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "leader",
+          "label": "LEADER",
+          "x": 46,
+          "y": 6,
+          "w": 28,
+          "h": 14,
+          "detail": "TERM 7\nAPPENDS THE LOG"
+        },
+        {
+          "id": "f1",
+          "label": "FOLLOWER",
+          "x": 6,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "TERM 7"
+        },
+        {
+          "id": "f2",
+          "label": "FOLLOWER",
+          "x": 48,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "TERM 7"
+        },
+        {
+          "id": "f3",
+          "label": "FOLLOWER",
+          "x": 90,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "TERM 7"
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "leader",
+          "label": "WRITE"
+        },
+        {
+          "from": "leader",
+          "to": "f1",
+          "label": "APPEND ENTRIES"
+        },
+        {
+          "from": "leader",
+          "to": "f2"
+        },
+        {
+          "from": "leader",
+          "to": "f3",
+          "label": "HEARTBEAT"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "f1",
+          "to": "f3",
+          "side": "bottom",
+          "offset": 4,
+          "label": "A MAJORITY (2 OF 3) MUST ACKNOWLEDGE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "leader",
+          "n": 1
+        },
+        {
+          "node": "f3",
+          "n": 2
+        },
+        {
+          "node": "f1",
+          "n": 3,
+          "dx": -4,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "mapreduce",
+      "title": "MAPREDUCE",
+      "category": "DATA PROCESSING ARCHITECTURE",
+      "number": "SW-ARC-042",
+      "notes": [
+        "MAPPERS TURN EACH INPUT SPLIT INTO KEY-VALUE PAIRS, INDEPENDENTLY AND IN PARALLEL.",
+        "THE SHUFFLE GROUPS EVERY VALUE FOR A KEY ONTO ONE REDUCER.",
+        "REDUCERS FOLD EACH GROUP INTO A RESULT; FAILED TASKS ARE SIMPLY RERUN."
+      ],
+      "nodes": [
+        {
+          "id": "input",
+          "label": "INPUT",
+          "x": 2,
+          "y": 24,
+          "w": 16,
+          "h": 16,
+          "shape": "cylinder"
+        },
+        {
+          "id": "m1",
+          "label": "MAP",
+          "x": 28,
+          "y": 4,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "m2",
+          "label": "MAP",
+          "x": 28,
+          "y": 27,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "m3",
+          "label": "MAP",
+          "x": 28,
+          "y": 50,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "shuffle",
+          "label": "SHUFFLE",
+          "x": 56,
+          "y": 21,
+          "w": 14,
+          "h": 22,
+          "detail": "GROUP\nBY KEY"
+        },
+        {
+          "id": "r1",
+          "label": "REDUCE",
+          "x": 80,
+          "y": 12,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "r2",
+          "label": "REDUCE",
+          "x": 80,
+          "y": 42,
+          "w": 18,
+          "h": 9
+        },
+        {
+          "id": "output",
+          "label": "OUTPUT",
+          "x": 104,
+          "y": 24,
+          "w": 14,
+          "h": 16,
+          "shape": "cylinder"
+        }
+      ],
+      "edges": [
+        {
+          "from": "input",
+          "to": "m1",
+          "label": "SPLIT"
+        },
+        {
+          "from": "input",
+          "to": "m2"
+        },
+        {
+          "from": "input",
+          "to": "m3"
+        },
+        {
+          "from": "m1",
+          "to": "shuffle"
+        },
+        {
+          "from": "m2",
+          "to": "shuffle"
+        },
+        {
+          "from": "m3",
+          "to": "shuffle"
+        },
+        {
+          "from": "shuffle",
+          "to": "r1",
+          "label": "PARTITION"
+        },
+        {
+          "from": "shuffle",
+          "to": "r2"
+        },
+        {
+          "from": "r1",
+          "to": "output"
+        },
+        {
+          "from": "r2",
+          "to": "output"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "m1",
+          "to": "r1",
+          "side": "top",
+          "offset": 2,
+          "label": "EMBARRASSINGLY PARALLEL"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "m2",
+          "n": 1,
+          "dx": -21,
+          "dy": -3
+        },
+        {
+          "node": "shuffle",
+          "n": 2,
+          "dx": 3,
+          "dy": 25
+        },
+        {
+          "node": "r2",
+          "n": 3,
+          "dx": -3,
+          "dy": 14
+        }
+      ]
+    },
+    {
+      "id": "compiler",
+      "title": "COMPILER PIPELINE",
+      "category": "SYSTEMS ARCHITECTURE",
+      "number": "SW-ARC-043",
+      "notes": [
+        "THE FRONT END UNDERSTANDS THE LANGUAGE: CHARACTERS TO TOKENS TO A TYPED TREE.",
+        "THE INTERMEDIATE REPRESENTATION LETS ONE BACK END SERVE MANY LANGUAGES.",
+        "EACH STAGE HAS ONE INPUT AND ONE OUTPUT, SO EACH CAN BE TESTED ALONE."
+      ],
+      "nodes": [
+        {
+          "id": "source",
+          "label": "SOURCE",
+          "x": 2,
+          "y": 8,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "lexer",
+          "label": "LEXER",
+          "x": 30,
+          "y": 8,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "parser",
+          "label": "PARSER",
+          "x": 60,
+          "y": 8,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "sema",
+          "label": "SEMANTIC ANALYSIS",
+          "x": 90,
+          "y": 8,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "opt",
+          "label": "OPTIMIZER",
+          "x": 90,
+          "y": 44,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "codegen",
+          "label": "CODEGEN",
+          "x": 60,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "linker",
+          "label": "LINKER",
+          "x": 30,
+          "y": 44,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "binary",
+          "label": "BINARY",
+          "x": 2,
+          "y": 44,
+          "w": 18,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "lexer",
+          "label": "CHARS"
+        },
+        {
+          "from": "lexer",
+          "to": "parser",
+          "label": "TOKENS"
+        },
+        {
+          "from": "parser",
+          "to": "sema",
+          "label": "AST"
+        },
+        {
+          "from": "sema",
+          "to": "opt",
+          "label": "IR"
+        },
+        {
+          "from": "opt",
+          "to": "codegen",
+          "label": "IR"
+        },
+        {
+          "from": "codegen",
+          "to": "linker",
+          "label": "OBJECT"
+        },
+        {
+          "from": "linker",
+          "to": "binary",
+          "label": "ELF"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "source",
+          "to": "sema",
+          "side": "top",
+          "offset": 3,
+          "label": "FRONT END"
+        },
+        {
+          "from": "binary",
+          "to": "opt",
+          "side": "bottom",
+          "offset": 3,
+          "label": "BACK END"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "lexer",
+          "n": 1,
+          "dx": -3,
+          "dy": 14
+        },
+        {
+          "node": "sema",
+          "n": 2,
+          "dx": -3,
+          "dy": 14
+        },
+        {
+          "node": "opt",
+          "n": 3,
+          "dx": -3,
+          "dy": -4
+        }
+      ]
+    },
+    {
+      "id": "network-stack",
+      "title": "NETWORK STACK",
+      "category": "LAYERED PROTOCOL ARCHITECTURE",
+      "number": "SW-ARC-044",
+      "notes": [
+        "EACH LAYER TALKS LOGICALLY TO ITS PEER AND PHYSICALLY ONLY TO ITS NEIGHBOURS.",
+        "GOING DOWN, EVERY LAYER WRAPS THE DATA IN ITS OWN HEADER; GOING UP, IT UNWRAPS.",
+        "ONLY THE LINK LAYER CARRIES REAL BITS BETWEEN THE HOSTS."
+      ],
+      "nodes": [
+        {
+          "id": "a1",
+          "label": "APPLICATION",
+          "x": 8,
+          "y": 3,
+          "w": 34,
+          "h": 10,
+          "detail": "HTTP · DNS"
+        },
+        {
+          "id": "a2",
+          "label": "TRANSPORT",
+          "x": 8,
+          "y": 18,
+          "w": 34,
+          "h": 10,
+          "detail": "TCP · UDP"
+        },
+        {
+          "id": "a3",
+          "label": "INTERNET",
+          "x": 8,
+          "y": 33,
+          "w": 34,
+          "h": 10,
+          "detail": "IP · ICMP"
+        },
+        {
+          "id": "a4",
+          "label": "LINK",
+          "x": 8,
+          "y": 48,
+          "w": 34,
+          "h": 10,
+          "detail": "ETHERNET · WI-FI"
+        },
+        {
+          "id": "b1",
+          "label": "APPLICATION",
+          "x": 78,
+          "y": 3,
+          "w": 34,
+          "h": 10,
+          "detail": "HTTP · DNS"
+        },
+        {
+          "id": "b2",
+          "label": "TRANSPORT",
+          "x": 78,
+          "y": 18,
+          "w": 34,
+          "h": 10,
+          "detail": "TCP · UDP"
+        },
+        {
+          "id": "b3",
+          "label": "INTERNET",
+          "x": 78,
+          "y": 33,
+          "w": 34,
+          "h": 10,
+          "detail": "IP · ICMP"
+        },
+        {
+          "id": "b4",
+          "label": "LINK",
+          "x": 78,
+          "y": 48,
+          "w": 34,
+          "h": 10,
+          "detail": "ETHERNET · WI-FI"
+        }
+      ],
+      "edges": [
+        {
+          "from": "a1",
+          "to": "a2"
+        },
+        {
+          "from": "a2",
+          "to": "a3"
+        },
+        {
+          "from": "a3",
+          "to": "a4"
+        },
+        {
+          "from": "b4",
+          "to": "b3"
+        },
+        {
+          "from": "b3",
+          "to": "b2"
+        },
+        {
+          "from": "b2",
+          "to": "b1"
+        },
+        {
+          "from": "a1",
+          "to": "b1",
+          "label": "MESSAGES",
+          "style": "dashed"
+        },
+        {
+          "from": "a2",
+          "to": "b2",
+          "label": "SEGMENTS",
+          "style": "dashed"
+        },
+        {
+          "from": "a3",
+          "to": "b3",
+          "label": "PACKETS",
+          "style": "dashed"
+        },
+        {
+          "from": "a4",
+          "to": "b4",
+          "label": "FRAMES"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "a1",
+          "to": "a4",
+          "side": "left",
+          "offset": 4,
+          "label": "HOST A · ENCAPSULATE"
+        },
+        {
+          "from": "b1",
+          "to": "b4",
+          "side": "right",
+          "offset": 4,
+          "label": "HOST B · DECAPSULATE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "a4",
+          "n": 3,
+          "dx": 3,
+          "dy": -3
+        },
+        {
+          "node": "a1",
+          "n": 2
+        }
+      ]
+    },
+    {
+      "id": "sharding",
+      "title": "SHARDING",
+      "category": "DATA ARCHITECTURE PATTERN",
+      "number": "SW-ARC-045",
+      "notes": [
+        "THE ROUTER MAPS EACH KEY TO ONE SHARD, SO EVERY SHARD HOLDS A SLICE OF THE DATA.",
+        "SHARDS SCALE WRITES AND STORAGE; CROSS-SHARD QUERIES BECOME THE HARD PART.",
+        "PICK THE SHARD KEY FOR EVEN LOAD, NOT FOR ALPHABETICAL NEATNESS."
+      ],
+      "nodes": [
+        {
+          "id": "clients",
+          "label": "CLIENTS",
+          "x": 4,
+          "y": 26,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "router",
+          "label": "SHARD ROUTER",
+          "x": 34,
+          "y": 25,
+          "w": 24,
+          "h": 12,
+          "detail": "KEY → SHARD"
+        },
+        {
+          "id": "s0",
+          "label": "SHARD 0",
+          "x": 72,
+          "y": 1,
+          "w": 18,
+          "h": 14,
+          "shape": "cylinder",
+          "detail": "A – H"
+        },
+        {
+          "id": "s1",
+          "label": "SHARD 1",
+          "x": 72,
+          "y": 17,
+          "w": 18,
+          "h": 14,
+          "shape": "cylinder",
+          "detail": "I – P"
+        },
+        {
+          "id": "s2",
+          "label": "SHARD 2",
+          "x": 72,
+          "y": 33,
+          "w": 18,
+          "h": 14,
+          "shape": "cylinder",
+          "detail": "Q – Z"
+        },
+        {
+          "id": "s3",
+          "label": "SHARD 3",
+          "x": 72,
+          "y": 49,
+          "w": 18,
+          "h": 14,
+          "shape": "cylinder",
+          "detail": "0 – 9"
+        }
+      ],
+      "edges": [
+        {
+          "from": "clients",
+          "to": "router"
+        },
+        {
+          "from": "router",
+          "to": "s0",
+          "label": "HASH(KEY) MOD 4"
+        },
+        {
+          "from": "router",
+          "to": "s1"
+        },
+        {
+          "from": "router",
+          "to": "s2"
+        },
+        {
+          "from": "router",
+          "to": "s3"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "s0",
+          "to": "s3",
+          "side": "right",
+          "offset": 6,
+          "label": "EACH SHARD HOLDS A SLICE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "router",
+          "n": 1,
+          "dx": -27,
+          "dy": 14
+        },
+        {
+          "node": "s2",
+          "n": 2
+        },
+        {
+          "node": "s0",
+          "n": 3,
+          "dx": 3,
+          "dy": 4
+        }
+      ]
+    },
+    {
+      "id": "abstract-factory",
+      "title": "ABSTRACT FACTORY",
+      "category": "GOF · CREATIONAL PATTERN",
+      "number": "SW-PAT-046",
+      "notes": [
+        "ONE FACTORY INTERFACE CREATES A WHOLE FAMILY OF RELATED PRODUCTS.",
+        "EACH CONCRETE FACTORY YIELDS PRODUCTS THAT ARE GUARANTEED TO MATCH.",
+        "THE CLIENT PICKS A FACTORY ONCE AND NEVER NAMES A CONCRETE PRODUCT."
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 2,
+          "y": 26,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "factory",
+          "label": "GUI FACTORY",
+          "x": 24,
+          "y": 4,
+          "w": 30,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "CREATE_BUTTON()\nCREATE_CHECKBOX()"
+        },
+        {
+          "id": "macF",
+          "label": "MAC FACTORY",
+          "x": 24,
+          "y": 28,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "winF",
+          "label": "WIN FACTORY",
+          "x": 24,
+          "y": 48,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "button",
+          "label": "BUTTON",
+          "x": 80,
+          "y": 4,
+          "w": 26,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "PAINT()"
+        },
+        {
+          "id": "macB",
+          "label": "MAC BUTTON",
+          "x": 84,
+          "y": 28,
+          "w": 18,
+          "h": 10
+        },
+        {
+          "id": "winB",
+          "label": "WIN BUTTON",
+          "x": 84,
+          "y": 48,
+          "w": 18,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "factory",
+          "label": "USES"
+        },
+        {
+          "from": "macF",
+          "to": "factory",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "winF",
+          "to": "factory",
+          "points": [
+            [
+              21,
+              53
+            ],
+            [
+              21,
+              11
+            ]
+          ],
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "macB",
+          "to": "button",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "winB",
+          "to": "button",
+          "points": [
+            [
+              108,
+              53
+            ],
+            [
+              108,
+              11
+            ]
+          ],
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "macF",
+          "to": "macB",
+          "label": "CREATES",
+          "style": "dashed"
+        },
+        {
+          "from": "winF",
+          "to": "winB",
+          "label": "CREATES",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "winF",
+          "to": "winB",
+          "side": "bottom",
+          "offset": 3,
+          "label": "ONE FAMILY PER FACTORY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "factory",
+          "n": 1
+        },
+        {
+          "node": "client",
+          "n": 2,
+          "dx": -3,
+          "dy": 13
+        },
+        {
+          "node": "macB",
+          "n": 3,
+          "dx": -3,
+          "dy": -3
+        }
+      ]
+    },
+    {
+      "id": "prototype",
+      "title": "PROTOTYPE PATTERN",
+      "category": "GOF · CREATIONAL PATTERN",
+      "number": "SW-PAT-047",
+      "notes": [
+        "NEW OBJECTS ARE MADE BY COPYING A CONFIGURED EXAMPLE, NOT BY CALLING A CONSTRUCTOR.",
+        "EACH CLASS KNOWS HOW TO CLONE ITSELF, DEEP OR SHALLOW AS IT SEES FIT.",
+        "A REGISTRY OF NAMED PROTOTYPES REPLACES A GROWING FAMILY OF FACTORIES."
+      ],
+      "nodes": [
+        {
+          "id": "registry",
+          "label": "PROTOTYPE REGISTRY",
+          "x": 2,
+          "y": 6,
+          "w": 26,
+          "h": 14,
+          "detail": "NAME → PROTOTYPE"
+        },
+        {
+          "id": "prototype",
+          "label": "PROTOTYPE",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "CLONE(): PROTOTYPE"
+        },
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 92,
+          "y": 8,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "circle",
+          "label": "CIRCLE",
+          "x": 12,
+          "y": 42,
+          "w": 28,
+          "h": 12,
+          "detail": "CLONE() → COPY OF SELF"
+        },
+        {
+          "id": "rect",
+          "label": "RECTANGLE",
+          "x": 80,
+          "y": 42,
+          "w": 28,
+          "h": 12,
+          "detail": "CLONE() → COPY OF SELF"
+        }
+      ],
+      "edges": [
+        {
+          "from": "circle",
+          "to": "prototype",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "rect",
+          "to": "prototype",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "registry",
+          "to": "prototype",
+          "label": "HOLDS"
+        },
+        {
+          "from": "client",
+          "to": "prototype",
+          "label": "CLONE()"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "circle",
+          "to": "rect",
+          "side": "bottom",
+          "offset": 4,
+          "label": "COPY, DON'T CONSTRUCT"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "prototype",
+          "n": 1
+        },
+        {
+          "node": "circle",
+          "n": 2
+        },
+        {
+          "node": "registry",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "singleton",
+      "title": "SINGLETON PATTERN",
+      "category": "GOF · CREATIONAL PATTERN",
+      "number": "SW-PAT-048",
+      "notes": [
+        "THE CONSTRUCTOR IS PRIVATE; GET_INSTANCE() CREATES THE ONE OBJECT ON FIRST USE.",
+        "EVERY CALLER SHARES THE SAME INSTANCE AND ITS STATE.",
+        "USE SPARINGLY: IT IS GLOBAL STATE, AND TESTS FIND IT HARD TO REPLACE."
+      ],
+      "nodes": [
+        {
+          "id": "singleton",
+          "label": "CONFIG",
+          "x": 38,
+          "y": 8,
+          "w": 44,
+          "h": 22,
+          "stereotype": "«SINGLETON»",
+          "detail": "− INSTANCE: CONFIG\n− CONFIG()\n+ GET_INSTANCE(): CONFIG"
+        },
+        {
+          "id": "c1",
+          "label": "CLIENT A",
+          "x": 4,
+          "y": 8,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "c2",
+          "label": "CLIENT B",
+          "x": 4,
+          "y": 40,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "c3",
+          "label": "CLIENT C",
+          "x": 96,
+          "y": 24,
+          "w": 20,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "c1",
+          "to": "singleton",
+          "label": "GET_INSTANCE()"
+        },
+        {
+          "from": "c2",
+          "to": "singleton"
+        },
+        {
+          "from": "c3",
+          "to": "singleton"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "singleton",
+          "to": "singleton",
+          "side": "bottom",
+          "offset": 10,
+          "label": "EXACTLY ONE INSTANCE · GLOBAL ACCESS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "singleton",
+          "n": 1
+        },
+        {
+          "node": "c3",
+          "n": 2
+        },
+        {
+          "node": "c2",
+          "n": 3,
+          "dx": -3,
+          "dy": 13
+        }
+      ]
+    },
+    {
+      "id": "bridge",
+      "title": "BRIDGE PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-049",
+      "notes": [
+        "THE ABSTRACTION HOLDS A REFERENCE TO AN IMPLEMENTOR INSTEAD OF INHERITING FROM IT.",
+        "BOTH SIDES GROW ON THEIR OWN: NEW REMOTES, NEW DEVICES, NO M × N SUBCLASSES.",
+        "THE BRIDGE IS THE COMPOSITION ARROW IN THE MIDDLE."
+      ],
+      "nodes": [
+        {
+          "id": "abstraction",
+          "label": "REMOTE",
+          "x": 6,
+          "y": 6,
+          "w": 30,
+          "h": 16,
+          "stereotype": "«ABSTRACTION»",
+          "detail": "DEVICE: DEVICE\nTOGGLE_POWER()"
+        },
+        {
+          "id": "refined",
+          "label": "ADVANCED REMOTE",
+          "x": 6,
+          "y": 42,
+          "w": 30,
+          "h": 12,
+          "detail": "MUTE()"
+        },
+        {
+          "id": "impl",
+          "label": "DEVICE",
+          "x": 76,
+          "y": 6,
+          "w": 34,
+          "h": 16,
+          "stereotype": "«IMPLEMENTOR»",
+          "detail": "ENABLE()\nDISABLE()"
+        },
+        {
+          "id": "tv",
+          "label": "TV",
+          "x": 68,
+          "y": 42,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "radio",
+          "label": "RADIO",
+          "x": 96,
+          "y": 42,
+          "w": 22,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "refined",
+          "to": "abstraction",
+          "head": "triangle"
+        },
+        {
+          "from": "tv",
+          "to": "impl",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "radio",
+          "to": "impl",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "abstraction",
+          "to": "impl",
+          "label": "BRIDGE · HAS A"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "abstraction",
+          "to": "impl",
+          "side": "top",
+          "offset": 4,
+          "label": "TWO HIERARCHIES VARY INDEPENDENTLY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "abstraction",
+          "n": 1,
+          "dx": 3,
+          "dy": 19
+        },
+        {
+          "node": "impl",
+          "n": 2,
+          "dx": 3,
+          "dy": 19
+        },
+        {
+          "node": "radio",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "flyweight",
+      "title": "FLYWEIGHT PATTERN",
+      "category": "GOF · STRUCTURAL PATTERN",
+      "number": "SW-PAT-050",
+      "notes": [
+        "INTRINSIC STATE (THE GLYPH'S SHAPE) IS SHARED; EXTRINSIC STATE (POSITION, COLOUR) IS PASSED IN.",
+        "THE FACTORY HANDS OUT ONE SHARED OBJECT PER DISTINCT INTRINSIC STATE.",
+        "A MILLION CHARACTERS NEED ONLY A FEW DOZEN GLYPH OBJECTS."
+      ],
+      "nodes": [
+        {
+          "id": "factory",
+          "label": "FLYWEIGHT FACTORY",
+          "x": 4,
+          "y": 8,
+          "w": 28,
+          "h": 14,
+          "detail": "CACHE: CHAR → GLYPH"
+        },
+        {
+          "id": "glyph",
+          "label": "GLYPH",
+          "x": 46,
+          "y": 6,
+          "w": 30,
+          "h": 16,
+          "stereotype": "«FLYWEIGHT»",
+          "detail": "INTRINSIC: SHAPE, FONT\nDRAW(X, Y, COLOUR)"
+        },
+        {
+          "id": "c1",
+          "label": "CHAR @ (X, Y)",
+          "x": 90,
+          "y": 4,
+          "w": 26,
+          "h": 9
+        },
+        {
+          "id": "c2",
+          "label": "CHAR @ (X, Y)",
+          "x": 90,
+          "y": 18,
+          "w": 26,
+          "h": 9
+        },
+        {
+          "id": "c3",
+          "label": "CHAR @ (X, Y)",
+          "x": 90,
+          "y": 32,
+          "w": 26,
+          "h": 9
+        },
+        {
+          "id": "document",
+          "label": "DOCUMENT",
+          "x": 46,
+          "y": 44,
+          "w": 30,
+          "h": 12,
+          "detail": "1 000 000 CHARACTERS"
+        }
+      ],
+      "edges": [
+        {
+          "from": "factory",
+          "to": "glyph",
+          "label": "RETURNS SHARED"
+        },
+        {
+          "from": "c1",
+          "to": "glyph",
+          "label": "REFERS TO"
+        },
+        {
+          "from": "c2",
+          "to": "glyph"
+        },
+        {
+          "from": "c3",
+          "to": "glyph"
+        },
+        {
+          "from": "document",
+          "to": "factory",
+          "label": "GET_GLYPH(C)"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "document",
+          "to": "document",
+          "side": "bottom",
+          "offset": 3,
+          "label": "52 GLYPHS SERVE A MILLION CHARACTERS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "glyph",
+          "n": 1
+        },
+        {
+          "node": "factory",
+          "n": 2
+        },
+        {
+          "node": "c1",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "interpreter",
+      "title": "INTERPRETER PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-051",
+      "notes": [
+        "EACH GRAMMAR RULE BECOMES A CLASS; A SENTENCE BECOMES A TREE OF THEM.",
+        "TERMINALS EVALUATE THEMSELVES; NON-TERMINALS EVALUATE THEIR CHILDREN AND COMBINE.",
+        "GOOD FOR SMALL LANGUAGES: FILTERS, FORMULAS, RULES."
+      ],
+      "nodes": [
+        {
+          "id": "expr",
+          "label": "EXPRESSION",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "INTERPRET(CONTEXT)"
+        },
+        {
+          "id": "number",
+          "label": "NUMBER",
+          "x": 6,
+          "y": 40,
+          "w": 22,
+          "h": 12,
+          "detail": "TERMINAL"
+        },
+        {
+          "id": "variable",
+          "label": "VARIABLE",
+          "x": 32,
+          "y": 40,
+          "w": 22,
+          "h": 12,
+          "detail": "TERMINAL"
+        },
+        {
+          "id": "add",
+          "label": "ADD",
+          "x": 62,
+          "y": 40,
+          "w": 24,
+          "h": 12,
+          "detail": "LEFT + RIGHT"
+        },
+        {
+          "id": "mul",
+          "label": "MULTIPLY",
+          "x": 92,
+          "y": 40,
+          "w": 24,
+          "h": 12,
+          "detail": "LEFT × RIGHT"
+        }
+      ],
+      "edges": [
+        {
+          "from": "number",
+          "to": "expr",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "variable",
+          "to": "expr",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "add",
+          "to": "expr",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "mul",
+          "to": "expr",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "mul",
+          "to": "expr",
+          "label": "LEFT, RIGHT",
+          "points": [
+            [
+              118,
+              46
+            ],
+            [
+              118,
+              11
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "number",
+          "to": "mul",
+          "side": "bottom",
+          "offset": 4,
+          "label": "GRAMMAR AS A CLASS HIERARCHY"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "expr",
+          "n": 1
+        },
+        {
+          "node": "number",
+          "n": 2
+        },
+        {
+          "node": "add",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "iterator",
+      "title": "ITERATOR PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-052",
+      "notes": [
+        "THE COLLECTION HANDS OUT AN ITERATOR INSTEAD OF EXPOSING ITS NODES OR ARRAY.",
+        "HAS_NEXT() AND NEXT() ARE ALL A CLIENT NEEDS, FOR ANY COLLECTION.",
+        "SEVERAL ITERATORS MAY WALK THE SAME COLLECTION AT ONCE."
+      ],
+      "nodes": [
+        {
+          "id": "iterable",
+          "label": "COLLECTION",
+          "x": 8,
+          "y": 6,
+          "w": 30,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "ITERATOR(): ITERATOR"
+        },
+        {
+          "id": "iterator",
+          "label": "ITERATOR",
+          "x": 78,
+          "y": 6,
+          "w": 34,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "HAS_NEXT()\nNEXT()"
+        },
+        {
+          "id": "list",
+          "label": "LINKED LIST",
+          "x": 8,
+          "y": 42,
+          "w": 30,
+          "h": 12
+        },
+        {
+          "id": "listIt",
+          "label": "LIST ITERATOR",
+          "x": 78,
+          "y": 42,
+          "w": 34,
+          "h": 12,
+          "detail": "CURRENT NODE"
+        },
+        {
+          "id": "client",
+          "label": "CLIENT",
+          "x": 48,
+          "y": 26,
+          "w": 22,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "list",
+          "to": "iterable",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "listIt",
+          "to": "iterator",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "iterable",
+          "to": "iterator",
+          "label": "CREATES",
+          "style": "dashed"
+        },
+        {
+          "from": "list",
+          "to": "listIt",
+          "label": "CREATES",
+          "style": "dashed"
+        },
+        {
+          "from": "client",
+          "to": "iterator",
+          "label": "NEXT()"
+        },
+        {
+          "from": "client",
+          "to": "iterable",
+          "label": "ITERATOR()"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "list",
+          "to": "listIt",
+          "side": "bottom",
+          "offset": 4,
+          "label": "TRAVERSAL WITHOUT EXPOSING STRUCTURE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "iterator",
+          "n": 1
+        },
+        {
+          "node": "client",
+          "n": 2
+        },
+        {
+          "node": "listIt",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "memento",
+      "title": "MEMENTO PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-053",
+      "notes": [
+        "THE ORIGINATOR PACKS ITS STATE INTO A MEMENTO ONLY IT CAN READ.",
+        "THE CARETAKER KEEPS MEMENTOS WITHOUT LOOKING INSIDE THEM.",
+        "RESTORE HANDS ONE BACK, AND THE ORIGINATOR REWINDS ITSELF."
+      ],
+      "nodes": [
+        {
+          "id": "originator",
+          "label": "EDITOR",
+          "x": 4,
+          "y": 20,
+          "w": 28,
+          "h": 18,
+          "stereotype": "«ORIGINATOR»",
+          "detail": "STATE\nSAVE(): MEMENTO\nRESTORE(M)"
+        },
+        {
+          "id": "memento",
+          "label": "SNAPSHOT",
+          "x": 48,
+          "y": 22,
+          "w": 26,
+          "h": 14,
+          "stereotype": "«MEMENTO»",
+          "detail": "STATE (OPAQUE)"
+        },
+        {
+          "id": "caretaker",
+          "label": "HISTORY",
+          "x": 90,
+          "y": 20,
+          "w": 26,
+          "h": 18,
+          "stereotype": "«CARETAKER»",
+          "detail": "STACK OF MEMENTOS\nUNDO()"
+        }
+      ],
+      "edges": [
+        {
+          "from": "originator",
+          "to": "memento",
+          "label": "CREATES"
+        },
+        {
+          "from": "caretaker",
+          "to": "memento",
+          "label": "KEEPS"
+        },
+        {
+          "from": "caretaker",
+          "to": "originator",
+          "label": "RESTORE(M)",
+          "style": "dashed",
+          "points": [
+            [
+              103,
+              50
+            ],
+            [
+              18,
+              50
+            ]
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "originator",
+          "to": "caretaker",
+          "side": "bottom",
+          "offset": 18,
+          "label": "STATE SAVED WITHOUT BREAKING ENCAPSULATION"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "memento",
+          "n": 1
+        },
+        {
+          "node": "caretaker",
+          "n": 2
+        },
+        {
+          "node": "originator",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "visitor",
+      "title": "VISITOR PATTERN",
+      "category": "GOF · BEHAVIORAL PATTERN",
+      "number": "SW-PAT-054",
+      "notes": [
+        "ACCEPT(VISITOR) ON EACH ELEMENT CALLS BACK VISIT(THIS), PICKING THE RIGHT OVERLOAD.",
+        "A NEW OPERATION IS A NEW VISITOR CLASS; THE ELEMENTS STAY UNTOUCHED.",
+        "A NEW ELEMENT TYPE, HOWEVER, TOUCHES EVERY VISITOR: THE TRADE-OFF."
+      ],
+      "nodes": [
+        {
+          "id": "element",
+          "label": "ELEMENT",
+          "x": 6,
+          "y": 4,
+          "w": 30,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "ACCEPT(VISITOR)"
+        },
+        {
+          "id": "file",
+          "label": "FILE",
+          "x": 6,
+          "y": 42,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "dir",
+          "label": "DIR",
+          "x": 24,
+          "y": 42,
+          "w": 14,
+          "h": 10
+        },
+        {
+          "id": "visitor",
+          "label": "VISITOR",
+          "x": 76,
+          "y": 4,
+          "w": 38,
+          "h": 16,
+          "stereotype": "«INTERFACE»",
+          "detail": "VISIT(FILE)\nVISIT(DIR)"
+        },
+        {
+          "id": "sizeV",
+          "label": "SIZE VISITOR",
+          "x": 70,
+          "y": 42,
+          "w": 22,
+          "h": 10
+        },
+        {
+          "id": "exportV",
+          "label": "EXPORT VISITOR",
+          "x": 96,
+          "y": 42,
+          "w": 22,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "file",
+          "to": "element",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "dir",
+          "to": "element",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "sizeV",
+          "to": "visitor",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "exportV",
+          "to": "visitor",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "element",
+          "to": "visitor",
+          "label": "ACCEPT CALLS VISIT(THIS)",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "file",
+          "to": "exportV",
+          "side": "bottom",
+          "offset": 4,
+          "label": "NEW OPERATIONS WITHOUT TOUCHING THE ELEMENTS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "element",
+          "n": 1
+        },
+        {
+          "node": "visitor",
+          "n": 2
+        },
+        {
+          "node": "exportV",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "unit-of-work",
+      "title": "UNIT OF WORK",
+      "category": "ENTERPRISE PATTERN",
+      "number": "SW-PAT-055",
+      "notes": [
+        "THE UNIT OF WORK TRACKS EVERY OBJECT TOUCHED DURING A BUSINESS OPERATION.",
+        "COMMIT() WRITES ALL INSERTS, UPDATES AND DELETES IN ONE TRANSACTION, IN THE RIGHT ORDER.",
+        "NOTHING REACHES THE DATABASE UNTIL THEN, SO A FAILURE LEAVES IT UNTOUCHED."
+      ],
+      "nodes": [
+        {
+          "id": "service",
+          "label": "APP SERVICE",
+          "x": 4,
+          "y": 24,
+          "w": 22,
+          "h": 12
+        },
+        {
+          "id": "uow",
+          "label": "UNIT OF WORK",
+          "x": 38,
+          "y": 20,
+          "w": 30,
+          "h": 20,
+          "detail": "NEW · DIRTY · REMOVED\nCOMMIT()"
+        },
+        {
+          "id": "e1",
+          "label": "ORDER (DIRTY)",
+          "x": 82,
+          "y": 4,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "e2",
+          "label": "LINE (NEW)",
+          "x": 82,
+          "y": 18,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "e3",
+          "label": "COUPON (REMOVED)",
+          "x": 82,
+          "y": 32,
+          "w": 30,
+          "h": 9
+        },
+        {
+          "id": "db",
+          "label": "DATABASE",
+          "x": 84,
+          "y": 48,
+          "w": 26,
+          "h": 14,
+          "shape": "cylinder"
+        }
+      ],
+      "edges": [
+        {
+          "from": "service",
+          "to": "uow",
+          "label": "REGISTERS"
+        },
+        {
+          "from": "uow",
+          "to": "e1",
+          "label": "TRACKS"
+        },
+        {
+          "from": "uow",
+          "to": "e2"
+        },
+        {
+          "from": "uow",
+          "to": "e3"
+        },
+        {
+          "from": "uow",
+          "to": "db",
+          "label": "COMMIT(): ONE TRANSACTION"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "uow",
+          "n": 1,
+          "dx": -33,
+          "dy": -3
+        },
+        {
+          "node": "db",
+          "n": 2
+        },
+        {
+          "node": "service",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "specification",
+      "title": "SPECIFICATION PATTERN",
+      "category": "DOMAIN-DRIVEN DESIGN",
+      "number": "SW-PAT-056",
+      "notes": [
+        "A BUSINESS RULE BECOMES AN OBJECT WITH ONE QUESTION: IS_SATISFIED_BY(CANDIDATE)?",
+        "SPECIFICATIONS COMBINE WITH AND, OR AND NOT INTO LARGER RULES.",
+        "THE SAME SPECIFICATION SELECTS IN MEMORY, VALIDATES INPUT, OR BECOMES A QUERY."
+      ],
+      "nodes": [
+        {
+          "id": "repo",
+          "label": "REPOSITORY",
+          "x": 4,
+          "y": 8,
+          "w": 24,
+          "h": 12,
+          "detail": "FIND(SPEC)"
+        },
+        {
+          "id": "spec",
+          "label": "SPECIFICATION",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "stereotype": "«INTERFACE»",
+          "detail": "IS_SATISFIED_BY(T)"
+        },
+        {
+          "id": "and",
+          "label": "AND",
+          "x": 10,
+          "y": 40,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "or",
+          "label": "OR",
+          "x": 34,
+          "y": 40,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "not",
+          "label": "NOT",
+          "x": 58,
+          "y": 40,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "leaf",
+          "label": "OVERDUE INVOICE",
+          "x": 84,
+          "y": 40,
+          "w": 32,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "repo",
+          "to": "spec",
+          "label": "FILTERS BY"
+        },
+        {
+          "from": "and",
+          "to": "spec",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "or",
+          "to": "spec",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "not",
+          "to": "spec",
+          "head": "triangle",
+          "style": "dashed"
+        },
+        {
+          "from": "leaf",
+          "to": "spec",
+          "head": "triangle",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "and",
+          "to": "leaf",
+          "side": "bottom",
+          "offset": 4,
+          "label": "BUSINESS RULES COMPOSED LIKE BOOLEANS"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "spec",
+          "n": 1
+        },
+        {
+          "node": "and",
+          "n": 2,
+          "dx": -23,
+          "dy": -3
+        },
+        {
+          "node": "repo",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "anti-corruption-layer",
+      "title": "ANTI-CORRUPTION LAYER",
+      "category": "DOMAIN-DRIVEN DESIGN",
+      "number": "SW-ARC-057",
+      "notes": [
+        "OUR MODEL NEVER SEES THE LEGACY SYSTEM'S NAMES, TYPES OR QUIRKS.",
+        "THE LAYER TRANSLATES BOTH WAYS: A FACADE, ADAPTERS AND MAPPERS.",
+        "WHEN THE LEGACY SYSTEM IS REPLACED, ONLY THE LAYER CHANGES."
+      ],
+      "nodes": [
+        {
+          "id": "ours",
+          "label": "OUR CONTEXT",
+          "x": 2,
+          "y": 4,
+          "w": 56,
+          "h": 56,
+          "shape": "group"
+        },
+        {
+          "id": "legacy",
+          "label": "LEGACY CONTEXT",
+          "x": 68,
+          "y": 4,
+          "w": 50,
+          "h": 56,
+          "shape": "group"
+        },
+        {
+          "id": "domain",
+          "label": "ORDER MODEL",
+          "x": 8,
+          "y": 12,
+          "w": 24,
+          "h": 14,
+          "detail": "CLEAN TERMS"
+        },
+        {
+          "id": "acl",
+          "label": "ANTI-CORRUPTION LAYER",
+          "x": 8,
+          "y": 40,
+          "w": 44,
+          "h": 14,
+          "detail": "TRANSLATE · ADAPT · FACADE"
+        },
+        {
+          "id": "erp",
+          "label": "LEGACY ERP API",
+          "x": 74,
+          "y": 40,
+          "w": 38,
+          "h": 14,
+          "detail": "ODD NAMES · SOAP"
+        },
+        {
+          "id": "erpdb",
+          "label": "ERP DATABASE",
+          "x": 80,
+          "y": 10,
+          "w": 28,
+          "h": 16,
+          "shape": "cylinder"
+        }
+      ],
+      "edges": [
+        {
+          "from": "domain",
+          "to": "acl",
+          "label": "ASKS IN OUR TERMS"
+        },
+        {
+          "from": "acl",
+          "to": "erp",
+          "label": "SPEAKS THEIRS"
+        },
+        {
+          "from": "erp",
+          "to": "erpdb"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "acl",
+          "n": 1
+        },
+        {
+          "node": "domain",
+          "n": 2
+        },
+        {
+          "node": "erp",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "bounded-contexts",
+      "title": "BOUNDED CONTEXTS",
+      "category": "DOMAIN-DRIVEN DESIGN · CONTEXT MAP",
+      "number": "SW-ARC-058",
+      "notes": [
+        "THE SAME WORD MEANS DIFFERENT THINGS IN DIFFERENT CONTEXTS; EACH GETS ITS OWN MODEL.",
+        "CONTEXTS INTEGRATE THROUGH EVENTS AND CONTRACTS, NOT A SHARED DATABASE.",
+        "A SHARED KERNEL IS KEPT SMALL AND CHANGED ONLY BY AGREEMENT."
+      ],
+      "nodes": [
+        {
+          "id": "sales",
+          "label": "SALES",
+          "x": 6,
+          "y": 6,
+          "w": 30,
+          "h": 18,
+          "detail": "CUSTOMER = BUYER\nPRODUCT = OFFER"
+        },
+        {
+          "id": "shipping",
+          "label": "SHIPPING",
+          "x": 84,
+          "y": 6,
+          "w": 30,
+          "h": 18,
+          "detail": "CUSTOMER = CONSIGNEE\nPRODUCT = PARCEL"
+        },
+        {
+          "id": "billing",
+          "label": "BILLING",
+          "x": 6,
+          "y": 40,
+          "w": 30,
+          "h": 18,
+          "detail": "CUSTOMER = PAYER\nPRODUCT = LINE ITEM"
+        },
+        {
+          "id": "support",
+          "label": "SUPPORT",
+          "x": 84,
+          "y": 40,
+          "w": 30,
+          "h": 18,
+          "detail": "CUSTOMER = CALLER\nPRODUCT = CASE"
+        },
+        {
+          "id": "kernel",
+          "label": "SHARED KERNEL",
+          "x": 45,
+          "y": 26,
+          "w": 30,
+          "h": 12,
+          "detail": "MONEY · IDS"
+        }
+      ],
+      "edges": [
+        {
+          "from": "sales",
+          "to": "shipping",
+          "label": "ORDER CONFIRMED",
+          "style": "dashed"
+        },
+        {
+          "from": "sales",
+          "to": "billing",
+          "label": "INVOICE REQUESTED",
+          "style": "dashed"
+        },
+        {
+          "from": "shipping",
+          "to": "support",
+          "label": "DELIVERY STATUS",
+          "style": "dashed"
+        },
+        {
+          "from": "sales",
+          "to": "kernel"
+        },
+        {
+          "from": "billing",
+          "to": "kernel"
+        },
+        {
+          "from": "shipping",
+          "to": "kernel"
+        },
+        {
+          "from": "support",
+          "to": "kernel"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "sales",
+          "n": 1
+        },
+        {
+          "node": "kernel",
+          "n": 3,
+          "dx": -33,
+          "dy": 16
+        }
+      ]
+    },
+    {
+      "id": "domain-events",
+      "title": "DOMAIN EVENTS",
+      "category": "DOMAIN-DRIVEN DESIGN",
+      "number": "SW-ARC-059",
+      "notes": [
+        "AN AGGREGATE RECORDS WHAT HAPPENED, IN THE PAST TENSE, AS IT CHANGES STATE.",
+        "THE DISPATCHER PUBLISHES THOSE EVENTS AFTER THE TRANSACTION COMMITS.",
+        "HANDLERS REACT WITHOUT THE AGGREGATE KNOWING THEY EXIST."
+      ],
+      "nodes": [
+        {
+          "id": "aggregate",
+          "label": "ORDER",
+          "x": 6,
+          "y": 22,
+          "w": 28,
+          "h": 16,
+          "stereotype": "«AGGREGATE»",
+          "detail": "PLACE()\nEVENTS: [ORDER PLACED]"
+        },
+        {
+          "id": "dispatcher",
+          "label": "DISPATCHER",
+          "x": 48,
+          "y": 23,
+          "w": 26,
+          "h": 14,
+          "detail": "AFTER COMMIT"
+        },
+        {
+          "id": "h1",
+          "label": "SEND RECEIPT",
+          "x": 90,
+          "y": 4,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "h2",
+          "label": "RESERVE STOCK",
+          "x": 90,
+          "y": 27,
+          "w": 26,
+          "h": 10
+        },
+        {
+          "id": "h3",
+          "label": "UPDATE STATS",
+          "x": 90,
+          "y": 50,
+          "w": 26,
+          "h": 10
+        }
+      ],
+      "edges": [
+        {
+          "from": "aggregate",
+          "to": "dispatcher",
+          "label": "ORDER PLACED"
+        },
+        {
+          "from": "dispatcher",
+          "to": "h1",
+          "label": "HANDLE"
+        },
+        {
+          "from": "dispatcher",
+          "to": "h2"
+        },
+        {
+          "from": "dispatcher",
+          "to": "h3"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "aggregate",
+          "to": "dispatcher",
+          "side": "bottom",
+          "offset": 8,
+          "label": "SOMETHING HAPPENED · PAST TENSE"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "aggregate",
+          "n": 1
+        },
+        {
+          "node": "dispatcher",
+          "n": 2,
+          "dx": -29,
+          "dy": -3
+        },
+        {
+          "node": "h2",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "two-phase-commit",
+      "title": "TWO-PHASE COMMIT",
+      "category": "DISTRIBUTED TRANSACTIONS",
+      "number": "SW-ARC-060",
+      "notes": [
+        "PHASE 1: THE COORDINATOR ASKS EVERY PARTICIPANT TO PREPARE; EACH VOTES YES OR NO.",
+        "PHASE 2: ALL YES → COMMIT EVERYWHERE; ANY NO → ABORT EVERYWHERE.",
+        "A COORDINATOR CRASH BETWEEN PHASES LEAVES PARTICIPANTS BLOCKED; HENCE SAGAS."
+      ],
+      "nodes": [
+        {
+          "id": "coordinator",
+          "label": "COORDINATOR",
+          "x": 44,
+          "y": 4,
+          "w": 32,
+          "h": 14,
+          "detail": "PREPARE → COMMIT / ABORT"
+        },
+        {
+          "id": "p1",
+          "label": "PARTICIPANT A",
+          "x": 6,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "DATABASE"
+        },
+        {
+          "id": "p2",
+          "label": "PARTICIPANT B",
+          "x": 48,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "QUEUE"
+        },
+        {
+          "id": "p3",
+          "label": "PARTICIPANT C",
+          "x": 90,
+          "y": 42,
+          "w": 24,
+          "h": 12,
+          "detail": "DATABASE"
+        }
+      ],
+      "edges": [
+        {
+          "from": "coordinator",
+          "to": "p1",
+          "head": "both",
+          "label": "PREPARE ⇄ VOTE"
+        },
+        {
+          "from": "coordinator",
+          "to": "p2",
+          "head": "both"
+        },
+        {
+          "from": "coordinator",
+          "to": "p3",
+          "head": "both",
+          "label": "PREPARE ⇄ VOTE"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "p1",
+          "to": "p3",
+          "side": "bottom",
+          "offset": 4,
+          "label": "PHASE 2: COMMIT OR ABORT, TO ALL"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "coordinator",
+          "n": 1
+        },
+        {
+          "node": "p2",
+          "n": 2
+        },
+        {
+          "node": "p3",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "idempotent-consumer",
+      "title": "IDEMPOTENT CONSUMER",
+      "category": "MESSAGING PATTERN",
+      "number": "SW-ARC-061",
+      "notes": [
+        "AT-LEAST-ONCE DELIVERY MEANS THE SAME MESSAGE WILL ARRIVE TWICE SOONER OR LATER.",
+        "THE CONSUMER REMEMBERS PROCESSED MESSAGE IDS AND SKIPS REPEATS.",
+        "THE ID CHECK AND THE EFFECT HAPPEN IN ONE TRANSACTION, OR THE GAP LETS A DUPLICATE THROUGH."
+      ],
+      "nodes": [
+        {
+          "id": "producer",
+          "label": "PRODUCER",
+          "x": 4,
+          "y": 26,
+          "w": 20,
+          "h": 10
+        },
+        {
+          "id": "queue",
+          "label": "QUEUE",
+          "x": 34,
+          "y": 25,
+          "w": 26,
+          "h": 12,
+          "shape": "queue",
+          "detail": "AT-LEAST-ONCE"
+        },
+        {
+          "id": "consumer",
+          "label": "CONSUMER",
+          "x": 72,
+          "y": 21,
+          "w": 28,
+          "h": 20,
+          "detail": "SEEN IDS TABLE\nIF SEEN → SKIP"
+        },
+        {
+          "id": "db",
+          "label": "DB",
+          "x": 106,
+          "y": 24,
+          "w": 12,
+          "h": 14,
+          "shape": "cylinder"
+        }
+      ],
+      "edges": [
+        {
+          "from": "producer",
+          "to": "queue",
+          "label": "MSG #42"
+        },
+        {
+          "from": "queue",
+          "to": "consumer",
+          "label": "#42, #42 AGAIN"
+        },
+        {
+          "from": "consumer",
+          "to": "db",
+          "label": "ONCE"
+        }
+      ],
+      "dimensions": [
+        {
+          "from": "producer",
+          "to": "consumer",
+          "side": "top",
+          "offset": 10,
+          "label": "DUPLICATES ARRIVE · EFFECTS DON'T"
+        }
+      ],
+      "callouts": [
+        {
+          "node": "consumer",
+          "n": 1
+        },
+        {
+          "node": "queue",
+          "n": 2
+        },
+        {
+          "node": "db",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "actor-model",
+      "title": "ACTOR MODEL",
+      "category": "CONCURRENCY ARCHITECTURE",
+      "number": "SW-ARC-062",
+      "notes": [
+        "AN ACTOR HAS PRIVATE STATE AND A MAILBOX; IT HANDLES ONE MESSAGE AT A TIME.",
+        "ACTORS SHARE NOTHING, SO THERE ARE NO LOCKS AND NO DATA RACES.",
+        "AN ACTOR MAY SEND MESSAGES, SPAWN ACTORS, OR CHANGE HOW IT HANDLES THE NEXT MESSAGE."
+      ],
+      "nodes": [
+        {
+          "id": "runtime",
+          "label": "RUNTIME · SCHEDULER · MAILBOXES",
+          "x": 2,
+          "y": 2,
+          "w": 116,
+          "h": 60,
+          "shape": "group"
+        },
+        {
+          "id": "a1",
+          "label": "ACTOR A",
+          "x": 8,
+          "y": 20,
+          "w": 20,
+          "h": 20,
+          "shape": "circle"
+        },
+        {
+          "id": "a2",
+          "label": "ACTOR B",
+          "x": 50,
+          "y": 6,
+          "w": 20,
+          "h": 20,
+          "shape": "circle"
+        },
+        {
+          "id": "a3",
+          "label": "ACTOR C",
+          "x": 50,
+          "y": 36,
+          "w": 20,
+          "h": 20,
+          "shape": "circle"
+        },
+        {
+          "id": "a4",
+          "label": "ACTOR D",
+          "x": 92,
+          "y": 20,
+          "w": 20,
+          "h": 20,
+          "shape": "circle"
+        }
+      ],
+      "edges": [
+        {
+          "from": "a1",
+          "to": "a2",
+          "label": "MESSAGE"
+        },
+        {
+          "from": "a1",
+          "to": "a3",
+          "label": "MESSAGE"
+        },
+        {
+          "from": "a2",
+          "to": "a4",
+          "label": "ASYNC"
+        },
+        {
+          "from": "a3",
+          "to": "a4"
+        },
+        {
+          "from": "a2",
+          "to": "a3",
+          "label": "SPAWN",
+          "style": "dashed"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "a1",
+          "n": 1,
+          "dx": -2,
+          "dy": 2
+        },
+        {
+          "node": "a4",
+          "n": 2,
+          "dx": -2,
+          "dy": 2
+        },
+        {
+          "node": "a2",
+          "n": 3,
+          "dx": -2,
+          "dy": 2
+        }
+      ]
+    },
+    {
+      "id": "event-loop",
+      "title": "EVENT LOOP · REACTOR",
+      "category": "CONCURRENCY ARCHITECTURE",
+      "number": "SW-ARC-063",
+      "notes": [
+        "ONE THREAD WAITS ON MANY SOURCES AT ONCE AND WAKES ONLY WHEN SOMETHING IS READY.",
+        "EACH READY EVENT IS DISPATCHED TO ITS HANDLER, WHICH MUST RETURN QUICKLY.",
+        "A SLOW HANDLER BLOCKS EVERYTHING; LONG WORK GOES TO A THREAD POOL."
+      ],
+      "nodes": [
+        {
+          "id": "sockets",
+          "label": "SOCKETS",
+          "x": 4,
+          "y": 6,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "timers",
+          "label": "TIMERS",
+          "x": 4,
+          "y": 26,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "fs",
+          "label": "FILE I/O",
+          "x": 4,
+          "y": 46,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "loop",
+          "label": "EVENT LOOP",
+          "x": 40,
+          "y": 16,
+          "w": 40,
+          "h": 30,
+          "shape": "circle",
+          "detail": "SINGLE THREAD"
+        },
+        {
+          "id": "h1",
+          "label": "ON_READ()",
+          "x": 92,
+          "y": 8,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "h2",
+          "label": "ON_TIMER()",
+          "x": 92,
+          "y": 27,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "h3",
+          "label": "ON_DONE()",
+          "x": 92,
+          "y": 46,
+          "w": 24,
+          "h": 10
+        },
+        {
+          "id": "poll",
+          "label": "EPOLL / KQUEUE",
+          "x": 44,
+          "y": 54,
+          "w": 32,
+          "h": 8
+        }
+      ],
+      "edges": [
+        {
+          "from": "sockets",
+          "to": "loop",
+          "label": "READY"
+        },
+        {
+          "from": "timers",
+          "to": "loop"
+        },
+        {
+          "from": "fs",
+          "to": "loop"
+        },
+        {
+          "from": "loop",
+          "to": "h1",
+          "label": "DISPATCH"
+        },
+        {
+          "from": "loop",
+          "to": "h2"
+        },
+        {
+          "from": "loop",
+          "to": "h3"
+        },
+        {
+          "from": "loop",
+          "to": "poll",
+          "label": "WAIT"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "loop",
+          "n": 1,
+          "dx": -6,
+          "dy": 2
+        },
+        {
+          "node": "h1",
+          "n": 2
+        },
+        {
+          "node": "poll",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "lambda-architecture",
+      "title": "LAMBDA ARCHITECTURE",
+      "category": "DATA ARCHITECTURE",
+      "number": "SW-ARC-064",
+      "notes": [
+        "EVERY EVENT IS APPENDED TO AN IMMUTABLE MASTER DATASET AND ALSO STREAMED.",
+        "THE BATCH LAYER RECOMPUTES EXACT VIEWS FROM SCRATCH; THE SPEED LAYER PATCHES THE LAST FEW MINUTES.",
+        "THE SERVING LAYER MERGES BOTH, SO QUERIES ARE COMPLETE AND FRESH."
+      ],
+      "nodes": [
+        {
+          "id": "source",
+          "label": "EVENTS",
+          "x": 2,
+          "y": 26,
+          "w": 16,
+          "h": 12
+        },
+        {
+          "id": "master",
+          "label": "MASTER DATASET",
+          "x": 30,
+          "y": 24,
+          "w": 30,
+          "h": 14,
+          "shape": "cylinder",
+          "detail": "IMMUTABLE LOG"
+        },
+        {
+          "id": "batch",
+          "label": "BATCH LAYER",
+          "x": 30,
+          "y": 4,
+          "w": 30,
+          "h": 12,
+          "detail": "HOURLY RECOMPUTE"
+        },
+        {
+          "id": "speed",
+          "label": "SPEED LAYER",
+          "x": 30,
+          "y": 48,
+          "w": 30,
+          "h": 12,
+          "detail": "STREAM · SECONDS"
+        },
+        {
+          "id": "bview",
+          "label": "BATCH VIEWS",
+          "x": 72,
+          "y": 4,
+          "w": 22,
+          "h": 12,
+          "shape": "cylinder"
+        },
+        {
+          "id": "rview",
+          "label": "REAL-TIME VIEWS",
+          "x": 72,
+          "y": 48,
+          "w": 22,
+          "h": 12,
+          "shape": "cylinder"
+        },
+        {
+          "id": "serving",
+          "label": "SERVING",
+          "x": 100,
+          "y": 22,
+          "w": 18,
+          "h": 18,
+          "detail": "MERGE"
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "master",
+          "label": "APPEND"
+        },
+        {
+          "from": "source",
+          "to": "speed"
+        },
+        {
+          "from": "master",
+          "to": "batch",
+          "label": "READ ALL"
+        },
+        {
+          "from": "batch",
+          "to": "bview"
+        },
+        {
+          "from": "speed",
+          "to": "rview"
+        },
+        {
+          "from": "bview",
+          "to": "serving"
+        },
+        {
+          "from": "rview",
+          "to": "serving"
+        }
+      ],
+      "dimensions": [],
+      "callouts": [
+        {
+          "node": "master",
+          "n": 1
+        },
+        {
+          "node": "speed",
+          "n": 2
+        },
+        {
+          "node": "serving",
+          "n": 3
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="Main.qml">Main.qml</file>
+        <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
+        <file alias="diagrams.json">diagrams.json</file>
+        <file alias="i18n/en.json">i18n/en.json</file>
+        <file alias="i18n/da.json">i18n/da.json</file>
+        <file alias="AboutOverlay.qml">AboutOverlay.qml</file>
+        <file alias="icon.svg">../docs/blueprint.svg</file>
+    </qresource>
+</RCC>

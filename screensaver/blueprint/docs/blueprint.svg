@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#16294a"/>
+      <stop offset="1" stop-color="#0a1020"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4cc9f0"/>
+      <stop offset="1" stop-color="#9d8cff"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0.1" y1="0.1" x2="0.9" y2="0.9" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#4cc9f0"/>
+      <stop offset="1" stop-color="#9d8cff"/>
+    </linearGradient>
+    <linearGradient id="ink2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4cc9f0"/>
+      <stop offset="1" stop-color="#9d8cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="url(#edge)" stroke-width="1.6" stroke-opacity="0.9"/>
+  <g fill="none" stroke="#4cc9f0" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="11" y="12" width="20" height="14" rx="1.5"/>
+    <rect x="33" y="38" width="20" height="14" rx="1.5"/>
+    <path d="M21 26 V45 H31"/>
+    <path d="M27 41 L31 45 L27 49"/>
+    <path d="M38 15 H52"/>
+    <path d="M38 21 H48"/>
+  </g>
+  <g fill="none" stroke="url(#ink2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="11" y="12" width="20" height="14" rx="1.5"/>
+    <rect x="33" y="38" width="20" height="14" rx="1.5"/>
+    <path d="M21 26 V45 H31"/>
+    <path d="M27 41 L31 45 L27 49"/>
+    <path d="M38 15 H52"/>
+    <path d="M38 21 H48"/>
+  </g>
+  <g stroke="#4cc9f0" stroke-opacity="0.16" stroke-width="0.8"><path d="M8 32 H56"/><path d="M32 8 V56"/><path d="M8 20 H56"/><path d="M8 44 H56"/><path d="M20 8 V56"/><path d="M44 8 V56"/></g>
+</svg>

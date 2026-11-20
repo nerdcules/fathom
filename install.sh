@@ -26,6 +26,7 @@ signin=false
 player=false
 deck=false
 desk=false
+screensaver=false
 mail=false
 sentinel=false
 pulse=false
@@ -54,6 +55,11 @@ Parts (with none named, the ones that need no password: --skin --player --deck -
   --desk       Windows-style window handling: Alt+Tab with window previews,
                Task view (Super+Tab, in place of Omarchy's next workspace),
                Snap layouts (Super+Z) and Quick settings (Super+Alt+A)
+  --screensaver
+               Blueprint, software patterns drawn as blueprints, as the
+               screensaver: built here (needs base-devel and Qt 6, both in
+               Omarchy), with Omarchy's idle service cloned as fathom.idle
+               to start it. Pick it, or Omarchy's own, on Personalise
   --mail       New-mail notifications (Outlook.com for now): 'fathom-mail'
                and its service. Then add your account with
                fathom-mail add outlook --client-id <id> (see the README)
@@ -101,6 +107,7 @@ while (($#)); do
     --player) player=true ;;
     --deck) deck=true ;;
     --desk) desk=true ;;
+    --screensaver) screensaver=true ;;
     --mail) mail=true ;;
     --sentinel) sentinel=true ;;
     --pulse) pulse=true ;;
@@ -113,6 +120,7 @@ while (($#)); do
       player=true
       deck=true
       desk=true
+      screensaver=true
       mail=true
       sentinel=true
       pulse=true
@@ -140,7 +148,7 @@ if $opensnitch && ! $sentinel; then
   exit 2
 fi
 
-if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $mail && ! $sentinel && ! $pulse && ! $crumbs && ! $phone; then
+if ! $skin && ! $signin && ! $player && ! $deck && ! $desk && ! $screensaver && ! $mail && ! $sentinel && ! $pulse && ! $crumbs && ! $phone; then
   skin=true
   player=true
   deck=true
@@ -502,6 +510,93 @@ install_desk() {
   echo "Desk installed. Alt+Tab switches windows, Super+Tab shows Task view, Super+Z snaps a window, Super+Alt+A opens Quick settings."
 }
 
+# Omarchy's idle service, copied the way `omarchy plugin clone` copies it,
+# as fathom.idle. One line changes: the one that starts the screensaver runs
+# fathom-screensaver instead of omarchy-launch-screensaver. If Omarchy has
+# changed that line, nothing is staged and the stock service stays.
+stage_idle() {
+  local src service="$STAGE/fathom.idle/Service.qml"
+  local stock='|| omarchy-launch-screensaver")' ours='|| $HOME/.local/bin/fathom-screensaver")'
+  src=$(omarchy-plugin-catalog 2>/dev/null | jq -r '.[] | select(.firstParty and .id == "omarchy.idle") | .sourceDir // empty' | head -n 1)
+  if [[ -z $src || ! -f $src/Service.qml ]]; then
+    echo "install.sh: couldn't find Omarchy's idle service (omarchy.idle) to clone." >&2
+    return 1
+  fi
+  rm -rf "${STAGE:?}/fathom.idle"
+  mkdir -p "$STAGE/fathom.idle"
+  cp -aL "$src/." "$STAGE/fathom.idle/"
+  if [[ $(grep -cF -- "$stock" "$service") != 1 ]]; then
+    rm -rf "${STAGE:?}/fathom.idle"
+    echo "install.sh: Omarchy's idle service no longer starts the screensaver the way Fathom expects;" >&2
+    echo "  its own screensaver is unchanged. Please report this with your Omarchy version." >&2
+    return 1
+  fi
+  STOCK=$stock OURS=$ours perl -0pi -e 's/\Q$ENV{STOCK}\E/$ENV{OURS}/' "$service"
+  jq '.id = "fathom.idle" | .name = "Fathom Idle"
+    | .description = "Omarchy'"'"'s idle service, starting Fathom'"'"'s screensaver (fathom-screensaver)."
+    | .omarchy = ((if (.omarchy | type) == "object" then .omarchy else {} end) + {clonedFrom: "omarchy.idle"})
+    | del(.omarchy.clonePaths)' "$STAGE/fathom.idle/manifest.json" >"$STAGE/fathom.idle/manifest.json.new"
+  mv "$STAGE/fathom.idle/manifest.json.new" "$STAGE/fathom.idle/manifest.json"
+  if ! omarchy plugin validate "$STAGE/fathom.idle" >/dev/null; then
+    rm -rf "${STAGE:?}/fathom.idle"
+    echo "install.sh: Omarchy found a problem with fathom.idle (above); its own idle service is unchanged." >&2
+    return 1
+  fi
+}
+
+install_screensaver() {
+  local missing=() tool
+  for tool in qmake6 make g++ jq socat hyprctl perl; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  if ((${#missing[@]})); then
+    echo "install.sh: the screensaver needs: ${missing[*]}" >&2
+    echo "  Install them with: omarchy pkg add base-devel qt6-base qt6-declarative socat" >&2
+    return 1
+  fi
+
+  # Build Blueprint in the stage; the one you had stays until this one has
+  # built and passed its own check of the diagrams.
+  local build="$STAGE/blueprint-build" dest="$SHARE_DIR/blueprint"
+  rm -rf "$build"
+  mkdir -p "$build"
+  echo "Building Blueprint..."
+  if ! (cd "$build" && qmake6 "$REPO/screensaver/blueprint/blueprint.pro" >"$build/build.log" 2>&1 &&
+    make -j"$(nproc)" >>"$build/build.log" 2>&1); then
+    tail -n 20 "$build/build.log" >&2
+    echo "install.sh: Blueprint didn't build (above); the screensaver you had is unchanged." >&2
+    return 1
+  fi
+  if ! QT_QPA_PLATFORM=offscreen "$build/blueprint" check >/dev/null 2>&1; then
+    echo "install.sh: the new Blueprint failed its check of the diagrams; the screensaver you had is unchanged." >&2
+    return 1
+  fi
+  mkdir -p "$dest"
+  install -m 755 "$build/blueprint" "$dest/blueprint.new"
+  mv "$dest/blueprint.new" "$dest/blueprint"
+  rm -rf "$build"
+
+  place "$REPO/screensaver/bin/fathom-screensaver" "$BIN_DIR/fathom-screensaver"
+  chmod +x "$REPO/screensaver/bin/fathom-screensaver"
+
+  # An idle service of your own (another clone of Omarchy's) is left alone.
+  local other
+  other=$(omarchy-plugin-list --json 2>/dev/null |
+    jq -r '.[] | select(.enabled and .clonedFrom == "omarchy.idle" and .id != "fathom.idle") | .id' | head -n 1)
+  if [[ -n $other ]]; then
+    echo "Blueprint is installed, but your own idle service ($other) starts the screensaver, so Fathom's isn't switched on."
+    echo "  To use Fathom's: omarchy plugin disable $other, then $REPO/install.sh --screensaver"
+    return 0
+  fi
+  stage_idle || return 1
+  install_plugin fathom.idle
+  # Omarchy's own idle service stays loaded beside it until the shell
+  # restarts (seen in the test VM: its handlers kept answering).
+  restart_shell=true
+
+  echo "Screensaver installed: Blueprint. Personalise (Super+Alt+I) picks it or Omarchy's, sets when it starts, and previews it."
+}
+
 install_mail() {
   local missing=() tool
   for tool in python3 secret-tool busctl xdg-open; do
@@ -746,7 +841,7 @@ restore_staged() {
 
 # The parts asked for, in the order they're installed.
 parts=()
-for part in skin player deck desk mail sentinel pulse crumbs phone signin; do
+for part in skin player deck desk screensaver mail sentinel pulse crumbs phone signin; do
   ${!part} && parts+=("$part")
 done
 done_parts=()

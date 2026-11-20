@@ -13,6 +13,12 @@ Each line names its commit.
 
 ### Added
 
+- Screensaver: Blueprint, software patterns and architectures drawn as
+  blueprints (65 sheets), comes into Fathom (`screensaver/blueprint`).
+  `./install.sh --screensaver` builds it, installs `fathom-screensaver`,
+  and clones Omarchy's idle service as `fathom.idle` with only its
+  screensaver line changed; Personalise and `fathom-look screensaver shows
+  blueprint` pick it. An idle service of your own is left alone.
 - Quick settings and the deck's System card list this machine's IP
   addresses: each interface that is up (Wi-Fi, Ethernet, Tailscale, VPN),
   its IPv4 and IPv6 ones, each with a copy button. From `ip -j addr`, in

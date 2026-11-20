@@ -37,6 +37,7 @@ cd ~/Work/fathom
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
+| `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password |
 | `--pulse` | Pulse, its key and its collector service. Asks for your password once if `ufw` is installed and Docker's bridge (`docker0`) has an address, so containers can reach it |
@@ -263,6 +264,12 @@ care/bin/fathom-care
                 Care's command: measures the disk, finds failed services
                 and updates, and cleans up
 care/systemd/   The timer that runs Care's check every 3 hours
+screensaver/bin/fathom-screensaver
+                Starts the screensaver: Blueprint on every monitor, or
+                Omarchy's own
+screensaver/blueprint/
+                Blueprint, the screensaver (C++ and Qt Quick, with its own
+                README and tests)
 mail/bin/fathom-mail
                 Mail's command (Python, standard library only)
 mail/fathom_mail/
@@ -1082,9 +1089,11 @@ or search Start for "personalise". It changes how Fathom looks:
   These are Omarchy's settings (`idle` in `~/.config/omarchy/shell.json`,
   written through Omarchy's `omarchy-shell-config`, its `screensaver-off`
   toggle and `~/.config/omarchy/branding/screensaver.txt`) and change as
-  soon as you click. If you run your own copy of Omarchy's idle service
-  (`omarchy plugin clone omarchy.idle`), the page names it, since it may
-  show something else, and Preview runs what it runs.
+  soon as you click. With Fathom's [screensaver](#screensaver) installed,
+  **Blueprint** is one of the things it can show. If you run your own copy
+  of Omarchy's idle service (`omarchy plugin clone omarchy.idle`), the page
+  names it, since it may show something else, and Preview runs what it
+  runs.
 
 The rest wait in a preview until **Apply**. **Fathom's look** puts the
 shipped look back in the draft. Applying rebuilds the theme and refreshes
@@ -1105,8 +1114,49 @@ fathom-look screensaver | jq .               # the screensaver's settings
 fathom-look screensaver after 300            # start it after 5 min idle (and turn it on)
 fathom-look screensaver lock-after 0         # never lock by itself
 fathom-look screensaver shows fathom         # Fathom's name on it (or omarchy, picture, text)
+fathom-look screensaver shows blueprint      # Blueprint (with ./install.sh --screensaver)
 fathom-look screensaver preview              # show it now
 ```
+
+## Screensaver
+
+![Blueprint drawing the Observer pattern](screensaver/blueprint/docs/screenshot.png)
+
+`./install.sh --screensaver` makes [Blueprint](screensaver/blueprint/README.md)
+the screensaver: 65 software patterns and architectures (all 23 Gang of
+Four patterns, DDD, messaging, deployment and distributed systems), each
+inked stroke by stroke on cyanotype paper with a title block and numbered
+notes, then held and faded for the next. Any input closes it, as with
+Omarchy's (Blueprint's `--screensaver` mode; a key press was tried).
+
+The install builds Blueprint (C++ and Qt Quick, both in Omarchy) into
+`~/.local/share/fathom/blueprint/` and checks its diagrams. Omarchy's idle
+service starts the screensaver with `omarchy-launch-screensaver`, which is
+Omarchy's own file, so the install copies the service the way `omarchy
+plugin clone omarchy.idle` does, as `fathom.idle`, and changes one line: the
+one that starts the screensaver runs `fathom-screensaver` instead. Then it
+switches Omarchy's service off for the copy and restarts the shell. If
+Omarchy changes that line, the install stops and Omarchy's service stays.
+
+`fathom-screensaver` shows Blueprint on every monitor with the stock
+screensaver's window class, so Hyprland's rules, the lock and `omarchy toggle
+screensaver` treat it as Omarchy's own; or it runs Omarchy's own. Pick on
+Personalise (**Blueprint**, or one of Omarchy's), or:
+
+```bash
+fathom-screensaver shows             # blueprint or omarchy
+fathom-screensaver shows omarchy     # Omarchy's own, with what Personalise set
+fathom-screensaver force             # show it now, even if it's turned off
+```
+
+If you already run an idle service of your own (another clone of
+Omarchy's), the install builds Blueprint but leaves your service alone and
+says how to switch. `uninstall.sh` switches `fathom.idle` off, which brings
+Omarchy's own service back, and removes Blueprint.
+
+In the test VM (20 November 2026): the install took 15 s; with the
+screensaver set to 30 s, the idle service started Blueprint 30 s after the
+last input, and a key closed it.
 
 ## Changing the art
 
@@ -1139,6 +1189,7 @@ already.
 | 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
 | 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
 | 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper, screensaver | first version |
+| 16 | Screensaver: Blueprint, software patterns drawn as blueprints | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
 | 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, alerts, actions) | first version |

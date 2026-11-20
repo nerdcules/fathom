@@ -172,6 +172,18 @@ it.
   0). Care's own update (`care-new update`) opened Omarchy's terminal, which
   waited at "Continue with update?" until a `y` was sent through QMP; the
   update ended at 06:59:10 and the new check's `checkedAt` is 06:59:10.
+- Issue #11 (Blueprint as the screensaver), the working tree after 8fb1fbe
+  copied into the VM: `./install.sh --screensaver` built Blueprint and
+  finished in 15 s; `fathom.idle` on, `omarchy.idle` off, the clone's
+  Service.qml differing from Omarchy's in the one line. With the screensaver
+  at 30 s, the idle service logged idle at 07:13:18 and started
+  `fathom-screensaver`; Blueprint ran fullscreen on the special workspace
+  with class `org.omarchy.screensaver`, and a Shift sent through QMP closed
+  it. `uninstall.sh`: `omarchy.idle` on again, Blueprint and `fathom.idle`
+  gone. Switching idle services left both loaded ("Handler was registered
+  but will not be used") until the shell restarted, so install and
+  uninstall now restart it; after that, one service-ready and no warning
+  in the new shell.
 
 ### 18 November 2026, Windows 11 (WSL2)
 

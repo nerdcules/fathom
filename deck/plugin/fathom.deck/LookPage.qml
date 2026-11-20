@@ -560,6 +560,15 @@ GridLayout {
     Flow {
       Layout.fillWidth: true
       spacing: 8 * Skin.u
+      // Fathom's screensaver (./install.sh --screensaver), when it's the one in use.
+      Pill {
+        visible: !!page.saver && page.saver.blueprint === true
+        text: Skin.t("look.ssShows.blueprint")
+        tip: Skin.t("look.ssShows.blueprintTip")
+        selected: !!page.saver && page.saver.shows === "blueprint"
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverRequested(["shows", "blueprint"])
+      }
       Pill {
         text: Skin.t("look.ssShows.omarchy")
         selected: !!page.saver && page.saver.shows === "omarchy"

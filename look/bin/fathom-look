@@ -26,6 +26,9 @@ panels are, the glow along their top, the bar and the wallpaper.
   fathom-look screensaver shows picture|text
                                     pick a picture for it, or edit its text
                                     (Omarchy's own picker and editor)
+  fathom-look screensaver shows blueprint
+                                    Blueprint (software patterns drawn as
+                                    blueprints), with ./install.sh --screensaver
   fathom-look screensaver preview   show it now
   fathom-look build                 rebuild the theme folder, without applying
   fathom-look apply                 rebuild it and refresh the theme if it's on
@@ -367,6 +370,10 @@ IDLE_DEFAULTS = {"screensaver": 150, "lock": 300}
 SCREENSAVER_AFTER = (30, 7200)
 LOCK_AFTER = (60, 7200)
 STOCK_LAUNCHER = "omarchy-launch-screensaver"
+# Fathom's own (./install.sh --screensaver): Blueprint or Omarchy's, started
+# by fathom.idle, Fathom's copy of Omarchy's idle service.
+FATHOM_LAUNCHER = os.path.join(HOME, ".local", "bin", "fathom-screensaver")
+FATHOM_IDLE = "fathom.idle"
 
 # Fathom's name in the block letters of Omarchy's own logo.txt.
 FATHOM_TEXT = "\n".join([
@@ -424,7 +431,7 @@ def idle_launcher(config):
     """The command the idle service in use starts the screensaver with:
     Omarchy's, or the one in a copy of it the user made (`omarchy plugin
     clone omarchy.idle`) and turned on in shell.json. Returns (command, name),
-    name being the copy's when it's one."""
+    name being the copy's when it's the user's own (not Fathom's)."""
     folder = os.path.join(HOME, ".config", "omarchy", "plugins")
     for entry in config.get("plugins") or []:
         pid = entry.get("id") if isinstance(entry, dict) else entry
@@ -444,8 +451,22 @@ def idle_launcher(config):
             command = m.group(1).replace("$HOME", HOME)
             if command.startswith("~/"):
                 command = os.path.join(HOME, command[2:])
-            return command, str(manifest.get("name") or pid)[:60]
+            return command, (None if pid == FATHOM_IDLE else str(manifest.get("name") or pid)[:60])
     return STOCK_LAUNCHER, None
+
+
+def fathom_launcher(config):
+    """Fathom's screensaver command, when the idle service in use runs it."""
+    command, _ = idle_launcher(config)
+    return command if command == FATHOM_LAUNCHER and os.access(command, os.X_OK) else None
+
+
+def blueprint_shows(launcher):
+    """Whether Fathom's screensaver shows Blueprint (it says so itself)."""
+    if not launcher:
+        return False
+    code, out, _ = run([launcher, "shows"], 10)
+    return code == 0 and out.strip() == "blueprint"
 
 
 def screensaver_state():
@@ -453,11 +474,14 @@ def screensaver_state():
     idle = config.get("idle") if isinstance(config.get("idle"), dict) else {}
     after = idle_seconds(idle, "screensaver")
     _, service = idle_launcher(config)
+    launcher = fathom_launcher(config)
     return {
         "on": after > 0 and not os.path.exists(SCREENSAVER_OFF),
         "after": after,
         "lockAfter": idle_seconds(idle, "lock"),
-        "shows": screensaver_shows(),
+        "shows": "blueprint" if blueprint_shows(launcher) else screensaver_shows(),
+        # Blueprint can be picked: Fathom's screensaver is the one in use.
+        "blueprint": launcher is not None,
         "service": service,
         "limits": {"after": list(SCREENSAVER_AFTER), "lockAfter": list(LOCK_AFTER)},
     }
@@ -494,6 +518,15 @@ def detach(cmd):
         raise LookError(f"couldn't start {cmd[0]}: {e}")
 
 
+def omarchys_own():
+    """Picking what Omarchy's screensaver shows means wanting it, not Blueprint."""
+    launcher = fathom_launcher(shell_config())
+    if launcher:
+        code, _, err = run([launcher, "shows", "omarchy"], 10)
+        if code != 0:
+            raise LookError(f"fathom-screensaver shows omarchy failed: {err[:300]}")
+
+
 def screensaver(args):
     if not args:
         print(json.dumps(screensaver_state()))
@@ -514,7 +547,15 @@ def screensaver(args):
                 raise LookError(f"omarchy-toggle screensaver-off failed: {err[:300]}")
     elif what == "lock-after" and len(rest) == 1:
         set_idle("lock", whole_seconds(rest[0], *LOCK_AFTER, "lock-after", allow_zero=True))
+    elif what == "shows" and rest == ["blueprint"]:
+        launcher = fathom_launcher(shell_config())
+        if not launcher:
+            raise LookError("Blueprint isn't the screensaver here: install it with ./install.sh --screensaver")
+        code, _, err = run([launcher, "shows", "blueprint"], 10)
+        if code != 0:
+            raise LookError(f"fathom-screensaver shows blueprint failed: {err[:300]}")
     elif what == "shows" and len(rest) == 1 and rest[0] in ("omarchy", "fathom"):
+        omarchys_own()
         text = FATHOM_TEXT if rest[0] == "fathom" else read_or_none(omarchy_logo())
         if text is None:
             raise LookError(f"Omarchy's logo isn't at {omarchy_logo()}")
@@ -525,13 +566,14 @@ def screensaver(args):
         os.replace(tmp, SCREENSAVER_TEXT)
     elif what == "shows" and len(rest) == 1 and rest[0] in ("picture", "text"):
         # Omarchy's own: a file picker (or the editor), then a preview.
+        omarchys_own()
         detach(["omarchy-branding-screensaver", "image" if rest[0] == "picture" else "text"])
     elif what == "preview" and not rest:
         command, _ = idle_launcher(shell_config())
         detach([command, "force"])
     else:
         raise LookError("screensaver takes on|off, after <seconds>, lock-after <seconds>, "
-                        "shows omarchy|fathom|picture|text, or preview")
+                        "shows omarchy|fathom|picture|text|blueprint, or preview")
 
 
 # ---------------------------------------------------------------- commands

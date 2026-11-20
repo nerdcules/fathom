@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Fathom's screensaver: Blueprint (software patterns drawn as blueprints) or
+# Omarchy's own. Omarchy's idle service, as install.sh clones it into the
+# fathom.idle plugin, runs this where it ran omarchy-launch-screensaver.
+#
+#   fathom-screensaver [force]                start it now; force: even when
+#                                             the screensaver is turned off
+#   fathom-screensaver shows                  what it shows: blueprint or omarchy
+#   fathom-screensaver shows blueprint|omarchy
+#                                             change that
+#
+# Blueprint runs on every monitor with the stock screensaver's window class
+# (org.omarchy.screensaver), so Hyprland's rules, the idle service, the lock
+# and `omarchy toggle screensaver` treat it as they treat Omarchy's. Omarchy's
+# own screensaver is whatever ~/.config/omarchy/branding/screensaver.txt says
+# (Personalise sets that too).
+set -uo pipefail
+
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/fathom/screensaver"
+BLUEPRINT="${FATHOM_BLUEPRINT:-${XDG_DATA_HOME:-$HOME/.local/share}/fathom/blueprint/blueprint}"
+
+usage() {
+  sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# What it shows: what was chosen, Blueprint if nothing was, and Omarchy's
+# whenever Blueprint isn't there to run.
+shows() {
+  local chosen=""
+  [[ -s $CONFIG ]] && chosen=$(head -c 32 "$CONFIG" | tr -dc 'a-z')
+  if [[ $chosen == omarchy || ! -x $BLUEPRINT ]]; then
+    echo omarchy
+  else
+    echo blueprint
+  fi
+}
+
+set_shows() {
+  case ${1:-} in
+    blueprint)
+      [[ -x $BLUEPRINT ]] || { echo "fathom-screensaver: Blueprint isn't installed (./install.sh --screensaver)" >&2; exit 1; }
+      ;;
+    omarchy) ;;
+    *) echo "fathom-screensaver: say blueprint or omarchy" >&2; exit 2 ;;
+  esac
+  mkdir -p "$(dirname "$CONFIG")"
+  echo "$1" >"$CONFIG.new" && mv "$CONFIG.new" "$CONFIG"
+}
+
+# From here on, Omarchy's omarchy-launch-screensaver with Blueprint in place
+# of the terminal.
+launch() {
+  [[ $(shows) == blueprint ]] || exec omarchy-launch-screensaver "$@"
+
+  # Already running.
+  pgrep -f '[o]rg.omarchy.screensaver' >/dev/null && exit 0
+
+  # Turned off, unless forced.
+  if omarchy-toggle-enabled screensaver-off && [[ ${1:-} != force ]]; then
+    exit 1
+  fi
+
+  local focused
+  focused=$(omarchy-hyprland-monitor-focused)
+
+  hypr_focus_monitor() {
+    hyprctl dispatch "hl.dsp.focus({ monitor = \"$1\" })" >/dev/null 2>&1 || hyprctl dispatch focusmonitor "$1" >/dev/null
+  }
+
+  hypr_exec() {
+    local command
+    printf -v command '%q ' "$@"
+    hyprctl dispatch "hl.dsp.exec_cmd([[[workspace $workspace] $command]])" >/dev/null 2>&1 ||
+      hyprctl dispatch exec -- "[workspace $workspace]" bash -lc "$command" >/dev/null
+  }
+
+  local socket="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" events
+  # Listen before starting anything, so a window that maps quickly can't
+  # open before its openwindow event is being waited for.
+  exec {events}< <(socat -U - "UNIX-CONNECT:$socket")
+
+  # A new window opens on the monitor focused at that moment: wait for each
+  # monitor's before moving on. The deadline is a safety net.
+  wait_for_window() {
+    local line deadline=$((SECONDS + 5))
+    while ((SECONDS < deadline)) && IFS= read -r -t $((deadline - SECONDS)) -u "$events" line; do
+      [[ $line == openwindow\>\>*,org.omarchy.screensaver,* ]] && return 0
+    done
+  }
+
+  local m special workspace
+  while read -r m special; do
+    hypr_focus_monitor "$m"
+    # Share a special workspace already showing (the scratchpad, say), so
+    # it is still open afterwards.
+    workspace=${special:-special:screensaver-$m}
+    # The app id in argv is what the screensaver's pkill matches, so one
+    # closing closes them all.
+    hypr_exec "$BLUEPRINT" --screensaver --app-id org.omarchy.screensaver
+    wait_for_window
+  done < <(hyprctl monitors -j | jq -r '.[] | "\(.name) \(.specialWorkspace.name)"')
+
+  hypr_focus_monitor "$focused"
+
+  # Emptying a special workspace focuses its monitor, so the last screensaver
+  # to close would take focus with it: give it back once they are all gone.
+  # The class goes through the environment, since in argv the screensaver's
+  # pgrep and pkill would match it.
+  (
+    while hyprctl clients -j | SCREENSAVER=org.omarchy.screensaver jq -e 'any(.[]; .mapped and .class == env.SCREENSAVER)' >/dev/null; do
+      IFS= read -r -u "$events" line || exit
+    done
+    hypr_focus_monitor "$focused"
+  ) >/dev/null 2>&1 &
+}
+
+case ${1:-} in
+  shows)
+    if (($# > 1)); then set_shows "$2"; else shows; fi
+    ;;
+  "" | force) launch "$@" ;;
+  -h | --help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

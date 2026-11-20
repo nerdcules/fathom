@@ -253,7 +253,8 @@ class ScreensaverTest(LookTest):
 
     def test_with_nothing_set_it_reads_omarchys_defaults(self):
         self.assertEqual(self.saver(), {"on": True, "after": 150, "lockAfter": 300, "shows": "omarchy",
-                                        "service": None, "limits": {"after": [30, 7200], "lockAfter": [60, 7200]}})
+                                        "blueprint": False, "service": None,
+                                    "limits": {"after": [30, 7200], "lockAfter": [60, 7200]}})
         self.assertIn("screensaver", json.loads(self.look("state").stdout))
 
     def test_times_go_into_shell_json_and_keep_the_rest(self):
@@ -313,6 +314,49 @@ class ScreensaverTest(LookTest):
     def test_preview_runs_omarchys_launcher(self):
         self.assertEqual(self.look("screensaver", "preview").returncode, 0)
         self.assertEqual(self.wait_for_call("omarchy-launch-screensaver"), ["omarchy-launch-screensaver force"])
+
+    def fathom_idle(self):
+        """Fathom's idle service (install.sh --screensaver) in use, with a
+        stand-in fathom-screensaver that keeps what it shows in a file."""
+        plugin = os.path.join(self.home, ".config", "omarchy", "plugins", "fathom.idle")
+        os.makedirs(plugin)
+        with open(os.path.join(plugin, "manifest.json"), "w") as f:
+            json.dump({"id": "fathom.idle", "name": "Fathom Idle", "omarchy": {"clonedFrom": "omarchy.idle"},
+                       "entryPoints": {"service": "Service.qml"}}, f)
+        with open(os.path.join(plugin, "Service.qml"), "w") as f:
+            f.write('runProcess(screensaverProcess, "screensaver", '
+                    '"[[ $(omarchy-shell lock isLocked 2>/dev/null) == \\"true\\" ]] || $HOME/.local/bin/fathom-screensaver")\n')
+        launcher = os.path.join(self.home, ".local", "bin", "fathom-screensaver")
+        os.makedirs(os.path.dirname(launcher))
+        self.shows_file = os.path.join(self.tmp, "fathom-shows")
+        with open(launcher, "w") as f:
+            f.write("#!/bin/sh\n" + LOGGER.replace("$0", "fathom-screensaver") +
+                    f'if [ "$1" = shows ]; then\n  if [ -n "$2" ]; then echo "$2" > {self.shows_file}; '
+                    f'else cat {self.shows_file} 2>/dev/null || echo blueprint; fi\nfi\n')
+        os.chmod(launcher, 0o755)
+        os.makedirs(os.path.dirname(self.shell_json), exist_ok=True)
+        with open(self.shell_json, "w") as f:
+            json.dump({"plugins": [{"id": "fathom.idle"}]}, f)
+
+    def test_fathoms_screensaver_offers_blueprint(self):
+        self.fathom_idle()
+        s = self.saver()
+        self.assertEqual((s["blueprint"], s["shows"], s["service"]), (True, "blueprint", None))
+        # Picking what Omarchy's shows goes back to Omarchy's screensaver.
+        self.assertEqual(self.look("screensaver", "shows", "fathom").returncode, 0)
+        self.assertEqual(self.calls_named("fathom-screensaver shows "), ["fathom-screensaver shows omarchy"])
+        s = self.saver()
+        self.assertEqual((s["blueprint"], s["shows"]), (True, "fathom"))
+        self.assertEqual(self.look("screensaver", "shows", "blueprint").returncode, 0)
+        self.assertEqual(self.saver()["shows"], "blueprint")
+        self.assertEqual(self.look("screensaver", "preview").returncode, 0)
+        self.assertEqual(self.wait_for_call("fathom-screensaver force"), ["fathom-screensaver force"])
+
+    def test_no_blueprint_without_fathoms_screensaver(self):
+        self.assertFalse(self.saver()["blueprint"])
+        r = self.look("screensaver", "shows", "blueprint")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--screensaver", r.stderr)
 
     def test_a_cloned_idle_service_is_named_and_its_launcher_previewed(self):
         plugin = os.path.join(self.home, ".config", "omarchy", "plugins", "me.idle")

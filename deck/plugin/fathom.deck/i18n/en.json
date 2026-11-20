@@ -531,6 +531,8 @@
   "look.ssLockNever": "The screen never locks by itself. Lock it with Super+Ctrl+L or from Start.",
   "look.ssShowsCustom": "Showing your own picture or text.",
   "look.ssShows": "Shows",
+  "look.ssShows.blueprint": "Blueprint",
+  "look.ssShows.blueprintTip": "Software patterns and architectures, drawn as blueprints",
   "look.ssShows.omarchy": "Omarchy logo",
   "look.ssShows.fathom": "Fathom",
   "look.ssShows.picture": "Picture…",

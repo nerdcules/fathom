@@ -81,6 +81,26 @@ if [[ -e $HOME/.local/bin/fathom-desk || -d $PLUGINS/fathom.desk ]]; then
   echo "Removed the desk."
 fi
 
+# Screensaver: close Blueprint if it's showing, switch fathom.idle off (the
+# shell puts Omarchy's own idle service back), then remove the plugin,
+# Blueprint, the command and what it shows.
+SAVER_BIN="${XDG_DATA_HOME:-$HOME/.local/share}/fathom/blueprint"
+if [[ -e $HOME/.local/bin/fathom-screensaver || -d $PLUGINS/fathom.idle || -d $SAVER_BIN ]]; then
+  pkill -f "$SAVER_BIN/blueprint" >/dev/null 2>&1 || true
+  if [[ -d $PLUGINS/fathom.idle ]]; then
+    omarchy plugin disable fathom.idle >/dev/null 2>&1 || true
+    rm -rf "$PLUGINS/fathom.idle"
+    omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+    # Until the shell restarts, the clone stays loaded beside Omarchy's own
+    # (seen in the test VM: both registered the same handlers).
+    omarchy-restart-shell >/dev/null 2>&1 || echo "Restart the shell to finish: omarchy-restart-shell" >&2
+  fi
+  rm -rf "$SAVER_BIN"
+  rm -f "$HOME/.local/bin/fathom-screensaver" "${XDG_CONFIG_HOME:-$HOME/.config}/fathom/screensaver"
+  rmdir "${XDG_CONFIG_HOME:-$HOME/.config}/fathom" "${XDG_DATA_HOME:-$HOME/.local/share}/fathom" 2>/dev/null || true
+  echo "Removed the screensaver; Omarchy's own is back."
+fi
+
 # Command Deck and Care: close the deck, stop Care's timer, then remove the
 # plugin, keys, commands and units.
 UNITS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
