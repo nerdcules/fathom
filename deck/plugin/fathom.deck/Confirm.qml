@@ -27,7 +27,9 @@ Item {
   Rectangle {
     anchors.fill: parent
     color: Skin.tint("#000000", 0.45)
-    MouseArea { anchors.fill: parent; onClicked: confirm.close() }
+    // hoverEnabled: the rows under the dialog don't light up as the pointer
+    // passes over them.
+    MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: confirm.close() }
   }
 
   Rectangle {
@@ -40,7 +42,7 @@ Item {
     border.color: Skin.tint(Skin.accent, 0.35)
     scale: confirm.shown ? 1 : 0.97
     Behavior on scale { NumberAnimation { duration: 140 * Skin.motion; easing.type: Easing.OutCubic } }
-    MouseArea { anchors.fill: parent }
+    MouseArea { anchors.fill: parent; hoverEnabled: true }
 
     ColumnLayout {
       id: column

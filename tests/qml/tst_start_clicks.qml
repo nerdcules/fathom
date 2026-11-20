@@ -4,7 +4,8 @@ import "../../deck/plugin/fathom.deck"
 
 // The Start menu with real mouse clicks: a click lands on what is on top and
 // nothing under it (#13: Restart in the power menu also opened the Recent
-// project beneath it). Run by tests/test_start_clicks.py.
+// project beneath it), and rows under a menu or dialog don't light up as the
+// pointer passes over it. Run by tests/test_start_clicks.py.
 Item {
   id: top
   width: 1400
@@ -32,6 +33,15 @@ Item {
     onCloseRequested: top.log.push("close")
   }
 
+  // A row with a Confirm dialog over it, in its own corner of the window.
+  Item {
+    id: confirmStage
+    x: 0; y: 0; width: 400; height: 300
+    visible: false
+    ListRow { id: underDialog; x: 0; y: 130; width: 400; clickable: true; name: "under the dialog" }
+    Confirm { id: dialog; parent: confirmStage }
+  }
+
   function all(item, pred, out) {
     out = out || []
     if (pred(item)) out.push(item)
@@ -56,6 +66,17 @@ Item {
       top.log = []
       powerMenu = all(sv, function(i) { return i.z === 50 })[0]
       verify(powerMenu, "the power menu")
+    }
+
+    // Put everything back even when a test fails half way.
+    function cleanup() {
+      dialog.shown = false
+      confirmStage.visible = false
+      all(sv, function(i) { return i.z === 60 })[0].visible = false
+      sv.visible = true
+      sv.closePowerMenu()
+      mouseMove(top, 1, 1)
+      wait(50)
     }
 
     function powerRows() {
@@ -85,6 +106,61 @@ Item {
       click(yes)
       compare(top.log, ["action " + data.id])
       verify(!powerMenu.visible)
+    }
+
+    function hoveredRecent() {
+      return all(sv, function(i) { return isRow(i) && i.hovered && /^proj/.test(i.name) })
+        .map(function(r) { return r.name })
+    }
+
+    function test_power_menu_keeps_hover_to_itself() {
+      sv.openPowerMenu()
+      wait(50)
+      var rows = powerRows()
+      for (var i = 0; i < rows.length; i++) {
+        var p = rows[i].mapToItem(top, rows[i].width / 2, rows[i].height / 2)
+        mouseMove(top, p.x, p.y)
+        wait(50)
+        verify(rows[i].hovered, sv.powerIds[i] + " lights up under the pointer")
+        compare(hoveredRecent(), [], "nothing under " + sv.powerIds[i] + " lights up")
+      }
+      // Outside the menu, over Recent: the backdrop takes it.
+      var proj1 = all(sv, function(r) { return isRow(r) && r.name === "proj1" })[0]
+      var q = proj1.mapToItem(top, 20, proj1.height / 2)
+      mouseMove(top, q.x, q.y)
+      wait(50)
+      compare(hoveredRecent(), [])
+      sv.closePowerMenu()
+      mouseMove(top, q.x, q.y + 1)
+      wait(50)
+      compare(hoveredRecent(), ["proj1"], "with the menu closed, Recent lights up again")
+    }
+
+    function test_about_card_keeps_hover_to_itself() {
+      var about = all(sv, function(i) { return i.z === 60 })[0]
+      verify(about, "the About card")
+      about.visible = true
+      var proj1 = all(sv, function(r) { return isRow(r) && r.name === "proj1" })[0]
+      var q = proj1.mapToItem(top, 20, proj1.height / 2)
+      mouseMove(top, q.x, q.y)
+      wait(50)
+      compare(hoveredRecent(), [])
+    }
+
+    function test_confirm_keeps_hover_to_itself() {
+      sv.visible = false
+      confirmStage.visible = true
+      mouseMove(top, 20, 150)
+      wait(50)
+      verify(underDialog.hovered, "the row lights up with no dialog")
+      dialog.shown = true
+      wait(300)
+      mouseMove(top, 20, 151)
+      wait(50)
+      verify(!underDialog.hovered, "the row under the dialog's backdrop stays dark")
+      mouseMove(top, 200, 150)
+      wait(50)
+      verify(!underDialog.hovered, "the row under the dialog's box stays dark")
     }
 
     function test_a_recent_project_row_still_opens_once() {

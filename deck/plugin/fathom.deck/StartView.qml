@@ -540,9 +540,11 @@ Item {
     if (id !== "") actionRequested(id)
   }
 
-  // A click anywhere else closes the menu.
+  // A click anywhere else closes the menu. hoverEnabled: the rows under it
+  // don't light up as the pointer passes over them (#13).
   MouseArea {
     anchors.fill: parent
+    hoverEnabled: true
     z: 49
     visible: powerMenu.visible
     onClicked: start.closePowerMenu()
@@ -564,7 +566,7 @@ Item {
     color: Skin.tint(Skin.bg, 0.97)
     border.width: 1
     border.color: Skin.tint(Skin.accent, 0.3)
-    MouseArea { anchors.fill: parent }       // clicks inside stay inside
+    MouseArea { anchors.fill: parent; hoverEnabled: true }  // clicks and hover stay inside
 
     Keys.onPressed: function(e) {
       if (e.key === Qt.Key_Escape) {
@@ -657,7 +659,7 @@ Item {
     anchors.fill: parent
     color: Qt.rgba(0, 0, 0, 0.55)
     radius: 14 * Skin.u
-    MouseArea { anchors.fill: parent; onClicked: aboutCard.visible = false }
+    MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: aboutCard.visible = false }
 
     Rectangle {
       id: aboutEdge
