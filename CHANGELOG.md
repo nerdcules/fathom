@@ -40,6 +40,11 @@ Each line names its commit.
   Sankofa from a paired device names that device instead of "the phone"
   (173c08e).
 
+### Fixed
+
+- Start: clicking Lock, Sign out or Restart in the power menu no longer
+  also opens the Recent project under it (#13, 97c3478).
+
 ## [0.3.0] - 2026-11-20
 
 Blueprint as the screensaver, Super+Tab from the keyboard, the screensaver
