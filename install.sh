@@ -544,6 +544,23 @@ stage_idle() {
   fi
 }
 
+# An idle service of your own: a clone of Omarchy's (by its manifest) that
+# shell.json turns on. Read from the files, not from the running shell: on
+# this laptop, asking the shell (`omarchy-plugin-list`) just after --skin
+# had switched the theme found no such service, and the install switched
+# the user's own off.
+own_idle_service() {
+  local config="$HOME/.config/omarchy/shell.json" id
+  [[ -s $config ]] || return 0
+  while IFS= read -r id; do
+    [[ $id =~ ^[A-Za-z0-9_.-]+$ && $id != fathom.idle && $id != omarchy.idle ]] || continue
+    if [[ $(jq -r '.omarchy.clonedFrom // empty' "$PLUGINS_DIR/$id/manifest.json" 2>/dev/null) == omarchy.idle ]]; then
+      echo "$id"
+      return 0
+    fi
+  done < <(jq -r '.plugins[]? | (if type == "object" then .id else . end) | strings' "$config" 2>/dev/null)
+}
+
 install_screensaver() {
   local missing=() tool
   for tool in qmake6 make g++ jq socat hyprctl perl; do
@@ -581,8 +598,7 @@ install_screensaver() {
 
   # An idle service of your own (another clone of Omarchy's) is left alone.
   local other
-  other=$(omarchy-plugin-list --json 2>/dev/null |
-    jq -r '.[] | select(.enabled and .clonedFrom == "omarchy.idle" and .id != "fathom.idle") | .id' | head -n 1)
+  other=$(own_idle_service)
   if [[ -n $other ]]; then
     echo "Blueprint is installed, but your own idle service ($other) starts the screensaver, so Fathom's isn't switched on."
     echo "  To use Fathom's: omarchy plugin disable $other, then $REPO/install.sh --screensaver"

@@ -129,7 +129,6 @@ class Install(unittest.TestCase):
                           'printf \'#!/bin/sh\\nexit 0\\n\' > blueprint && chmod +x blueprint\n',
             "omarchy-plugin-catalog": f"""cat <<'EOF'\n{json.dumps([{"id": "omarchy.idle", "firstParty": True,
                                                                      "sourceDir": self.idle}])}\nEOF\n""",
-            "omarchy-plugin-list": 'echo "${PLUGIN_LIST:-[]}"\n',
         }
         for name, body in stubs.items():
             write(os.path.join(self.box.bin, name), "#!/bin/sh\n" + body, 0o755)
@@ -161,13 +160,27 @@ class Install(unittest.TestCase):
             self.assertFalse(os.path.exists(gone), gone)
 
     def test_your_own_idle_service_is_left_alone(self):
-        mine = json.dumps([{"id": "me.idle", "enabled": True, "clonedFrom": "omarchy.idle"}])
-        r = self.install(PLUGIN_LIST=mine)
+        # Known from the files alone: the running shell may not answer (it
+        # didn't once, just after --skin switched the theme).
+        write(self.box.path(".config", "omarchy", "plugins", "me.idle", "manifest.json"),
+              json.dumps({"id": "me.idle", "omarchy": {"clonedFrom": "omarchy.idle"}}))
+        write(self.box.path(".config", "omarchy", "shell.json"),
+              json.dumps({"plugins": [{"id": "fathom.deck"}, {"id": "me.idle"}]}))
+        write(os.path.join(self.box.bin, "omarchy-plugin-list"), "#!/bin/sh\nexit 1\n", 0o755)
+        r = self.install()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("your own idle service (me.idle)", r.stdout)
         self.assertTrue(os.access(self.blueprint, os.X_OK))
         self.assertFalse(os.path.exists(self.plugin))
         self.assertNotIn("omarchy plugin enable fathom.idle", self.box.calls())
+
+    def test_a_copy_you_turned_off_doesnt_count(self):
+        write(self.box.path(".config", "omarchy", "plugins", "me.idle", "manifest.json"),
+              json.dumps({"id": "me.idle", "omarchy": {"clonedFrom": "omarchy.idle"}}))
+        write(self.box.path(".config", "omarchy", "shell.json"), json.dumps({"plugins": [{"id": "fathom.deck"}]}))
+        r = self.install()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("omarchy plugin enable fathom.idle", self.box.calls())
 
     def test_an_idle_service_that_changed_isnt_cloned(self):
         write(os.path.join(self.idle, "Service.qml"), SERVICE.replace("omarchy-launch-screensaver", "something-new"))
