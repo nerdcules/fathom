@@ -595,6 +595,8 @@ Item {
         onLookApplyRequested: function(args) { root.lookRun(args, catalog.t("look.applied")) }
         onLookBarRequested: function(mode) { root.lookRun(["bar", mode], catalog.t("look.barDone")) }
         onLookWallpaperRequested: function(path) { root.lookRun(["wallpaper", path], catalog.t("look.wallpaperDone")) }
+        onLookScreensaverRequested: function(args) { root.lookRun(["screensaver"].concat(args), catalog.t("look.ssDone")) }
+        onLookScreensaverHandOff: function(args) { root.handOff([root.lookTool, "screensaver"].concat(args)) }
         crumbs: root.crumbs
         crumbsDetail: root.crumbsDetail
         crumbsSelected: root.crumbsSelected

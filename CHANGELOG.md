@@ -18,6 +18,10 @@ Each line names its commit.
   `fathom-tasks`); with Task view open, Tab and Shift+Tab look at the other
   workspaces and Enter goes to an empty one. The workspace looked at is lit
   in the accent.
+- Personalise: a Screensaver card, and `fathom-look screensaver`: off or
+  when it starts, when the screen locks (or never), what it shows (Omarchy's
+  logo, Fathom's name, a picture or your own text) and a preview. They are
+  Omarchy's idle settings, written through `omarchy-shell-config`.
 
 - `tests/vm`: the VM checks run in WSL2 on Windows 11, with
   `FATHOM_VM_DISPLAY=vnc` (no 3D), and `run.sh` types the VM disk's

@@ -4,10 +4,12 @@ import "."
 import "Format.js" as F
 
 // Personalise: Fathom's accent, window frame, corners, how see-through
-// panels are and their glow, plus the bar and the wallpaper. Changes to the
+// panels are and their glow, plus the bar, the wallpaper and the
+// screensaver. Changes to the
 // look wait in a draft, shown in the preview, until Apply hands them to
 // `fathom-look set`, which rebuilds the theme and refreshes it. The bar and
-// the wallpaper are Omarchy's own settings and change at once.
+// the wallpaper are Omarchy's own settings and change at once, as do the
+// screensaver's (`fathom-look screensaver …`).
 GridLayout {
   id: page
 
@@ -20,12 +22,25 @@ GridLayout {
   signal applyRequested(var args)
   signal barRequested(string mode)
   signal wallpaperRequested(string path)
+  // `fathom-look screensaver <args>`: settings run here; the preview and
+  // Omarchy's picture picker and text editor open over the desktop, so the
+  // deck steps aside for them (handOff).
+  signal screensaverRequested(var args)
+  signal screensaverHandOff(var args)
 
   readonly property var saved: F.lookClean(lookState ? lookState.look : null)
   property var draft: F.lookClean(null)
   readonly property bool dirty: !F.lookSame(draft, saved)
   readonly property var wallpapers: lookState && Array.isArray(lookState.wallpapers) ? lookState.wallpapers : []
   readonly property bool blur: !!lookState && lookState.blur === true
+  readonly property var saver: lookState && lookState.screensaver ? lookState.screensaver : null
+
+  // 30 -> "30 s", 150 -> "2.5 min", 3600 -> "1 h".
+  function duration(seconds) {
+    if (seconds < 60) return Skin.t("look.ss.sec").arg(Skin.n(seconds))
+    if (seconds < 3600 || seconds % 3600 !== 0) return Skin.t("look.ss.min").arg(Skin.n(seconds / 60, seconds % 60 === 0 ? 0 : 1))
+    return Skin.t("look.ss.hour").arg(Skin.n(seconds / 3600))
+  }
 
   columns: 3
   columnSpacing: 20 * Skin.u
@@ -254,8 +269,11 @@ GridLayout {
   }
 
   // ------------------------------------------------ Shape and glass
+  // Three across: Shape and Preview take both rows, and the Screensaver
+  // card sits under Colour.
   Card {
     title: Skin.t("look.shapeTitle")
+    Layout.rowSpan: page.columns >= 3 ? 2 : 1
     glyph: ""
 
     NumberSlider {
@@ -309,6 +327,7 @@ GridLayout {
   // ------------------------------------------------ Preview and wallpaper
   Card {
     title: Skin.t("look.previewTitle")
+    Layout.rowSpan: page.columns >= 3 ? 2 : 1
     glyph: ""
     subtitle: page.dirty ? Skin.t("look.notApplied") : ""
     subtitleColor: Skin.warn
@@ -483,6 +502,106 @@ GridLayout {
         text: page.busy ? Skin.t("look.applyingDetail") : page.message
         color: page.failed ? Skin.urgent : Skin.dim
         font.pixelSize: 12 * Skin.u
+      }
+    ]
+  }
+
+  // ------------------------------------------------ Screensaver
+  Card {
+    title: Skin.t("look.ssTitle")
+    glyph: "\uf108"
+
+    // Off is one of the choices: picking a time turns it on.
+    SectionTitle { text: Skin.t("look.ssAfter") }
+    Flow {
+      Layout.fillWidth: true
+      spacing: 8 * Skin.u
+      Pill {
+        text: Skin.t("look.off")
+        selected: !!page.saver && !page.saver.on
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverRequested(["off"])
+      }
+      Repeater {
+        model: [60, 150, 300, 600, 900, 1800]
+        delegate: Pill {
+          required property int modelData
+          text: page.duration(modelData)
+          selected: !!page.saver && page.saver.on && page.saver.after === modelData
+          enabledAction: !!page.saver && !page.busy
+          onClicked: page.screensaverRequested(["after", String(modelData)])
+        }
+      }
+    }
+
+    SectionTitle { text: Skin.t("look.ssLock") }
+    Flow {
+      Layout.fillWidth: true
+      spacing: 8 * Skin.u
+      Repeater {
+        model: [300, 600, 900, 1800, 3600, 0]
+        delegate: Pill {
+          required property int modelData
+          text: modelData === 0 ? Skin.t("look.ssNever") : page.duration(modelData)
+          selected: !!page.saver && page.saver.lockAfter === modelData
+          enabledAction: !!page.saver && !page.busy
+          onClicked: page.screensaverRequested(["lock-after", String(modelData)])
+        }
+      }
+    }
+    Empty {
+      visible: !!page.saver && page.saver.lockAfter === 0
+      text: Skin.t("look.ssLockNever")
+      color: Skin.warn
+      font.pixelSize: 12 * Skin.u
+    }
+
+    SectionTitle { text: Skin.t("look.ssShows") }
+    Flow {
+      Layout.fillWidth: true
+      spacing: 8 * Skin.u
+      Pill {
+        text: Skin.t("look.ssShows.omarchy")
+        selected: !!page.saver && page.saver.shows === "omarchy"
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverRequested(["shows", "omarchy"])
+      }
+      Pill {
+        text: Skin.t("look.ssShows.fathom")
+        selected: !!page.saver && page.saver.shows === "fathom"
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverRequested(["shows", "fathom"])
+      }
+      Pill {
+        text: Skin.t("look.ssShows.picture")
+        tip: Skin.t("look.ssShows.pictureTip")
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverHandOff(["shows", "picture"])
+      }
+      Pill {
+        text: Skin.t("look.ssShows.text")
+        tip: Skin.t("look.ssShows.textTip")
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverHandOff(["shows", "text"])
+      }
+    }
+    Empty {
+      visible: !!page.saver && page.saver.shows === "custom"
+      text: Skin.t("look.ssShowsCustom")
+      font.pixelSize: 12 * Skin.u
+    }
+    Empty {
+      visible: !!page.saver && !!page.saver.service
+      text: page.saver && page.saver.service ? Skin.t("look.ssService").arg(page.saver.service) : ""
+      font.pixelSize: 12 * Skin.u
+    }
+
+    footer: [
+      Pill {
+        text: Skin.t("look.ssPreview")
+        glyph: "\uf04b"
+        enabledAction: !!page.saver && !page.busy
+        onClicked: page.screensaverHandOff(["preview"])
       }
     ]
   }

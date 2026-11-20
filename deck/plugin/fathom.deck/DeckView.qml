@@ -63,6 +63,8 @@ Item {
   signal lookApplyRequested(var args)
   signal lookBarRequested(string mode)
   signal lookWallpaperRequested(string path)
+  signal lookScreensaverRequested(var args)
+  signal lookScreensaverHandOff(var args)
   signal crumbsSelectRequested(string domain)
   signal crumbsApplyRequested(var args)
   signal crumbsClearRequested()
@@ -307,6 +309,8 @@ Item {
         onApplyRequested: function(args) { deck.lookApplyRequested(args) }
         onBarRequested: function(mode) { deck.lookBarRequested(mode) }
         onWallpaperRequested: function(path) { deck.lookWallpaperRequested(path) }
+        onScreensaverRequested: function(args) { deck.lookScreensaverRequested(args) }
+        onScreensaverHandOff: function(args) { deck.lookScreensaverHandOff(args) }
       }
 
       Item { Layout.fillHeight: true }

@@ -14,13 +14,29 @@ panels are, the glow along their top, the bar and the wallpaper.
                                     the bar's background (Omarchy's setting;
                                     glassy turns Hyprland's blur on)
   fathom-look wallpaper <file>      set the wallpaper
+  fathom-look screensaver on|off    the screensaver (Omarchy's screensaver-off toggle)
+  fathom-look screensaver after <seconds>
+                                    start it after this long idle (30 to 7200),
+                                    turning it on if it was off
+  fathom-look screensaver lock-after <seconds>
+                                    lock the screen after this long idle
+                                    (60 to 7200, or 0 for never)
+  fathom-look screensaver shows omarchy|fathom
+                                    Omarchy's logo or Fathom's name on it
+  fathom-look screensaver shows picture|text
+                                    pick a picture for it, or edit its text
+                                    (Omarchy's own picker and editor)
+  fathom-look screensaver preview   show it now
   fathom-look build                 rebuild the theme folder, without applying
   fathom-look apply                 rebuild it and refresh the theme if it's on
 
 The look is kept in ~/.config/fathom/look.json. The theme folder Omarchy reads
 (~/.config/omarchy/themes/fathom) is built from Fathom's theme, installed at
 ~/.local/share/fathom/theme, with colors.toml, shell.toml and hyprland.lua
-rewritten for the look. Everything stays on this machine.
+rewritten for the look. The screensaver's times are Omarchy's idle settings
+in ~/.config/omarchy/shell.json (written through Omarchy's own
+omarchy-shell-config), and what it shows is ~/.config/omarchy/branding/
+screensaver.txt. Everything stays on this machine.
 """
 
 import json
@@ -334,7 +350,188 @@ def state():
         "blur": blur_on(),
         "wallpapers": wallpapers(on),
         "wallpaper": current_wallpaper(),
+        "screensaver": screensaver_state(),
     }
+
+
+# ---------------------------------------------------------------- screensaver
+
+# Where Omarchy's own commands keep these: under $HOME, whatever XDG says
+# (omarchy-shell-config, omarchy-toggle, omarchy-branding-screensaver).
+SHELL_JSON = os.path.join(HOME, ".config", "omarchy", "shell.json")
+SCREENSAVER_TEXT = os.path.join(HOME, ".config", "omarchy", "branding", "screensaver.txt")
+SCREENSAVER_OFF = os.path.join(HOME, ".local", "state", "omarchy", "toggles", "screensaver-off")
+# Omarchy's idle service (shell/plugins/services/idle) uses these when
+# shell.json says nothing.
+IDLE_DEFAULTS = {"screensaver": 150, "lock": 300}
+SCREENSAVER_AFTER = (30, 7200)
+LOCK_AFTER = (60, 7200)
+STOCK_LAUNCHER = "omarchy-launch-screensaver"
+
+# Fathom's name in the block letters of Omarchy's own logo.txt.
+FATHOM_TEXT = "\n".join([
+    "▄████████   ▄█████▄   █████████  ▄█▄   ▄█▄   ▄█████▄    ▄███████████▄",
+    "███        ███   ███     ███     ███   ███  ███   ███  ███   ███   ███",
+    "███        ███   ███     ███     ███   ███  ███   ███  ███   ███   ███",
+    "███▄▄▄▄    ███▄▄▄███     ███     ███▄▄▄███  ███   ███  ███   ███   ███",
+    "███▀▀▀▀    ███▀▀▀███     ███     ███▀▀▀███  ███   ███  ███   ███   ███",
+    "███        ███   ███     ███     ███   ███  ███   ███  ███   ███   ███",
+    "███        ███   ███     ███     ███   ███  ███   ███  ███   ███   ███",
+    "▀█▀        ▀█▀   ▀█▀     ▀█▀     ▀█▀   ▀█▀   ▀█████▀   ▀█▀   ▀█▀   ▀█▀",
+]) + "\n"
+
+
+def omarchy_logo():
+    root = os.environ.get("OMARCHY_PATH") or "/usr/share/omarchy"
+    return os.path.join(root, "logo.txt")
+
+
+def read_or_none(path):
+    try:
+        return read(path)
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def shell_config():
+    try:
+        with open(SHELL_JSON) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def idle_seconds(idle, key):
+    """As Omarchy's IdleModel.secondsFromConfig reads it."""
+    v = idle.get(key) if isinstance(idle, dict) else None
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0:
+        return IDLE_DEFAULTS[key]
+    return int(v)
+
+
+def screensaver_shows():
+    text = read_or_none(SCREENSAVER_TEXT)
+    if text is None:
+        return "omarchy"
+    if text == FATHOM_TEXT:
+        return "fathom"
+    logo = read_or_none(omarchy_logo())
+    return "omarchy" if logo is not None and text == logo else "custom"
+
+
+def idle_launcher(config):
+    """The command the idle service in use starts the screensaver with:
+    Omarchy's, or the one in a copy of it the user made (`omarchy plugin
+    clone omarchy.idle`) and turned on in shell.json. Returns (command, name),
+    name being the copy's when it's one."""
+    folder = os.path.join(HOME, ".config", "omarchy", "plugins")
+    for entry in config.get("plugins") or []:
+        pid = entry.get("id") if isinstance(entry, dict) else entry
+        if not isinstance(pid, str) or not re.match(r"^[\w.-]+$", pid) or pid == "omarchy.idle":
+            continue
+        try:
+            with open(os.path.join(folder, pid, "manifest.json")) as f:
+                manifest = json.load(f)
+            if (manifest.get("omarchy") or {}).get("clonedFrom") != "omarchy.idle":
+                continue
+            service = read(os.path.join(folder, pid, manifest.get("entryPoints", {}).get("service", "Service.qml")))
+        except (OSError, ValueError, AttributeError):
+            continue
+        # runProcess(screensaverProcess, "screensaver", "<test> || <launcher>")
+        m = re.search(r'runProcess\(screensaverProcess,\s*"screensaver",\s*"(?:[^"\\]|\\.)*\|\|\s*([^"\s]+)"', service)
+        if m and re.match(r"^[\w$./~-]+$", m.group(1)):
+            command = m.group(1).replace("$HOME", HOME)
+            if command.startswith("~/"):
+                command = os.path.join(HOME, command[2:])
+            return command, str(manifest.get("name") or pid)[:60]
+    return STOCK_LAUNCHER, None
+
+
+def screensaver_state():
+    config = shell_config()
+    idle = config.get("idle") if isinstance(config.get("idle"), dict) else {}
+    after = idle_seconds(idle, "screensaver")
+    _, service = idle_launcher(config)
+    return {
+        "on": after > 0 and not os.path.exists(SCREENSAVER_OFF),
+        "after": after,
+        "lockAfter": idle_seconds(idle, "lock"),
+        "shows": screensaver_shows(),
+        "service": service,
+        "limits": {"after": list(SCREENSAVER_AFTER), "lockAfter": list(LOCK_AFTER)},
+    }
+
+
+def set_idle(key, seconds):
+    """One idle setting into shell.json, through Omarchy's own helper (it
+    writes the file whole and tells the running shell)."""
+    script = ('source omarchy-shell-config && '
+              'commit "$NORMALIZE | .idle = ((.idle // {}) | if type == \\"object\\" then . else {} end) '
+              '| .idle[\\$key] = (\\$seconds | tonumber)" --arg key "$1" --arg seconds "$2"')
+    code, _, err = run(["bash", "-c", script, "fathom-look", key, str(seconds)], 30)
+    if code != 0:
+        raise LookError(f"couldn't change Omarchy's idle settings: {(err or 'omarchy-shell-config failed')[:300]}")
+
+
+def whole_seconds(value, lo, hi, what, allow_zero=False):
+    try:
+        n = int(value)
+    except ValueError:
+        raise LookError(f"{what} takes seconds, a whole number, not '{value}'")
+    if allow_zero and n == 0:
+        return 0
+    if not lo <= n <= hi:
+        raise LookError(f"{what} must be from {lo} to {hi} seconds{' (or 0 for never)' if allow_zero else ''}, not {n}")
+    return n
+
+
+def detach(cmd):
+    try:
+        subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError as e:
+        raise LookError(f"couldn't start {cmd[0]}: {e}")
+
+
+def screensaver(args):
+    if not args:
+        print(json.dumps(screensaver_state()))
+        return
+    what, rest = args[0], args[1:]
+    if what in ("on", "off") and not rest:
+        code, _, err = run(["omarchy-toggle", "screensaver-off", "off" if what == "on" else "on"], 10)
+        if code != 0:
+            raise LookError(f"omarchy-toggle screensaver-off failed: {err[:300]}")
+        if what == "on" and idle_seconds((shell_config().get("idle") or {}), "screensaver") == 0:
+            set_idle("screensaver", IDLE_DEFAULTS["screensaver"])
+    elif what == "after" and len(rest) == 1:
+        set_idle("screensaver", whole_seconds(rest[0], *SCREENSAVER_AFTER, "after"))
+        # Picking a time means wanting it: turn it on if it was off.
+        if os.path.exists(SCREENSAVER_OFF):
+            code, _, err = run(["omarchy-toggle", "screensaver-off", "off"], 10)
+            if code != 0:
+                raise LookError(f"omarchy-toggle screensaver-off failed: {err[:300]}")
+    elif what == "lock-after" and len(rest) == 1:
+        set_idle("lock", whole_seconds(rest[0], *LOCK_AFTER, "lock-after", allow_zero=True))
+    elif what == "shows" and len(rest) == 1 and rest[0] in ("omarchy", "fathom"):
+        text = FATHOM_TEXT if rest[0] == "fathom" else read_or_none(omarchy_logo())
+        if text is None:
+            raise LookError(f"Omarchy's logo isn't at {omarchy_logo()}")
+        os.makedirs(os.path.dirname(SCREENSAVER_TEXT), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(SCREENSAVER_TEXT), prefix=".screensaver.")
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+        os.replace(tmp, SCREENSAVER_TEXT)
+    elif what == "shows" and len(rest) == 1 and rest[0] in ("picture", "text"):
+        # Omarchy's own: a file picker (or the editor), then a preview.
+        detach(["omarchy-branding-screensaver", "image" if rest[0] == "picture" else "text"])
+    elif what == "preview" and not rest:
+        command, _ = idle_launcher(shell_config())
+        detach([command, "force"])
+    else:
+        raise LookError("screensaver takes on|off, after <seconds>, lock-after <seconds>, "
+                        "shows omarchy|fathom|picture|text, or preview")
 
 
 # ---------------------------------------------------------------- commands
@@ -379,6 +576,8 @@ def main(argv):
             code, _, err = run(["omarchy", "theme", "bg", "set", args[0]], 60)
             if code != 0:
                 raise LookError(f"omarchy theme bg set failed: {err[:300]}")
+        elif cmd == "screensaver":
+            screensaver(args)
         else:
             raise LookError(f"unknown command '{cmd}'; see fathom-look --help")
     except LookError as e:

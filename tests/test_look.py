@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -190,6 +191,163 @@ class LookTest(unittest.TestCase):
         self.assertEqual(self.look("bar", "frosted").returncode, 1)
         self.assertEqual(self.look("wallpaper", os.path.join(self.tmp, "missing.png")).returncode, 1)
         self.assertEqual(self.omarchy_calls(), ["bar background opaque", f"theme bg set {pic}"])
+
+
+# Stand-ins for Omarchy's screensaver plumbing, logging to $CALLS. The
+# shell-config one keeps the real helper's interface: source it, then
+# commit '<jq program>' [jq args], with $NORMALIZE, writing ~/.config/omarchy/shell.json.
+SHELL_CONFIG = r"""CONFIG_FILE="$HOME/.config/omarchy/shell.json"
+NORMALIZE='if type == "object" then . else {} end'
+commit() {
+  local program="$1"; shift
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+  [ -s "$CONFIG_FILE" ] || echo '{}' > "$CONFIG_FILE"
+  jq -S -e "$@" "$program" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" || { echo "could not update shell config" >&2; exit 1; }
+  mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+  echo "commit" >> "$CALLS"
+}
+"""
+TOGGLE = """echo "toggle $*" >> "$CALLS"
+f="$HOME/.local/state/omarchy/toggles/$1"
+case "$2" in on) mkdir -p "$(dirname "$f")"; touch "$f" ;; off) rm -f "$f" ;; esac
+"""
+LOGGER = """echo "$(basename "$0") $*" >> "$CALLS"
+"""
+
+
+class ScreensaverTest(LookTest):
+    def setUp(self):
+        super().setUp()
+        self.home = os.path.join(self.tmp, "home")
+        os.makedirs(self.home)
+        bin_dir = os.path.join(self.tmp, "bin")
+        for name, script in (("omarchy-shell-config", SHELL_CONFIG), ("omarchy-toggle", TOGGLE),
+                             ("omarchy-branding-screensaver", LOGGER), ("omarchy-launch-screensaver", LOGGER)):
+            path = os.path.join(bin_dir, name)
+            with open(path, "w") as f:
+                f.write(("" if name == "omarchy-shell-config" else "#!/bin/sh\n") + script)
+            os.chmod(path, 0o755)
+        self.omarchy = os.path.join(self.tmp, "omarchy")
+        os.makedirs(self.omarchy)
+        with open(os.path.join(self.omarchy, "logo.txt"), "w") as f:
+            f.write("OMARCHY\n")
+        self.env = dict(self.env, HOME=self.home, OMARCHY_PATH=self.omarchy)
+        self.shell_json = os.path.join(self.home, ".config", "omarchy", "shell.json")
+        self.text = os.path.join(self.home, ".config", "omarchy", "branding", "screensaver.txt")
+
+    def saver(self):
+        r = self.look("screensaver")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def calls_named(self, prefix):
+        return [c for c in self.omarchy_calls() if c.startswith(prefix)]
+
+    def wait_for_call(self, prefix):
+        # Detached commands log a moment after fathom-look returns.
+        for _ in range(50):
+            if self.calls_named(prefix):
+                return self.calls_named(prefix)
+            time.sleep(0.05)
+        return []
+
+    def test_with_nothing_set_it_reads_omarchys_defaults(self):
+        self.assertEqual(self.saver(), {"on": True, "after": 150, "lockAfter": 300, "shows": "omarchy",
+                                        "service": None, "limits": {"after": [30, 7200], "lockAfter": [60, 7200]}})
+        self.assertIn("screensaver", json.loads(self.look("state").stdout))
+
+    def test_times_go_into_shell_json_and_keep_the_rest(self):
+        os.makedirs(os.path.dirname(self.shell_json))
+        with open(self.shell_json, "w") as f:
+            json.dump({"bar": {"background": "glassy"}, "idle": {"lock": 300}}, f)
+        self.assertEqual(self.look("screensaver", "after", "600").returncode, 0)
+        self.assertEqual(self.look("screensaver", "lock-after", "0").returncode, 0)
+        config = json.loads(read(self.shell_json))
+        self.assertEqual(config["idle"], {"screensaver": 600, "lock": 0})
+        self.assertEqual(config["bar"], {"background": "glassy"})
+        s = self.saver()
+        self.assertEqual((s["after"], s["lockAfter"]), (600, 0))
+
+    def test_bad_times_change_nothing(self):
+        for args in (("after", "10"), ("after", "9000"), ("after", "0"), ("after", "soon"),
+                     ("lock-after", "30"), ("lock-after", "-1"), ("what",), ("shows", "nothing")):
+            r = self.look("screensaver", *args)
+            self.assertEqual(r.returncode, 1, args)
+            self.assertIn("fathom-look:", r.stderr)
+        self.assertFalse(os.path.exists(self.shell_json))
+        self.assertEqual(self.calls_named("commit"), [])
+
+    def test_off_and_on_use_omarchys_toggle(self):
+        self.assertEqual(self.look("screensaver", "off").returncode, 0)
+        self.assertFalse(self.saver()["on"])
+        self.assertEqual(self.look("screensaver", "on").returncode, 0)
+        self.assertTrue(self.saver()["on"])
+        self.assertEqual(self.calls_named("toggle"), ["toggle screensaver-off on", "toggle screensaver-off off"])
+        # Picking a time while it's off turns it on.
+        self.assertEqual(self.look("screensaver", "off").returncode, 0)
+        self.assertEqual(self.look("screensaver", "after", "300").returncode, 0)
+        s = self.saver()
+        self.assertEqual((s["on"], s["after"]), (True, 300))
+
+    def test_on_after_a_zero_time_brings_back_omarchys_time(self):
+        os.makedirs(os.path.dirname(self.shell_json))
+        with open(self.shell_json, "w") as f:
+            json.dump({"idle": {"screensaver": 0}}, f)
+        self.assertFalse(self.saver()["on"])
+        self.assertEqual(self.look("screensaver", "on").returncode, 0)
+        self.assertEqual(json.loads(read(self.shell_json))["idle"]["screensaver"], 150)
+
+    def test_what_it_shows(self):
+        self.assertEqual(self.look("screensaver", "shows", "fathom").returncode, 0)
+        self.assertIn("▄████████", read(self.text))
+        self.assertEqual(self.saver()["shows"], "fathom")
+        self.assertEqual(self.look("screensaver", "shows", "omarchy").returncode, 0)
+        self.assertEqual(read(self.text), "OMARCHY\n")
+        self.assertEqual(self.saver()["shows"], "omarchy")
+        with open(self.text, "w") as f:
+            f.write("mine\n")
+        self.assertEqual(self.saver()["shows"], "custom")
+        self.assertEqual(self.look("screensaver", "shows", "picture").returncode, 0)
+        self.assertEqual(self.wait_for_call("omarchy-branding-screensaver"), ["omarchy-branding-screensaver image"])
+
+    def test_preview_runs_omarchys_launcher(self):
+        self.assertEqual(self.look("screensaver", "preview").returncode, 0)
+        self.assertEqual(self.wait_for_call("omarchy-launch-screensaver"), ["omarchy-launch-screensaver force"])
+
+    def test_a_cloned_idle_service_is_named_and_its_launcher_previewed(self):
+        plugin = os.path.join(self.home, ".config", "omarchy", "plugins", "me.idle")
+        os.makedirs(plugin)
+        with open(os.path.join(plugin, "manifest.json"), "w") as f:
+            json.dump({"id": "me.idle", "name": "My Idle", "omarchy": {"clonedFrom": "omarchy.idle"},
+                       "entryPoints": {"service": "Service.qml"}}, f)
+        launcher = os.path.join(self.tmp, "bin", "my-saver")
+        with open(launcher, "w") as f:
+            f.write("#!/bin/sh\n" + LOGGER)
+        os.chmod(launcher, 0o755)
+        with open(os.path.join(plugin, "Service.qml"), "w") as f:
+            f.write('runProcess(screensaverProcess, "screensaver", '
+                    '"[[ $(omarchy-shell lock isLocked 2>/dev/null) == \\"true\\" ]] || ' + launcher + '")\n')
+        os.makedirs(os.path.dirname(self.shell_json), exist_ok=True)
+        with open(self.shell_json, "w") as f:
+            json.dump({"plugins": [{"id": "me.idle"}]}, f)
+        self.assertEqual(self.saver()["service"], "My Idle")
+        self.assertEqual(self.look("screensaver", "preview").returncode, 0)
+        self.assertEqual(self.wait_for_call("my-saver"), ["my-saver force"])
+        self.assertEqual(self.calls_named("omarchy-launch-screensaver"), [])
+
+    # The look's own tests aren't run again here.
+    test_fathoms_own_look_rebuilds_the_theme_unchanged = None
+    test_a_changed_look_rewrites_colours_corners_and_panels = None
+    test_a_solid_frame_is_one_colour = None
+    test_the_built_hyprland_file_is_valid_lua = None
+    test_bad_values_change_nothing = None
+    test_an_unreadable_look_file_is_fathoms_own = None
+    test_a_theme_folder_the_user_made_is_left_alone = None
+    test_an_older_install_link_is_replaced_by_a_built_folder = None
+    test_it_refreshes_the_theme_only_when_fathom_is_on = None
+    test_a_failed_refresh_is_reported = None
+    test_state_lists_the_bar_blur_and_wallpapers = None
+    test_bar_and_wallpaper_go_to_omarchy = None
 
 
 if __name__ == "__main__":

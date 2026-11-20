@@ -33,7 +33,7 @@ cd ~/Work/fathom
 
 | Option | What it does |
 |---|---|
-| `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) |
+| `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
 | `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
@@ -1060,6 +1060,16 @@ or search Start for "personalise". It changes how Fathom looks:
 - **Glow** along the top of Fathom's panels, on or off.
 - **Bar:** Omarchy's bar background, glassy, solid or clear. This one, and
   the **wallpaper**, change as soon as you click.
+- **Screensaver:** off, or how long idle before it starts (1 to 30 min);
+  how long idle before the screen locks (5 min to 1 h, or never); and what
+  it shows: Omarchy's logo, Fathom's name, a picture or your own text (the
+  last two through Omarchy's own picker and editor). **Preview** shows it.
+  These are Omarchy's settings (`idle` in `~/.config/omarchy/shell.json`,
+  written through Omarchy's `omarchy-shell-config`, its `screensaver-off`
+  toggle and `~/.config/omarchy/branding/screensaver.txt`) and change as
+  soon as you click. If you run your own copy of Omarchy's idle service
+  (`omarchy plugin clone omarchy.idle`), the page names it, since it may
+  show something else, and Preview runs what it runs.
 
 The rest wait in a preview until **Apply**. **Fathom's look** puts the
 shipped look back in the draft. Applying rebuilds the theme and refreshes
@@ -1076,6 +1086,11 @@ fathom-look                                  # open Personalise
 fathom-look state | jq .                     # the look, the bar and the wallpapers
 fathom-look set accent '#ff6b81' corners 14  # change some of it and apply
 fathom-look reset                            # Fathom's own look again
+fathom-look screensaver | jq .               # the screensaver's settings
+fathom-look screensaver after 300            # start it after 5 min idle (and turn it on)
+fathom-look screensaver lock-after 0         # never lock by itself
+fathom-look screensaver shows fathom         # Fathom's name on it (or omarchy, picture, text)
+fathom-look screensaver preview              # show it now
 ```
 
 ## Changing the art
@@ -1108,7 +1123,7 @@ already.
 | 9 | Sentinel: firewall, sign-ins, network devices, system files, OpenSnitch; CrowdSec later | first version |
 | 10 | Pulse: stack map from OpenTelemetry, and Claude Code's day | first version |
 | 11 | Desk: Alt+Tab with previews, Task view, Snap layouts, Quick settings | first version |
-| 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper | first version |
+| 12 | Personalise: accent, window frame, corners, panel opacity, glow, bar, wallpaper, screensaver | first version |
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
 | 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, alerts, actions) | first version |
