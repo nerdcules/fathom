@@ -84,14 +84,26 @@ Item {
 
   // ------------------------------------------------ opening and closing
 
+  // Quick settings' list to open on ("wifi" or "bluetooth"), from the
+  // payload's `page`; "" for the tiles.
+  property string quickPage: ""
+
   function open(payloadJson) {
     var wanted = ""
+    var page = ""
     try {
       var payload = JSON.parse(payloadJson || "{}")
       if (payload && ["tasks", "snap", "quick"].indexOf(payload.view) !== -1) wanted = payload.view
+      if (wanted === "quick" && (payload.page === "wifi" || payload.page === "bluetooth")) page = payload.page
     } catch (e) {}
     if (wanted === "") return
+    // Already open on Quick settings and asked for a list: go to it.
+    if (view === "quick" && wanted === "quick" && page !== "" && quickLoader.item && quickLoader.item.page !== page) {
+      quickLoader.item.openPage(page)
+      return
+    }
     if (view === wanted) { dismiss(); return }
+    quickPage = page
     if (view === "switch") cancel("")
     show(wanted)
   }

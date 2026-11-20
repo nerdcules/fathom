@@ -7,6 +7,7 @@ SwitchView 1.0 SwitchView.qml
 TaskView 1.0 TaskView.qml
 SnapView 1.0 SnapView.qml
 QuickTile 1.0 QuickTile.qml
+QuickList 1.0 QuickList.qml
 SliderRow 1.0 SliderRow.qml
 QuickView 1.0 QuickView.qml
 Panel 1.0 Panel.qml

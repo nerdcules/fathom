@@ -4,7 +4,8 @@
 #
 #   fathom-desk tasks                  open or close Task view
 #   fathom-desk snap                   open or close Snap layouts for the focused window
-#   fathom-desk quick                  open or close Quick settings
+#   fathom-desk quick [wifi|bluetooth] open or close Quick settings, or open it
+#                                      on its Wi-Fi or Bluetooth list
 #   fathom-desk state                  windows, workspaces and monitors, as JSON
 #   fathom-desk settings               what Quick settings shows, as JSON
 #   fathom-desk set <what> <value>     wifi on|off, focus on|off, nightlight on|off,
@@ -19,7 +20,13 @@ usage() {
 }
 
 summon() {
-  exec omarchy-shell shell summon fathom.desk "{\"view\":\"$1\"}"
+  local page=""
+  case ${2:-} in
+    "") ;;
+    wifi | bluetooth) page=",\"page\":\"$2\"" ;;
+    *) echo "fathom-desk: quick takes wifi or bluetooth, not '$2'" >&2; exit 2 ;;
+  esac
+  exec omarchy-shell shell summon fathom.desk "{\"view\":\"$1\"$page}"
 }
 
 # The first number of a CSS-like gap ("5 5 5 5"), or a plain number.
@@ -190,7 +197,8 @@ set_value() {
 }
 
 case ${1:-} in
-  tasks | snap | quick) summon "$1" ;;
+  tasks | snap) summon "$1" ;;
+  quick) summon quick "${2:-}" ;;
   state) state ;;
   settings) settings ;;
   set) set_value "${2:-}" "${3:-}" ;;

@@ -321,3 +321,111 @@ function addressRows(list, max) {
   }
   return rows
 }
+
+// ---------------------------------------------------------------- Quick settings' lists (#14)
+
+// Wi-Fi signal strength as 0-4 bars: a fraction (0-1, as Quickshell gives
+// it) or a percentage.
+function signalBars(signal) {
+  var s = Number(signal)
+  if (!isFinite(s) || s <= 0) return 0
+  if (s > 1) s = s / 100
+  if (s >= 0.75) return 4
+  if (s >= 0.5) return 3
+  if (s >= 0.25) return 2
+  return 1
+}
+
+// Quick settings' Wi-Fi list from plain readings of the networks
+// ({ssid, signal, known, connected, busy, security: "open" | "psk" |
+// "enterprise"}): one row per name (the connected or strongest reading),
+// the connected one first, then saved ones, then by signal, then by name.
+// Networks without a name (hidden ones) are left out. At most `max`.
+function wifiRows(list, max) {
+  var cap = Math.max(0, Number(max) || 0)
+  var byName = {}
+  var names = []
+  var items = Array.isArray(list) ? list : []
+  for (var i = 0; i < items.length; i++) {
+    var n = items[i]
+    if (!n || typeof n.ssid !== "string" || n.ssid === "") continue
+    var row = {
+      ssid: n.ssid,
+      signal: Math.max(0, Number(n.signal) || 0),
+      known: n.known === true,
+      connected: n.connected === true,
+      busy: n.busy === true,
+      security: n.security === "open" || n.security === "enterprise" ? n.security : "psk"
+    }
+    var had = byName[n.ssid]
+    if (!had) { byName[n.ssid] = row; names.push(n.ssid); continue }
+    // Several access points with one name: keep the connected or strongest,
+    // and what any of them says about being saved or busy.
+    var keep = row.connected && !had.connected || (row.connected === had.connected && row.signal > had.signal) ? row : had
+    keep.known = had.known || row.known
+    keep.busy = had.busy || row.busy
+    keep.connected = had.connected || row.connected
+    byName[n.ssid] = keep
+  }
+  var rows = names.map(function(k) { return byName[k] })
+  rows.sort(function(a, b) {
+    if (a.connected !== b.connected) return a.connected ? -1 : 1
+    if (a.known !== b.known) return a.known ? -1 : 1
+    if (a.signal !== b.signal) return b.signal - a.signal
+    return a.ssid.toLowerCase() < b.ssid.toLowerCase() ? -1 : (a.ssid.toLowerCase() > b.ssid.toLowerCase() ? 1 : 0)
+  })
+  return rows.slice(0, cap)
+}
+
+// What a click on a Wi-Fi row does: "disconnect", "connect" (saved or
+// open), "password" (ask for one first) or "elsewhere" (needs a username
+// too: Omarchy's network tool).
+function wifiAction(row) {
+  if (!row) return ""
+  if (row.connected) return "disconnect"
+  if (row.security === "enterprise" && !row.known) return "elsewhere"
+  if (row.security === "psk" && !row.known) return "password"
+  return "connect"
+}
+
+// Quick settings' Bluetooth list from plain readings of the devices
+// ({address, name, connected, paired, busy, battery 0-1 or null}): paired
+// ones first (connected first, then by name), then nearby ones that have a
+// name, by name. At most `max` nearby ones.
+function bluetoothRows(list, max) {
+  var cap = Math.max(0, Number(max) || 0)
+  var paired = []
+  var nearby = []
+  var seen = {}
+  var items = Array.isArray(list) ? list : []
+  for (var i = 0; i < items.length; i++) {
+    var d = items[i]
+    if (!d || typeof d.address !== "string" || !/^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/.test(d.address)) continue
+    if (seen[d.address]) continue
+    seen[d.address] = true
+    var name = typeof d.name === "string" ? d.name.trim() : ""
+    // BlueZ names a device it has no name for after its address
+    // ("43-FA-97-6F-46-E0"): that is no name.
+    if (name.replace(/[-:]/g, "").toUpperCase() === d.address.replace(/:/g, "").toUpperCase()) name = ""
+    var battery = d.battery === null || d.battery === undefined || !isFinite(Number(d.battery)) ? null : Math.max(0, Math.min(1, Number(d.battery)))
+    var row = { address: d.address, name: name, connected: d.connected === true, paired: d.paired === true || d.connected === true, busy: d.busy === true, battery: battery }
+    if (row.paired) paired.push(row)
+    else if (name !== "") nearby.push(row)
+  }
+  var byName = function(a, b) {
+    var x = (a.name || a.address).toLowerCase(), y = (b.name || b.address).toLowerCase()
+    return x < y ? -1 : (x > y ? 1 : 0)
+  }
+  paired.sort(function(a, b) { return a.connected !== b.connected ? (a.connected ? -1 : 1) : byName(a, b) })
+  nearby.sort(byName)
+  return paired.map(function(r) { r.section = "paired"; return r })
+    .concat(nearby.slice(0, cap).map(function(r) { r.section = "nearby"; return r }))
+}
+
+// What a click on a Bluetooth row does, as omarchy-bluetooth-device's
+// action: "disconnect", "connect" (paired) or "pair".
+function bluetoothAction(row) {
+  if (!row) return ""
+  if (row.connected) return "disconnect"
+  return row.paired ? "connect" : "pair"
+}

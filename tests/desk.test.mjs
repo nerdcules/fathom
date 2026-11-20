@@ -19,7 +19,9 @@ vm.runInNewContext(read("Desk.js").replace(/^\.pragma library\s*$/m, "") + `
   this.LAYOUTS = LAYOUTS; this.usableArea = usableArea; this.zoneRect = zoneRect; this.zoneOrder = zoneOrder;
   this.focusWindow = focusWindow; this.focusWorkspace = focusWorkspace; this.moveToWorkspace = moveToWorkspace;
   this.closeWindow = closeWindow; this.activate = activate; this.snap = snap; this.tile = tile;
-  this.nextProfile = nextProfile; this.clampPercent = clampPercent; this.addressRows = addressRows;`, D);
+  this.nextProfile = nextProfile; this.clampPercent = clampPercent; this.addressRows = addressRows;
+  this.signalBars = signalBars; this.wifiRows = wifiRows; this.wifiAction = wifiAction;
+  this.bluetoothRows = bluetoothRows; this.bluetoothAction = bluetoothAction;`, D);
 // Values made inside the vm context: compare plain copies.
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
@@ -201,4 +203,91 @@ test("addressRows: one row per address, IPv4 first, capped, odd entries skipped"
   assert.equal(D.addressRows(list, 2).length, 2);
   assert.deepEqual(plain(D.addressRows(null, 6)), []);
   assert.deepEqual(plain(D.addressRows(list, 0)), []);
+});
+
+// ------------------------------------------------ Quick settings' lists (#14)
+
+test("signal strength becomes 0-4 bars, from a fraction or a percentage", () => {
+  assert.deepEqual([0, 0.1, 0.25, 0.5, 0.74, 0.75, 1].map(D.signalBars), [0, 1, 2, 3, 3, 4, 4]);
+  assert.equal(D.signalBars(80), 4);
+  assert.equal(D.signalBars(30), 2);
+  assert.equal(D.signalBars("x"), 0);
+  assert.equal(D.signalBars(-1), 0);
+});
+
+test("Wi-Fi list: connected first, then saved, then by signal; one row per name", () => {
+  const rows = plain(D.wifiRows([
+    { ssid: "Cafe", signal: 0.9, security: "open" },
+    { ssid: "Home", signal: 0.4, known: true, connected: true, security: "psk" },
+    { ssid: "Office", signal: 0.3, known: true, security: "enterprise" },
+    { ssid: "Neighbour", signal: 0.6, security: "psk" },
+    { ssid: "Neighbour", signal: 0.8, security: "psk" },
+    { ssid: "", signal: 1, security: "psk" },
+    null,
+    { ssid: 5 },
+  ], 10));
+  assert.deepEqual(rows.map((r) => r.ssid), ["Home", "Office", "Cafe", "Neighbour"]);
+  assert.equal(rows[3].signal, 0.8, "the strongest of a name's access points");
+  assert.equal(D.wifiRows([{ ssid: "a" }, { ssid: "b" }, { ssid: "c" }], 2).length, 2);
+  assert.deepEqual(plain(D.wifiRows("nope", 5)), []);
+  assert.equal(D.wifiRows([{ ssid: "x", security: "wep?" }], 5)[0].security, "psk", "anything unknown asks for a password");
+});
+
+test("Wi-Fi list: one access point connected or saved marks the name", () => {
+  const rows = plain(D.wifiRows([
+    { ssid: "Mesh", signal: 0.9, security: "psk" },
+    { ssid: "Mesh", signal: 0.3, known: true, connected: true, security: "psk" },
+  ], 5));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].connected, true);
+  assert.equal(rows[0].known, true);
+});
+
+test("Wi-Fi row click: disconnect, connect, ask for a password, or elsewhere", () => {
+  assert.equal(D.wifiAction({ connected: true, security: "psk" }), "disconnect");
+  assert.equal(D.wifiAction({ known: true, security: "psk" }), "connect");
+  assert.equal(D.wifiAction({ security: "open" }), "connect");
+  assert.equal(D.wifiAction({ security: "psk" }), "password");
+  assert.equal(D.wifiAction({ security: "enterprise" }), "elsewhere");
+  assert.equal(D.wifiAction({ known: true, security: "enterprise" }), "connect");
+  assert.equal(D.wifiAction(null), "");
+});
+
+test("Bluetooth list: paired (connected first) then nearby with names", () => {
+  const rows = plain(D.bluetoothRows([
+    { address: "AA:AA:AA:AA:AA:01", name: "Speaker", paired: true },
+    { address: "AA:AA:AA:AA:AA:02", name: "Headphones", paired: true, connected: true, battery: 0.8 },
+    { address: "AA:AA:AA:AA:AA:03", name: "Zed TV" },
+    { address: "AA:AA:AA:AA:AA:04", name: "" },
+    { address: "AA:AA:AA:AA:AA:05", name: "Alpha phone" },
+    { address: "AA:AA:AA:AA:AA:02", name: "dup" },
+    { address: "not an address", name: "Bad" },
+    { address: "AA:AA:AA:AA:AA:06", name: "Mouse", paired: true, battery: 7 },
+  ], 10));
+  assert.deepEqual(rows.map((r) => r.name), ["Headphones", "Mouse", "Speaker", "Alpha phone", "Zed TV"]);
+  assert.deepEqual(rows.map((r) => r.section), ["paired", "paired", "paired", "nearby", "nearby"]);
+  assert.equal(rows[0].battery, 0.8);
+  assert.equal(rows[1].battery, 1, "battery clamped to 0-1");
+  assert.equal(rows[2].battery, null);
+  assert.equal(D.bluetoothRows([
+    { address: "AA:AA:AA:AA:AA:01", name: "a" }, { address: "AA:AA:AA:AA:AA:02", name: "b" },
+    { address: "AA:AA:AA:AA:AA:03", name: "c", paired: true },
+  ], 1).length, 2, "nearby capped, paired not");
+});
+
+test("Bluetooth list: a name that is only the address counts as none", () => {
+  const rows = plain(D.bluetoothRows([
+    { address: "43:FA:97:6F:46:E0", name: "43-FA-97-6F-46-E0" },
+    { address: "57:D5:54:6C:D8:92", name: "57:d5:54:6c:d8:92" },
+    { address: "AA:AA:AA:AA:AA:01", name: "Hub" },
+    { address: "AA:AA:AA:AA:AA:02", name: "AA-AA-AA-AA-AA-02", paired: true },
+  ], 10));
+  assert.deepEqual(rows.map((r) => [r.name, r.section]), [["", "paired"], ["Hub", "nearby"]]);
+});
+
+test("Bluetooth row click: disconnect, connect or pair", () => {
+  assert.equal(D.bluetoothAction({ connected: true, paired: true }), "disconnect");
+  assert.equal(D.bluetoothAction({ paired: true }), "connect");
+  assert.equal(D.bluetoothAction({ paired: false }), "pair");
+  assert.equal(D.bluetoothAction(null), "");
 });

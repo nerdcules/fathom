@@ -443,8 +443,15 @@ tiling** puts it back in the tiling.
 Focus (Omarchy's do-not-disturb), night light, stay awake and the power
 profile as tiles; this machine's IP addresses; volume and brightness as
 sliders; and the battery, Lock and Omarchy's menu along the bottom. The
-arrows on Wi-Fi and Bluetooth open Omarchy's own panels for choosing a
-network or a device.
+arrows on Wi-Fi and Bluetooth open their lists in Quick settings itself, as
+on Windows 11: Wi-Fi's networks (the connected one lit like a tile, then
+saved ones, then by signal; one row per name), and Bluetooth's paired
+devices and the named ones nearby. Click a network to join it (a password
+field opens under it when it needs one, and again if the password is
+wrong) or to leave it; a network that needs a username as well opens
+`nmtui`. Click a device to connect, disconnect or pair it, through Omarchy's
+`omarchy-bluetooth-device`. Wi-Fi scans and Bluetooth looks for devices only
+while its list shows. Esc or the back arrow goes back to the tiles.
 
 The addresses are every interface that is up, named Wi-Fi, Ethernet,
 Tailscale or VPN (or by its own name), with its IPv4 and IPv6 addresses, up
@@ -469,6 +476,7 @@ held, in a submap called `fathom-tasks`.
 
 ```bash
 fathom-desk tasks | snap | quick       # open or close a view
+fathom-desk quick wifi                 # Quick settings on its Wi-Fi list (or bluetooth)
 fathom-desk state | jq .               # windows, workspaces and monitors
 fathom-desk settings | jq .            # what Quick settings shows
 fathom-desk set brightness 40          # also wifi, focus, nightlight, awake on|off; profile <name>

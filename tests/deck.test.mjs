@@ -496,7 +496,12 @@ test("addressRows: one row per address, IPv4 first, capped, odd entries skipped"
 });
 
 test("addressRows is the same in the deck and the desk", () => {
-  const body = (src) => src.slice(src.indexOf("function addressRows("));
+  // The function alone, from its line to its closing brace.
+  const body = (src) => {
+    const start = src.indexOf("function addressRows(");
+    assert.ok(start >= 0);
+    return src.slice(start, src.indexOf("\n}\n", start) + 2);
+  };
   const desk = readFileSync(new URL("../desk/plugin/fathom.desk/Desk.js", import.meta.url), "utf8");
   assert.equal(body(read("Format.js")), body(desk));
 });

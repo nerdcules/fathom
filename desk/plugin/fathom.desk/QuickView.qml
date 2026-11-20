@@ -1,6 +1,8 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Bluetooth
+import Quickshell.Networking
 import Quickshell.Services.Pipewire
 import "."
 import "Desk.js" as D
@@ -12,7 +14,10 @@ import "Version.js" as Build
 // the battery, lock and Omarchy's menu along the bottom. Under the bar at
 // the top right, as on Windows.
 //
-// Bluetooth and volume are Quickshell's own live objects; the rest comes
+// The chevrons on Wi-Fi and Bluetooth open their lists here, in place of
+// the tiles (#14): networks to join, devices to connect or pair.
+//
+// Bluetooth, Wi-Fi networks and volume are Quickshell's own live objects; the rest comes
 // from `fathom-desk settings`, read on opening and every 4 seconds while it
 // shows, and changed through `fathom-desk set`.
 Item {
@@ -49,7 +54,182 @@ Item {
   // A new reading replaces what was shown early. Later, not during the
   // binding that noticed the reading, or that binding would loop.
   onSChanged: Qt.callLater(function() { view.pending = ({}) })
-  onShownChanged: pending = ({})
+  onShownChanged: {
+    pending = ({}); askSsid = ""; failedSsid = ""; busySsid = ""; btFailed = ""
+    page = shown && host ? host.quickPage : ""
+  }
+
+  // "" for the tiles, or "wifi" / "bluetooth" for a list.
+  property string page: ""
+  function openPage(name) { askSsid = ""; failedSsid = ""; btFailed = ""; page = name }
+
+  // ------------------------------------------------ Wi-Fi list
+
+  readonly property var wifiDevice: {
+    var list = Networking.devices ? Networking.devices.values : []
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].type === DeviceType.Wifi) return list[i]
+    return null
+  }
+  readonly property var wifiNets: wifiDevice && wifiDevice.networks ? wifiDevice.networks.values : []
+  property string askSsid: ""      // the network a password is being typed for
+  property string failedSsid: ""   // the last one that didn't connect
+  property string busySsid: ""     // the one being connected or left
+
+  function securityOf(net) {
+    if (net.security === WifiSecurityType.Open || net.security === WifiSecurityType.Owe) return "open"
+    if (net.security === WifiSecurityType.Wpa2Eap || net.security === WifiSecurityType.WpaEap) return "enterprise"
+    return "psk"
+  }
+  readonly property var wifiList: {
+    var plain = []
+    for (var i = 0; i < wifiNets.length; i++) {
+      var n = wifiNets[i]
+      if (!n) continue
+      plain.push({ ssid: String(n.name || ""), signal: Number(n.signalStrength) || 0, known: n.known === true,
+                   connected: n.connected === true, busy: n.stateChanging === true, security: securityOf(n) })
+    }
+    return D.wifiRows(plain, 30)
+  }
+  // The live network for a name: the connected one, or the strongest.
+  function liveNet(ssid) {
+    var best = null
+    for (var i = 0; i < wifiNets.length; i++) {
+      var n = wifiNets[i]
+      if (!n || n.name !== ssid) continue
+      if (n.connected) return n
+      if (!best || (Number(n.signalStrength) || 0) > (Number(best.signalStrength) || 0)) best = n
+    }
+    return best
+  }
+  function wifiRow(ssid) {
+    for (var i = 0; i < wifiList.length; i++) if (wifiList[i].ssid === ssid) return wifiList[i]
+    return null
+  }
+  readonly property var wifiBars: [0xF092F, 0xF091F, 0xF0922, 0xF0925, 0xF0928]
+  readonly property var wifiListRows: {
+    var out = []
+    for (var i = 0; i < wifiList.length; i++) {
+      var r = wifiList[i]
+      var detail = r.connected ? Skin.t("quick.list.connected")
+        : r.ssid === failedSsid ? Skin.t("quick.list.failed")
+        : r.known ? Skin.t("quick.list.saved")
+        : r.security === "open" ? Skin.t("quick.list.open")
+        : r.security === "enterprise" ? Skin.t("quick.list.enterprise") : Skin.t("quick.list.secured")
+      out.push({ key: r.ssid, glyph: g(wifiBars[D.signalBars(r.signal)]), name: r.ssid, detail: detail,
+                 active: r.connected, busy: r.busy || r.ssid === busySsid, ask: r.ssid === askSsid })
+    }
+    return out
+  }
+  function wifiPick(ssid) {
+    var action = D.wifiAction(wifiRow(ssid))
+    failedSsid = ""
+    if (action === "password") { askSsid = askSsid === ssid ? "" : ssid; return }
+    askSsid = ""
+    if (action === "elsewhere") {
+      done()
+      Quickshell.execDetached(["omarchy-launch-tui", "nmtui", "connect"])
+      return
+    }
+    var n = liveNet(ssid)
+    if (!n) return
+    busySsid = ssid
+    wifiWatch.target = n
+    if (action === "disconnect") n.disconnect()
+    else n.connect()
+  }
+  function wifiPassword(ssid, password) {
+    if (password === "") return
+    var n = liveNet(ssid)
+    askSsid = ""
+    if (!n) return
+    failedSsid = ""
+    busySsid = ssid
+    wifiWatch.target = n
+    n.connectWithPsk(password)
+  }
+  Connections {
+    id: wifiWatch
+    target: null
+    ignoreUnknownSignals: true
+    function onConnectionFailed(reason) {
+      var ssid = view.busySsid
+      view.failedSsid = ssid
+      view.busySsid = ""
+      // A wrong password: ask again.
+      var row = view.wifiRow(ssid)
+      if (row && row.security === "psk") view.askSsid = ssid
+    }
+    function onConnectedChanged() { if (wifiWatch.target) view.busySsid = "" }
+  }
+  // Scan for networks while the list shows.
+  Binding {
+    target: view.wifiDevice
+    property: "scannerEnabled"
+    value: true
+    when: view.shown && view.page === "wifi" && !!view.wifiDevice
+    restoreMode: Binding.RestoreValue
+  }
+
+  // ------------------------------------------------ Bluetooth list
+
+  readonly property var btDevices: Bluetooth.devices ? Bluetooth.devices.values : []
+  property string btBusy: ""       // the device an action is running for
+  property string btFailed: ""     // the last one an action failed for
+  readonly property var btList: {
+    var plain = []
+    for (var i = 0; i < btDevices.length; i++) {
+      var d = btDevices[i]
+      if (!d) continue
+      plain.push({ address: String(d.address || ""), name: String(d.name || d.deviceName || ""),
+                   connected: d.connected === true, paired: d.paired === true || d.bonded === true || d.trusted === true,
+                   busy: d.address === btBusy || d.pairing === true,
+                   battery: d.batteryAvailable ? d.battery : null })
+    }
+    return D.bluetoothRows(plain, 12)
+  }
+  readonly property var btListRows: {
+    var out = []
+    var section = ""
+    for (var i = 0; i < btList.length; i++) {
+      var r = btList[i]
+      if (r.section !== section) {
+        section = r.section
+        out.push({ header: Skin.t("quick.list." + section) })
+      }
+      var detail = r.address === btFailed ? Skin.t("quick.list.failed")
+        : r.connected ? (r.battery !== null ? Skin.t("quick.list.connectedBattery").arg(Math.round(r.battery * 100)) : Skin.t("quick.list.connected"))
+        : r.paired ? Skin.t("quick.list.notConnected") : Skin.t("quick.list.pair")
+      out.push({ key: r.address, glyph: g(r.connected ? 0xF00B1 : 0xF00AF), name: r.name !== "" ? r.name : r.address,
+                 detail: detail, active: r.connected, busy: r.busy, ask: false })
+    }
+    return out
+  }
+  function btPick(address) {
+    if (btProc.running) return
+    var row = null
+    for (var i = 0; i < btList.length; i++) if (btList[i].address === address) row = btList[i]
+    var action = D.bluetoothAction(row)
+    if (!action) return
+    btFailed = ""
+    btBusy = address
+    btProc.command = ["omarchy-bluetooth-device", action, address]
+    btProc.running = true
+  }
+  Process {
+    id: btProc
+    onExited: function(code) {
+      if (code !== 0) view.btFailed = view.btBusy
+      view.btBusy = ""
+    }
+  }
+  // Look for nearby devices while the list shows.
+  Binding {
+    target: view.adapter
+    property: "discovering"
+    value: true
+    when: view.shown && view.page === "bluetooth" && !!view.adapter && view.adapter.enabled
+    restoreMode: Binding.RestoreValue
+  }
 
   function g(cp) { return String.fromCodePoint(cp) }
 
@@ -62,14 +242,11 @@ Item {
     host.setSetting(what, on ? "on" : "off")
   }
 
-  // Open one of Omarchy's own panels for the details, closing this first.
-  function more(pluginId) {
-    done()
-    Quickshell.execDetached(["omarchy-shell", "shell", "summon", pluginId])
-  }
-
   function key(e) {
-    if (e.key === Qt.Key_Escape) { done(); e.accepted = true }
+    if (e.key !== Qt.Key_Escape) return
+    if (page !== "") { if (askSsid !== "") askSsid = ""; else page = "" }
+    else done()
+    e.accepted = true
   }
 
   PwObjectTracker { objects: view.sink ? [view.sink] : [] }
@@ -83,15 +260,47 @@ Item {
       ? Number(view.host.monitor.reserved[1]) || 0 : 0
     anchors { right: parent.right; rightMargin: 12 * Skin.u; top: parent.top; topMargin: barTop + 10 * Skin.u }
     width: 420 * Skin.u
-    height: body.implicitHeight + 36 * Skin.u
+    height: (view.page === "" ? body.implicitHeight : listPage.implicitHeight) + 36 * Skin.u
     opacity: view.shown ? 1 : 0
     transform: Translate { y: view.shown ? 0 : -10 * Skin.u; Behavior on y { NumberAnimation { duration: Skin.ms(160); easing.type: Easing.OutCubic } } }
     Behavior on opacity { NumberAnimation { duration: Skin.ms(140) } }
 
     MouseArea { anchors.fill: parent }
 
+    QuickList {
+      id: listPage
+      visible: view.page !== ""
+      anchors { left: parent.left; right: parent.right; top: parent.top; margins: 18 * Skin.u }
+      readonly property bool isWifi: view.page === "wifi"
+      readonly property var wifi: view.value("wifi", null)
+      title: isWifi ? Skin.t("quick.wifi") : Skin.t("quick.bluetooth")
+      on: isWifi ? (!!wifi && wifi.on) : (!!view.adapter && view.adapter.enabled)
+      canToggle: isWifi ? wifi !== null : !!view.adapter
+      rows: !on ? [] : (isWifi ? view.wifiListRows : view.btListRows)
+      emptyText: isWifi
+        ? (wifi === null || !view.wifiDevice ? Skin.t("quick.list.noWifi") : (!on ? Skin.t("quick.list.wifiOff") : Skin.t("quick.list.searching")))
+        : (!view.adapter ? Skin.t("quick.list.noBluetooth") : (!on ? Skin.t("quick.list.bluetoothOff") : Skin.t("quick.list.searching")))
+      note: isWifi && on ? Skin.t("quick.list.wifiNote") : ""
+      askLabel: Skin.t("quick.list.password")
+      connectLabel: Skin.t("quick.list.connect")
+      cancelLabel: Skin.t("quick.list.cancel")
+      workingLabel: Skin.t("quick.list.working")
+      onBack: { view.askSsid = ""; view.page = "" }
+      onToggled: {
+        if (isWifi) {
+          var next = { on: !on, ssid: on ? "" : (wifi ? wifi.ssid : ""), signal: 0 }
+          view.setValue("wifi", next)
+          view.toggle("wifi", !on)
+        } else if (view.adapter) view.adapter.enabled = !view.adapter.enabled
+      }
+      onPicked: function(key) { if (isWifi) view.wifiPick(key); else view.btPick(key) }
+      onPasswordGiven: function(key, password) { view.wifiPassword(key, password) }
+      onAskCancelled: view.askSsid = ""
+    }
+
     Column {
       id: body
+      visible: view.page === ""
       anchors { left: parent.left; right: parent.right; top: parent.top; margins: 18 * Skin.u }
       spacing: 16 * Skin.u
 
@@ -116,7 +325,7 @@ Item {
             view.setValue("wifi", next)
             view.toggle("wifi", !on)
           }
-          onMore: view.more("omarchy.network")
+          onMore: view.openPage("wifi")
         }
 
         QuickTile {
@@ -129,7 +338,7 @@ Item {
             : (view.btConnected > 0 ? Skin.tn("quick.devices", view.btConnected).arg(view.btConnected) : Skin.t("quick.on")))
           moreable: true
           onToggled: if (view.adapter) view.adapter.enabled = !view.adapter.enabled
-          onMore: view.more("omarchy.bluetooth")
+          onMore: view.openPage("bluetooth")
         }
 
         QuickTile {
