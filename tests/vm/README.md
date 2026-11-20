@@ -139,6 +139,30 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM as on 18 November (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`,
+driven over SSH from the laptop. At 3badc94 with the changes for issues
+#5-#8 uncommitted (committed unchanged as 82bbfb4 to 8a5c41f): `check.sh`
+26 passed, 0 failed, in 84 s; nothing of Fathom's was left in the VM after
+it.
+
+- Before it, `check.sh` stopped at "Fathom is not installed in the VM to
+  start with": the desk part and `fathom-update` from the last 18 November
+  run were still there (state `installed` = desk, from the v0.1.0 clone),
+  although that run's `update-uninstall.log` says "Removed the desk." with
+  exit 0. Cleaned with `~/fathom-new/uninstall.sh`. Cause not found; this run
+  didn't repeat it.
+- WSL stops the distro, and QEMU with it, when no `wsl.exe` session is open
+  for a while: SSH into the VM was refused minutes after the boot's own
+  session ended. Keeping one `wsl.exe -d fathom-test -- sleep` open over SSH
+  for the whole session kept it up.
+- Real keys and clicks through QEMU's QMP (`input-send-event`), not in
+  `check.sh`: Super+Tab held with Tab x3 then let go went to workspace 3;
+  a tap then Tab and Enter went to workspace 2; Esc while held changed
+  nothing; the Start power menu opened above its button and asked in
+  place; the screensaver preview opened and closed on a key.
+
 ### 18 November 2026, Windows 11 (WSL2)
 
 PC: Windows 11 Pro build 26300, WSL 2.7.13 (kernel 6.18.33.2), an Arch
