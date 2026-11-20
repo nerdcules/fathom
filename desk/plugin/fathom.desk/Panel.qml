@@ -16,6 +16,9 @@ import "Desk.js" as D
 //       open that view, or close it if it's the one showing
 //   shell call fathom.desk step 1 | step -1 | commit | cancel
 //       Alt+Tab, from Hyprland (see desk/hypr/fathom-desk.lua)
+//   shell call fathom.desk tasks 1 | tasks -1 | tasksRelease | tasksCancel
+//       Super+Tab: open Task view, then look at the next or previous
+//       workspace; letting go of Super goes there
 //
 // It reads windows through `fathom-desk state` when a view opens, and keeps
 // that list current from Hyprland's events while one shows. Nothing is read
@@ -105,6 +108,7 @@ Item {
   // The shell's `hide`.
   function close() {
     view = ""
+    tasksStepped = false
     reveal = false
     revealTimer.stop()
   }
@@ -182,6 +186,44 @@ Item {
     close()
     // Hyprland's side stops watching Alt.
     Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.submap(\"reset\")"])
+    return "ok"
+  }
+
+  // ------------------------------------------------ Super+Tab
+
+  // From Hyprland: Super+Tab opens Task view; Tab again, Super still held,
+  // looks at the next workspace ("1") or the one before ("-1"). Letting go
+  // of Super goes to the workspace looked at, if Tab moved it; after a plain
+  // tap Task view stays open for the mouse or the keys.
+  property bool tasksStepped: false
+
+  function tasks(arg) {
+    var delta = Number(arg) < 0 ? -1 : 1
+    if (view !== "tasks") {
+      tasksStepped = false
+      var payload = JSON.stringify({ view: "tasks" })
+      if (shell && typeof shell.summon === "function") shell.summon(pluginId, payload)
+      else open(payload)
+      return "ok"
+    }
+    if (taskLoader.item) {
+      taskLoader.item.lookAt(delta)
+      tasksStepped = true
+    }
+    return "ok"
+  }
+
+  // Super let go.
+  function tasksRelease(arg) {
+    if (view !== "tasks" || !tasksStepped) return "ok"
+    tasksStepped = false
+    if (taskLoader.item) taskLoader.item.goTo(taskLoader.item.shownWorkspace)
+    return "ok"
+  }
+
+  function tasksCancel(arg) {
+    tasksStepped = false
+    if (view === "tasks") dismiss()
     return "ok"
   }
 
@@ -300,6 +342,14 @@ Item {
           e.accepted = true
           Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.submap(\"reset\")"])
           root.commit("")
+        }
+        // Super let go while Task view has the keyboard, after Tab moved it.
+        else if (root.view === "tasks" && (e.key === Qt.Key_Super_L || e.key === Qt.Key_Super_R || e.key === Qt.Key_Meta)) {
+          e.accepted = true
+          if (root.tasksStepped) {
+            Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.submap(\"reset\")"])
+            root.tasksRelease("")
+          }
         }
       }
 

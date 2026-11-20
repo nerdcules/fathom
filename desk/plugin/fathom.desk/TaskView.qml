@@ -9,9 +9,12 @@ import "Desk.js" as D
 // it onto a workspace to move it there (or onto New to give it a new one),
 // or close it with its x or a middle-click.
 //
-// Keys: arrows pick a window, Enter brings it forward, Delete closes it,
-// Page Up / Page Down (or Ctrl+arrows) look at another workspace, 1 to 9 go
-// to that workspace, Esc closes Task view.
+// Keys: Tab / Shift+Tab (or Page Down / Page Up, or Ctrl+arrows) look at
+// the next or previous workspace, arrows pick a window, Enter brings it
+// forward (or goes to the workspace looked at, when it has none), Delete
+// closes it, 1 to 9 go to that workspace, Esc closes Task view. Holding
+// Super, Super+Tab steps through the workspaces and letting go of Super
+// goes to the one looked at (see Panel.qml and desk/hypr/fathom-desk.lua).
 Item {
   id: view
 
@@ -80,13 +83,16 @@ Item {
     var cols = Math.max(1, fit.columns)
     var ctrl = (e.modifiers & Qt.ControlModifier) !== 0
     if (e.key === Qt.Key_Escape) done()
-    else if (e.key === Qt.Key_PageDown || (ctrl && e.key === Qt.Key_Right)) lookAt(1)
-    else if (e.key === Qt.Key_PageUp || (ctrl && e.key === Qt.Key_Left)) lookAt(-1)
+    else if (e.key === Qt.Key_Backtab || e.key === Qt.Key_PageUp || (ctrl && e.key === Qt.Key_Left)) lookAt(-1)
+    else if (e.key === Qt.Key_Tab || e.key === Qt.Key_PageDown || (ctrl && e.key === Qt.Key_Right)) lookAt(1)
     else if (e.key === Qt.Key_Right) selected = Math.min(windows.length - 1, selected + 1)
     else if (e.key === Qt.Key_Left) selected = Math.max(0, selected - 1)
     else if (e.key === Qt.Key_Down) selected = Math.min(windows.length - 1, selected + cols)
     else if (e.key === Qt.Key_Up) selected = Math.max(0, selected - cols)
-    else if ((e.key === Qt.Key_Return || e.key === Qt.Key_Enter) && windows.length > 0) bring(windows[selected])
+    else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+      if (windows.length > 0) bring(windows[Math.min(selected, windows.length - 1)])
+      else goTo(shownWorkspace)
+    }
     else if (e.key === Qt.Key_Delete && windows.length > 0) closeWin(windows[selected])
     else if (e.key >= Qt.Key_1 && e.key <= Qt.Key_9) goTo(e.key - Qt.Key_0)
     else return
@@ -202,13 +208,16 @@ Item {
         readonly property int wsId: modelData.id
         readonly property bool isNew: false
         readonly property bool current: view.host && wsId === view.host.currentWorkspace
+        readonly property bool looked: wsId === view.shownWorkspace
         readonly property bool target: !!view.dragging && view.tileAt(view.dragAt.x, view.dragAt.y) === tile
         width: strip.tileW
         height: strip.tileH + 26 * Skin.u
         radius: 12 * Skin.u
-        color: target ? Skin.tint(Skin.accent, 0.28) : (tileMouse.containsMouse || wsId === view.shownWorkspace ? Skin.tint(Skin.fg, 0.1) : Skin.tint(Skin.bg, 0.7))
-        border.width: current || target ? 2 : 1
-        border.color: current || target ? Skin.accent : Skin.tint(Skin.fg, 0.14)
+        // The one looked at (by Tab or the pointer) is lit with the accent;
+        // the one on screen keeps an accent edge.
+        color: target ? Skin.tint(Skin.accent, 0.28) : (looked ? Skin.tint(Skin.accent, 0.2) : (tileMouse.containsMouse ? Skin.tint(Skin.fg, 0.1) : Skin.tint(Skin.bg, 0.7)))
+        border.width: looked || current || target ? 2 : 1
+        border.color: looked || target ? Skin.accent : (current ? Skin.tint(Skin.accent, 0.55) : Skin.tint(Skin.fg, 0.14))
 
         // A small picture of the workspace: its windows where they sit.
         Rectangle {

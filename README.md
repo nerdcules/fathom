@@ -389,7 +389,7 @@ Windows' ways of handling windows, on Hyprland. Install it with `--desk`
 | Key | What it does |
 |---|---|
 | **Alt+Tab** | Switch windows |
-| **Super+Tab** | Task view: every window and workspace |
+| **Super+Tab** | Task view: every window and workspace; Tab again, Super held, steps through the workspaces |
 | **Super+Z** | Snap layouts for the focused window |
 | **Super+Alt+A** | Quick settings |
 
@@ -406,8 +406,15 @@ which moved to the next window without showing anything.
 cards, and every workspace along the bottom. Hover a workspace to see its
 windows, click one to go there, or click New for an empty one. Click a
 window to bring it forward, drag it onto a workspace to move it there, or
-close it with its × (or a middle-click, or Delete). Page Up and Page Down
-look at the other workspaces; 1 to 9 go to one. Task view takes Super+Tab,
+close it with its × (or a middle-click, or Delete).
+
+From the keyboard: hold Super and press Tab again to look at the next
+workspace (Shift+Tab the one before), and let go of Super to go there; the
+one looked at is lit in the accent. A plain Super+Tab tap leaves Task view
+open: then Tab and Shift+Tab (or Page Up and Page Down) look at the other
+workspaces, the arrow keys pick a window, Enter brings it forward (or goes
+to the workspace looked at, if it has no windows), 1 to 9 go to one, and Esc
+closes Task view. Task view takes Super+Tab,
 which was Omarchy's "next workspace"; Super+Shift+Tab (previous) and
 Super+Ctrl+Tab (the one before) are unchanged.
 
@@ -436,7 +443,8 @@ while nothing shows.
 Alt+Tab is driven from Hyprland: while the switcher is up, Hyprland is in a
 submap called `fathom-switch`, so Tab reaches the switcher and nothing else.
 If nothing happens for 8 seconds it leaves the submap by itself, so the
-keyboard can't be left there.
+keyboard can't be left there. Super+Tab works the same way while Super is
+held, in a submap called `fathom-tasks`.
 
 ```bash
 fathom-desk tasks | snap | quick       # open or close a view

@@ -110,8 +110,94 @@ end)
 
 -- ---------------------------------------------------------------- views
 
+-- ---------------------------------------------------------------- Super+Tab
+--
 -- Task view on Super+Tab, as on Windows. Omarchy's "Next workspace" was
 -- here; Super+Shift+Tab (previous) and Super+Ctrl+Tab (former) stay.
-o.rebind("SUPER + TAB", "Task view: every window and workspace", bin .. "fathom-desk tasks")
+--
+-- Super+Tab opens Task view on this workspace. Tab again, Super still held,
+-- looks at the next workspace (Shift+Tab the one before), and letting go of
+-- Super goes there. A plain tap leaves Task view open for the mouse or the
+-- keys (Tab, Enter, Esc; see TaskView.qml). While Super is held after the
+-- first press, Hyprland is in the "fathom-tasks" submap; letting go is
+-- caught by a timer watching the key, by Task view itself, and a last timer
+-- leaves the submap after 8 seconds with nothing done, as Alt+Tab does.
+
+local function super_down()
+  return hl.is_key_down("Super_L") or hl.is_key_down("Super_R")
+end
+
+local tasks_watch = nil
+local tasks_failsafe = nil
+
+local function tasks_stop_watching()
+  if tasks_watch then tasks_watch:set_enabled(false) end
+  if tasks_failsafe then tasks_failsafe:set_enabled(false) end
+end
+
+local function tasks_leave()
+  tasks_stop_watching()
+  if hl.get_current_submap() == "fathom-tasks" then
+    hl.dispatch(hl.dsp.submap("reset"))
+  end
+end
+
+local function tasks_release()
+  if hl.get_current_submap() ~= "fathom-tasks" then
+    tasks_stop_watching()
+    return
+  end
+  tasks_leave()
+  shell_call("tasksRelease", "go")
+end
+
+local function tasks_cancel()
+  tasks_leave()
+  shell_call("tasksCancel", "go")
+end
+
+local function tasks(delta)
+  return function()
+    shell_call("tasks", tostring(delta))
+    if hl.get_current_submap() ~= "fathom-tasks" and super_down() then
+      hl.dispatch(hl.dsp.submap("fathom-tasks"))
+      if tasks_watch then
+        tasks_watch:set_enabled(true)
+      else
+        tasks_watch = hl.timer(function()
+          if not super_down() then tasks_release() end
+        end, { timeout = 25, type = "repeat" })
+      end
+    end
+    if tasks_failsafe then
+      tasks_failsafe:set_enabled(false)
+      tasks_failsafe:set_timeout(8000)
+      tasks_failsafe:set_enabled(true)
+    else
+      tasks_failsafe = hl.timer(function() if hl.get_current_submap() == "fathom-tasks" then tasks_leave() end end,
+        { timeout = 8000, type = "oneshot" })
+    end
+  end
+end
+
+-- For scripts and tests: hyprctl dispatch 'fathom_desk.tasks(1)()'
+fathom_desk.tasks = tasks
+fathom_desk.tasks_release = tasks_release
+fathom_desk.tasks_cancel = tasks_cancel
+
+o.rebind("SUPER + TAB", "Task view: every window and workspace", tasks(1))
+
+hl.define_submap("fathom-tasks", function()
+  hl.bind("SUPER + TAB", tasks(1), { description = "Next workspace" })
+  hl.bind("SUPER + SHIFT + TAB", tasks(-1), { description = "Previous workspace" })
+  hl.bind("SUPER + Super_L", tasks_release, { release = true, description = "Go to the workspace" })
+  hl.bind("SUPER + Super_R", tasks_release, { release = true, description = "Go to the workspace" })
+  hl.bind("Super_L", tasks_release, { release = true, description = "Go to the workspace" })
+  hl.bind("SUPER + ESCAPE", tasks_cancel, { description = "Close Task view" })
+  hl.bind("ESCAPE", tasks_cancel, { description = "Close Task view" })
+end)
+
+-- ---------------------------------------------------------------- the rest
+
 o.bind("SUPER + Z", "Snap layouts for this window", bin .. "fathom-desk snap")
 o.bind("SUPER + ALT + A", "Quick settings", bin .. "fathom-desk quick")

@@ -12,7 +12,7 @@
   "tasks.empty": "No windows here. Drag one onto this workspace, or click it to go there.",
   "tasks.tile": "Workspace %1",
   "tasks.new": "New",
-  "tasks.hint": "Click a window to go to it · drag it onto a workspace to move it · Delete or middle-click closes it · PgUp/PgDn other workspaces · Esc",
+  "tasks.hint": "Tab other workspaces (hold Super, let go to go there) · Enter go · click a window to go to it · drag it onto a workspace to move it · Delete or middle-click closes it · Esc",
   "snap.title": "Snap: %1",
   "snap.noWindow": "No window to snap: focus one, then press Super+Z",
   "snap.tile": "Back to tiling",

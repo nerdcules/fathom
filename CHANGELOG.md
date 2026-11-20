@@ -13,6 +13,12 @@ Each line names its commit.
 
 ### Added
 
+- Task view: hold Super and press Tab again to step through the
+  workspaces, and let go of Super to go there (Hyprland submap
+  `fathom-tasks`); with Task view open, Tab and Shift+Tab look at the other
+  workspaces and Enter goes to an empty one. The workspace looked at is lit
+  in the accent.
+
 - `tests/vm`: the VM checks run in WSL2 on Windows 11, with
   `FATHOM_VM_DISPLAY=vnc` (no 3D), and `run.sh` types the VM disk's
   passphrase from a file there (`qmp.py`) (2113525).
