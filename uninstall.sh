@@ -74,7 +74,13 @@ fi
 if [[ -e $HOME/.local/bin/fathom-desk || -d $PLUGINS/fathom.desk ]]; then
   omarchy-shell shell hide fathom.desk >/dev/null 2>&1 || true
   hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
-  omarchy plugin disable fathom.desk >/dev/null 2>&1 || true
+  # The desk can hold both a bar entry (the cluster) and a plugins record
+  # (from before it had a bar widget); `plugin disable` takes one at a time
+  # (seen in the test VM: the record was left behind).
+  for _ in 1 2 3; do
+    omarchy plugin disable fathom.desk >/dev/null 2>&1 || true
+    grep -q '"fathom.desk"' "$HOME/.config/omarchy/shell.json" 2>/dev/null || break
+  done
   # Omarchy's Bluetooth, network, volume and battery widgets back where the
   # bar's cluster found them (install.sh kept their places), in order, so
   # each index means what it did; with any settings they had.

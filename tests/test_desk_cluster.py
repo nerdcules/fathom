@@ -117,6 +117,23 @@ class Cluster(unittest.TestCase):
         self.assertIsNone(self.kept())
         self.assertEqual(self.right(), [e["id"] for e in self.LAYOUT], "the bar as it was")
 
+    def test_uninstall_leaves_no_desk_entry_of_any_kind(self):
+        # A desk installed before it had a bar widget has a plugins record;
+        # the cluster then adds a bar entry beside it (seen in the test VM).
+        self.bar(self.LAYOUT)
+        path = self.box.path(".config", "omarchy", "shell.json")
+        with open(path) as f:
+            shell = json.load(f)
+        shell["plugins"] = [{"id": "fathom.desk"}]
+        with open(path, "w") as f:
+            json.dump(shell, f)
+        self.run_ok("install.sh", "--desk")
+        self.run_ok("uninstall.sh")
+        with open(path) as f:
+            text = f.read()
+        self.assertNotIn("fathom.desk", text)
+        self.assertEqual(self.right(), [e["id"] for e in self.LAYOUT])
+
     def test_the_four_stay_when_the_cluster_does_not_go_on(self):
         self.bar(self.LAYOUT)
         r = self.box.run("install.sh", "--desk", STUB_NO_PLACE="1")

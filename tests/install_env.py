@@ -78,9 +78,14 @@ if name == "omarchy":
             wid = args[2]
             ident = lambda e: e if isinstance(e, str) else e.get("id")
             where = [(sec, i) for sec, items in layout.items() for i, e in enumerate(items or []) if ident(e) == wid]
+            plugins = shell.setdefault("plugins", [])
             if args[1] == "disable":
-                for sec, i in reversed(where):
-                    del layout[sec][i]
+                # One entry a call, the bar's first, then a plugins record.
+                if where:
+                    del layout[where[0][0]][where[0][1]]
+                else:
+                    shell["plugins"] = [e for k, e in enumerate(plugins)
+                                        if k != next((j for j, x in enumerate(plugins) if ident(x) == wid), -1)]
             elif not where and not os.environ.get("STUB_NO_PLACE"):
                 opts = dict(zip(args[3::2], args[4::2]))
                 section, index = opts.get("--section", "right"), None
