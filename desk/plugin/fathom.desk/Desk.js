@@ -429,3 +429,62 @@ function bluetoothAction(row) {
   if (row.connected) return "disconnect"
   return row.paired ? "connect" : "pair"
 }
+
+// ---------------------------------------------------------------- the bar's cluster (#14)
+
+// The glyphs Omarchy's own bar widgets show, so the cluster that takes
+// their place looks the same (Omarchy 4.5: panels/network/Model.js
+// wifiIconFor and connectionIcon, bluetooth's icon, audio's outputIcon,
+// power/Model.js batteryIcon).
+var CLUSTER = {
+  wifi: [0xF092F, 0xF091F, 0xF0922, 0xF0925, 0xF0928],
+  wifiRestricted: 0xF0929,
+  ethernet: 0xF0200,
+  ethernetRestricted: 0xF0202,
+  offline: 0xF092E,
+  btOff: 0xF00B2,
+  btConnected: 0xF00B1,
+  btOn: 0xF00AF,
+  headphones: 0xF02CB,
+  muted: 0xEEE8,
+  volume: [0xEEE8, 0xF026, 0xF027, 0xF028],
+  charging: [0xF089C, 0xF0086, 0xF0087, 0xF0088, 0xF089D, 0xF0089, 0xF089E, 0xF008A, 0xF008B, 0xF0085],
+  battery: [0xF007A, 0xF007B, 0xF007C, 0xF007D, 0xF007E, 0xF007F, 0xF0080, 0xF0081, 0xF0082, 0xF0079],
+  full: 0xF0085
+}
+
+// The cluster's glyphs, Bluetooth, network, volume and battery, from plain
+// readings: {bt: null | {on, connected}, net: {kind: "wifi" | "ethernet" |
+// "none", signal 0-100, restricted}, audio: null | {volume 0-1+, muted,
+// headphones}, battery: null | {present, pct 0-1, onBattery, full}}. A part
+// the machine hasn't got (no Bluetooth, no sound card, no battery) is left
+// out, as Omarchy's widgets hide themselves. As [{key, cp}].
+function clusterGlyphs(s) {
+  s = s || {}
+  var out = []
+  var bt = s.bt
+  if (bt) out.push({ key: "bluetooth", cp: !bt.on ? CLUSTER.btOff : (bt.connected > 0 ? CLUSTER.btConnected : CLUSTER.btOn) })
+  var net = s.net || {}
+  if (net.kind === "wifi") {
+    var strength = Math.max(0, Math.min(100, Number(net.signal) || 0))
+    var i = Math.max(0, Math.min(4, Math.ceil(strength / 20) - 1))
+    out.push({ key: "network", cp: net.restricted ? CLUSTER.wifiRestricted : CLUSTER.wifi[i] })
+  } else if (net.kind === "ethernet") {
+    out.push({ key: "network", cp: net.restricted ? CLUSTER.ethernetRestricted : CLUSTER.ethernet })
+  } else {
+    out.push({ key: "network", cp: CLUSTER.offline })
+  }
+  var a = s.audio
+  if (a) {
+    var v = Number(a.volume) || 0
+    var cp = a.headphones ? CLUSTER.headphones : a.muted ? CLUSTER.muted
+      : v >= 0.67 ? CLUSTER.volume[3] : v >= 0.34 ? CLUSTER.volume[2] : v > 0 ? CLUSTER.volume[1] : CLUSTER.volume[0]
+    out.push({ key: "audio", cp: cp })
+  }
+  var b = s.battery
+  if (b && b.present) {
+    var k = Math.max(0, Math.min(9, Math.floor((Number(b.pct) || 0) * 10)))
+    out.push({ key: "battery", cp: b.full ? CLUSTER.full : (!b.onBattery ? CLUSTER.charging[k] : CLUSTER.battery[k]) })
+  }
+  return out
+}

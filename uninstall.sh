@@ -75,6 +75,21 @@ if [[ -e $HOME/.local/bin/fathom-desk || -d $PLUGINS/fathom.desk ]]; then
   omarchy-shell shell hide fathom.desk >/dev/null 2>&1 || true
   hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null 2>&1 || true
   omarchy plugin disable fathom.desk >/dev/null 2>&1 || true
+  # Omarchy's Bluetooth, network, volume and battery widgets back where the
+  # bar's cluster found them (install.sh kept their places), in order, so
+  # each index means what it did; with any settings they had.
+  if [[ -s $STATE_DIR/desk-cluster ]]; then
+    while IFS=$'\t' read -r id section index; do
+      omarchy plugin enable "$id" --section "$section" --index "$index" >/dev/null 2>&1 ||
+        omarchy plugin enable "$id" >/dev/null 2>&1 ||
+        echo "uninstall.sh: couldn't put $id back on the bar; try: omarchy plugin enable $id" >&2
+    done < <(jq -r 'sort_by(.section, .index) | .[] | [.id, .section, .index] | @tsv' "$STATE_DIR/desk-cluster" 2>/dev/null)
+    while IFS=$'\t' read -r id key value; do
+      omarchy bar set "$id" "$key" "$value" --json >/dev/null 2>&1 || true
+    done < <(jq -r '.[] | select(.entry | type == "object") | .id as $id
+      | .entry | to_entries[] | select(.key != "id") | [$id, .key, (.value | tojson)] | @tsv' "$STATE_DIR/desk-cluster" 2>/dev/null)
+    rm -f "$STATE_DIR/desk-cluster"
+  fi
   rm -rf "$PLUGINS/fathom.desk"
   rm -f "$HYPR/fathom-desk.lua" "$HOME/.local/bin/fathom-desk"
   hypr_changed=true

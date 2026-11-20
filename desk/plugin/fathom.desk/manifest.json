@@ -5,12 +5,21 @@
   "version": "0.1.0",
   "author": "nerdcules",
   "license": "MIT",
-  "description": "Alt+Tab with window previews, Task view (Super+Tab), Snap layouts (Super+Z) and Quick settings (Super+Alt+A)",
+  "description": "Alt+Tab with window previews, Task view (Super+Tab), Snap layouts (Super+Z) and Quick settings (Super+Alt+A), and the bar's cluster that opens Quick settings",
   "kinds": [
-    "panel"
+    "panel",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "panel": "Panel.qml"
+    "panel": "Panel.qml",
+    "barWidget": "QuickBar.qml"
+  },
+  "barWidget": {
+    "displayName": "Quick settings",
+    "description": "Bluetooth, network, volume and battery in one button; click for Quick settings",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false
   }
 }

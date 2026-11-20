@@ -505,9 +505,70 @@ install_desk() {
   place "$REPO/desk/bin/fathom-desk" "$BIN_DIR/fathom-desk"
   chmod +x "$REPO/desk/bin/fathom-desk"
   hypr_load fathom-desk "$REPO/desk/hypr/fathom-desk.lua" || return 1
-  install_plugin fathom.desk
+
+  # The bar's cluster (#14) takes the place of Omarchy's own Bluetooth,
+  # network, volume and battery widgets: it goes after the last of them
+  # (where the battery was, at the end, as on Windows), they come off the
+  # bar, and where they were is kept for uninstall.sh.
+  # Once they're off (an upgrade), the cluster stays wherever it is.
+  local found placement=() id
+  found=$(cluster_entries)
+  if [[ $found != "[]" ]]; then
+    placement=(--after "$(jq -r '.[-1].id' <<<"$found")")
+  fi
+  install_plugin fathom.desk "${placement[@]}" || return 1
+  if [[ $found != "[]" ]] && ! cluster_placed "${placement[@]}"; then
+    echo "install.sh: the bar's cluster didn't go on the bar, so Omarchy's own widgets stay; try: omarchy plugin enable fathom.desk ${placement[*]}" >&2
+    found="[]"
+  fi
+  if [[ $found != "[]" ]]; then
+    # A shell that had the desk loaded before it had a bar widget didn't
+    # load the new one until it restarted (seen 20 November 2026).
+    restart_shell=true
+    mkdir -p "$STATE_DIR"
+    local kept=$found
+    if [[ -s $STATE_DIR/desk-cluster ]]; then
+      kept=$(jq -c -s 'add | unique_by(.id) | sort_by(.section, .index)' "$STATE_DIR/desk-cluster" - <<<"$found")
+    fi
+    printf '%s\n' "$kept" >"$STATE_DIR/desk-cluster"
+    for id in $(jq -r '.[].id' <<<"$found"); do
+      omarchy plugin disable "$id" >/dev/null 2>&1 ||
+        echo "install.sh: couldn't take $id off the bar; try: omarchy plugin disable $id" >&2
+    done
+  fi
 
   echo "Desk installed. Alt+Tab switches windows, Super+Tab shows Task view, Super+Z snaps a window, Super+Alt+A opens Quick settings."
+  [[ $found == "[]" ]] || echo "Bluetooth, network, volume and battery are one button on the bar now; it opens Quick settings."
+}
+
+# Whether the cluster is on the bar. `omarchy plugin enable` answers ok
+# without placing it when the shell still has the desk's older manifest
+# (no bar widget then; seen 20 November 2026), so look, and ask again after
+# a rescan, for up to 5 seconds. Arguments: the placement to ask with.
+cluster_placed() {
+  local config="$HOME/.config/omarchy/shell.json" tries=0
+  until jq -e '[(.bar.layout // {})[][]? | if type == "object" then .id else . end] | index("fathom.desk")' "$config" >/dev/null 2>&1; do
+    ((++tries > 10)) && return 1
+    sleep 0.5
+    omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+    omarchy plugin enable fathom.desk "$@" >/dev/null 2>&1 || true
+  done
+}
+
+# Omarchy's widgets the cluster stands in for, as they sit on the bar now:
+# [{id, section, index, entry}] in bar order, entry as shell.json has it.
+CLUSTER_WIDGETS='["omarchy.bluetooth", "omarchy.network", "omarchy.audio", "omarchy.power"]'
+cluster_entries() {
+  local config="$HOME/.config/omarchy/shell.json"
+  [[ -s $config ]] || { echo "[]"; return 0; }
+  jq -c --argjson ids "$CLUSTER_WIDGETS" '
+    [ (.bar.layout // {}) | to_entries[] | .key as $section
+      | (.value // []) | to_entries[]
+      | (.value | if type == "string" then . elif type == "object" then (.id // "") else "" end) as $id
+      | select($ids | index($id))
+      | {id: $id, section: $section, index: .key, entry: .value} ]
+    | sort_by(({left: 0, centerBegin: 1, center: 2, centerEnd: 3, right: 4, tray: 5}[.section] // 9), .index)' \
+    "$config" 2>/dev/null || echo "[]"
 }
 
 # Omarchy's idle service, copied the way `omarchy plugin clone` copies it,

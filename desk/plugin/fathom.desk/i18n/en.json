@@ -73,5 +73,17 @@
   "quick.list.wifiOff": "Wi-Fi is off.",
   "quick.list.noBluetooth": "No Bluetooth on this machine.",
   "quick.list.bluetoothOff": "Bluetooth is off.",
-  "quick.list.wifiNote": "Click a network to join or leave it."
+  "quick.list.wifiNote": "Click a network to join or leave it.",
+  "bar.wifi": "Wi-Fi: %1",
+  "bar.ethernet": "Ethernet",
+  "bar.offline": "Not connected",
+  "bar.btOff": "Bluetooth off",
+  "bar.btOn": "Bluetooth on",
+  "bar.btDevices": {
+    "one": "Bluetooth: %1 device",
+    "other": "Bluetooth: %1 devices"
+  },
+  "bar.muted": "Muted",
+  "bar.volume": "Volume %1%",
+  "bar.battery": "Battery %1%"
 }

@@ -65,6 +65,37 @@ if name == "omarchy":
     elif args[:2] == ["plugin", "validate"]:
         if not os.path.isfile(os.path.join(args[2], "manifest.json")):
             sys.exit("omarchy: no manifest.json")
+    elif args[:2] in (["plugin", "enable"], ["plugin", "disable"]) and len(args) > 2:
+        # As Omarchy does to shell.json's bar, when there is one: enable puts
+        # a bar widget at its placement (or the end of the right section)
+        # unless it's there already, disable takes it off. STUB_NO_PLACE:
+        # answer ok without placing, as a shell with an older manifest did.
+        config = os.path.join(os.environ["HOME"], ".config", "omarchy", "shell.json")
+        if os.path.isfile(config):
+            with open(config) as f:
+                shell = json.load(f)
+            layout = shell.setdefault("bar", {}).setdefault("layout", {})
+            wid = args[2]
+            ident = lambda e: e if isinstance(e, str) else e.get("id")
+            where = [(sec, i) for sec, items in layout.items() for i, e in enumerate(items or []) if ident(e) == wid]
+            if args[1] == "disable":
+                for sec, i in reversed(where):
+                    del layout[sec][i]
+            elif not where and not os.environ.get("STUB_NO_PLACE"):
+                opts = dict(zip(args[3::2], args[4::2]))
+                section, index = opts.get("--section", "right"), None
+                for flag, offset in (("--after", 1), ("--before", 0)):
+                    if flag in opts:
+                        for sec, items in layout.items():
+                            for i, e in enumerate(items or []):
+                                if ident(e) == opts[flag]:
+                                    section, index = sec, i + offset
+                if "--index" in opts:
+                    index = int(opts["--index"])
+                items = layout.setdefault(section, [])
+                items.insert(len(items) if index is None else min(index, len(items)), {"id": wid})
+            with open(config, "w") as f:
+                json.dump(shell, f)
 elif name == "ip" and "docker0" in args and os.environ.get("STUB_DOCKER0"):
     print(json.dumps([{"addr_info": [{"local": os.environ["STUB_DOCKER0"]}]}]))
 '''

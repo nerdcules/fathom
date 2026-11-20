@@ -21,7 +21,8 @@ vm.runInNewContext(read("Desk.js").replace(/^\.pragma library\s*$/m, "") + `
   this.closeWindow = closeWindow; this.activate = activate; this.snap = snap; this.tile = tile;
   this.nextProfile = nextProfile; this.clampPercent = clampPercent; this.addressRows = addressRows;
   this.signalBars = signalBars; this.wifiRows = wifiRows; this.wifiAction = wifiAction;
-  this.bluetoothRows = bluetoothRows; this.bluetoothAction = bluetoothAction;`, D);
+  this.bluetoothRows = bluetoothRows; this.bluetoothAction = bluetoothAction;
+  this.CLUSTER = CLUSTER; this.clusterGlyphs = clusterGlyphs;`, D);
 // Values made inside the vm context: compare plain copies.
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
@@ -290,4 +291,43 @@ test("Bluetooth row click: disconnect, connect or pair", () => {
   assert.equal(D.bluetoothAction({ paired: true }), "connect");
   assert.equal(D.bluetoothAction({ paired: false }), "pair");
   assert.equal(D.bluetoothAction(null), "");
+});
+
+// ------------------------------------------------ the bar's cluster (#14)
+
+test("the cluster shows Bluetooth, network, volume and battery as Omarchy's widgets do", () => {
+  const g = (s) => plain(D.clusterGlyphs(s)).map((x) => x.key + ":" + x.cp.toString(16));
+  assert.deepEqual(g({
+    bt: { on: true, connected: 0 }, net: { kind: "wifi", signal: 90 },
+    audio: { volume: 0.75 }, battery: { present: true, pct: 1, onBattery: false, full: true },
+  }), ["bluetooth:f00af", "network:f0928", "audio:f028", "battery:f0085"]);
+  // Omarchy's wifiIconFor: ceil(strength / 20) - 1, clamped to 0-4.
+  assert.deepEqual([0, 1, 20, 21, 40, 41, 60, 61, 80, 81, 100].map((signal) => g({ net: { kind: "wifi", signal } })[0]),
+    ["network:f092f", "network:f092f", "network:f092f", "network:f091f", "network:f091f", "network:f0922",
+     "network:f0922", "network:f0925", "network:f0925", "network:f0928", "network:f0928"]);
+  assert.deepEqual(g({ net: { kind: "wifi", signal: 90, restricted: true } }), ["network:f0929"]);
+  assert.deepEqual(g({ net: { kind: "ethernet" } }), ["network:f0200"]);
+  assert.deepEqual(g({ net: { kind: "none" } }), ["network:f092e"]);
+  assert.deepEqual(g({}), ["network:f092e"], "with nothing known, offline");
+});
+
+test("the cluster: Bluetooth off or busy, volume levels, battery charging or not", () => {
+  const one = (s, key) => plain(D.clusterGlyphs(s)).find((x) => x.key === key).cp.toString(16);
+  assert.equal(one({ bt: { on: false } }, "bluetooth"), "f00b2");
+  assert.equal(one({ bt: { on: true, connected: 2 } }, "bluetooth"), "f00b1");
+  assert.deepEqual([0, 0.2, 0.34, 0.66, 0.67, 1.2].map((volume) => one({ audio: { volume } }, "audio")),
+    ["eee8", "f026", "f027", "f027", "f028", "f028"]);
+  assert.equal(one({ audio: { volume: 0.9, muted: true } }, "audio"), "eee8");
+  assert.equal(one({ audio: { volume: 0.9, headphones: true } }, "audio"), "f02cb");
+  // Omarchy's batteryIcon: floor(pct * 10), clamped to 0-9.
+  assert.equal(one({ battery: { present: true, pct: 0.55, onBattery: true } }, "battery"), "f007f");
+  assert.equal(one({ battery: { present: true, pct: 0.55, onBattery: false } }, "battery"), "f0089");
+  assert.equal(one({ battery: { present: true, pct: 0.05, onBattery: true } }, "battery"), "f007a");
+});
+
+test("the cluster leaves out what the machine hasn't got", () => {
+  const keys = (s) => plain(D.clusterGlyphs(s)).map((x) => x.key);
+  assert.deepEqual(keys({ net: { kind: "ethernet" } }), ["network"]);
+  assert.deepEqual(keys({ net: { kind: "ethernet" }, battery: { present: false } }), ["network"]);
+  assert.deepEqual(keys({ bt: null, audio: null, battery: null, net: { kind: "wifi", signal: 50 } }), ["network"]);
 });

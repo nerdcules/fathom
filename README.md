@@ -36,7 +36,7 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
-| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys (see [Desk](#desk)) |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
@@ -184,6 +184,8 @@ part it finds:
   command in `~/.local/bin`, its file in `~/.config/hypr`, its plugin in
   `~/.config/omarchy/plugins`, its user services and timer, and its files in
   `~/.local/share/fathom`. The root parts go as in the table above.
+- **The bar's cluster:** Omarchy's Bluetooth, network, volume and battery
+  widgets go back where `install.sh` found them, with any settings they had.
 
 These settings and sign-ins of yours are deleted, and Fathom keeps no copy:
 
@@ -452,6 +454,19 @@ wrong) or to leave it; a network that needs a username as well opens
 `nmtui`. Click a device to connect, disconnect or pair it, through Omarchy's
 `omarchy-bluetooth-device`. Wi-Fi scans and Bluetooth looks for devices only
 while its list shows. Esc or the back arrow goes back to the tiles.
+
+**The bar's cluster**, as on Windows 11: Omarchy's Bluetooth, network,
+volume and battery widgets become one button, with the same glyphs, after
+the last of them (where the battery was). Click it for Quick settings,
+right-click for its Wi-Fi list, middle-click to mute, scroll for the
+volume (5% a step). Its tooltip says the network, Bluetooth, the volume and
+the battery. A part the machine hasn't got (no Bluetooth, sound card or
+battery) is left out. Unlike Omarchy's network widget, it doesn't check
+the connection itself, so it shows connected or not, never "limited".
+`install.sh --desk` keeps where the four were in
+`~/.local/state/fathom/desk-cluster`; `uninstall.sh` puts them back there.
+If the cluster doesn't go on the bar, the four stay. Once it's there,
+reinstalling or updating leaves it where you put it.
 
 The addresses are every interface that is up, named Wi-Fi, Ethernet,
 Tailscale or VPN (or by its own name), with its IPv4 and IPv6 addresses, up
