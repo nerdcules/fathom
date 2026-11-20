@@ -83,6 +83,8 @@ BarWidget {
     return parts.join("\n")
   }
 
+  property real wheelRest: 0
+
   // The slot's size is the button's, as the deck's pill does it.
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -110,13 +112,17 @@ BarWidget {
       else root.quick("")
     }
 
-    WheelHandler {
-      acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-      onWheel: function(e) {
-        if (!root.hasSink || e.angleDelta.y === 0) return
-        var v = root.sink.audio.volume + (e.angleDelta.y > 0 ? 0.05 : -0.05)
-        root.sink.audio.volume = Math.max(0, Math.min(1, Math.round(v * 20) / 20))
-      }
+    // The button's own mouse area takes the wheel and passes it on (a
+    // WheelHandler here got nothing: seen in the test VM). A notch is 120;
+    // a touchpad's smaller steps add up to one, as Omarchy's volume does.
+    onWheelMoved: function(delta) {
+      if (!root.hasSink || !delta) return
+      root.wheelRest += delta
+      var steps = root.wheelRest > 0 ? Math.floor(root.wheelRest / 120) : Math.ceil(root.wheelRest / 120)
+      if (steps === 0) return
+      root.wheelRest -= steps * 120
+      var v = root.sink.audio.volume + steps * 0.05
+      root.sink.audio.volume = Math.max(0, Math.min(1, Math.round(v * 20) / 20))
     }
 
     Grid {

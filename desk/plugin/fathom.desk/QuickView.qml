@@ -280,7 +280,7 @@ Item {
       emptyText: isWifi
         ? (wifi === null || !view.wifiDevice ? Skin.t("quick.list.noWifi") : (!on ? Skin.t("quick.list.wifiOff") : Skin.t("quick.list.searching")))
         : (!view.adapter ? Skin.t("quick.list.noBluetooth") : (!on ? Skin.t("quick.list.bluetoothOff") : Skin.t("quick.list.searching")))
-      note: isWifi && on ? Skin.t("quick.list.wifiNote") : ""
+      note: isWifi && on && rows.length > 0 ? Skin.t("quick.list.wifiNote") : ""
       askLabel: Skin.t("quick.list.password")
       connectLabel: Skin.t("quick.list.connect")
       cancelLabel: Skin.t("quick.list.cancel")
