@@ -237,7 +237,7 @@ GridLayout {
             cursorShape: Qt.PointingHandCursor
             onHoveredChanged: map.hot = hovered ? domainBox.modelData.domain : ""
           }
-          TapHandler { onTapped: page.selectRequested(domainBox.modelData.domain) }
+          MouseArea { anchors.fill: parent; onClicked: page.selectRequested(domainBox.modelData.domain) }
           Row {
             anchors.left: parent.left
             anchors.leftMargin: 12 * Skin.u

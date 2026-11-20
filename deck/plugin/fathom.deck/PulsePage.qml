@@ -80,7 +80,7 @@ GridLayout {
       color: mini.clickable && miniHover.hovered ? Skin.faint : "transparent"
     }
     HoverHandler { id: miniHover; cursorShape: mini.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor }
-    TapHandler { enabled: mini.clickable; onTapped: mini.clicked() }
+    MouseArea { anchors.fill: parent; enabled: mini.clickable; onClicked: mini.clicked() }
     RowLayout {
       anchors.fill: parent
       spacing: 10 * Skin.u
@@ -437,7 +437,7 @@ GridLayout {
           color: agentRow.isPicked ? Skin.tint(Skin.accent, 0.14) : (rowHover.hovered ? Skin.faint : "transparent")
         }
         HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: page.pickProject(agentRow.modelData.id) }
+        MouseArea { anchors.fill: parent; onClicked: page.pickProject(agentRow.modelData.id) }
 
         RowLayout {
           anchors.fill: parent

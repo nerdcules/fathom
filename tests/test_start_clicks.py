@@ -1,7 +1,9 @@
 """The Start menu under real mouse clicks, through Qt's qmltestrunner
-(tests/qml/tst_start_clicks.qml), offscreen."""
+(tests/qml/tst_start_clicks.qml), offscreen; and no TapHandler anywhere in
+Fathom's QML."""
 
 import os
+import re
 import shutil
 import subprocess
 import unittest
@@ -26,6 +28,27 @@ class StartClicks(unittest.TestCase):
                            env=env, capture_output=True, text=True, timeout=120)
         self.assertEqual(r.returncode, 0, r.stdout[-3000:] + r.stderr[-2000:])
         self.assertIn(" 0 failed", r.stdout)
+
+
+class NoTapHandlers(unittest.TestCase):
+    """A TapHandler only grabs a press passively, so a click on one drawn over
+    another clicks both (#13: Restart in the power menu also opened the
+    Recent project under it). Clickable things use a MouseArea, which keeps
+    the click."""
+
+    def test_no_qml_file_uses_a_taphandler(self):
+        found = []
+        for folder, dirs, files in os.walk(REPO):
+            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("tests", "node_modules")]
+            for name in files:
+                if not name.endswith(".qml"):
+                    continue
+                path = os.path.join(folder, name)
+                with open(path, encoding="utf-8") as f:
+                    for n, line in enumerate(f, 1):
+                        if re.match(r"\s*TapHandler\s*\{", line):
+                            found.append(f"{os.path.relpath(path, REPO)}:{n}")
+        self.assertEqual(found, [])
 
 
 if __name__ == "__main__":
