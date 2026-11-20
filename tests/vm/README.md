@@ -139,6 +139,15 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### 0.3.0: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM (Omarchy 4.5.0-3), at 8ce564e (the 0.3.0 changelog; this
+commit adds only this result): `check.sh` 26 passed, 0 failed, in 81 s,
+the real-ufw checks among them 15 passed, 0 failed. Then, not in
+`check.sh`: `./install.sh --screensaver` (exit 0; `fathom.idle` on,
+`fathom-screensaver shows` blueprint) and `uninstall.sh` (exit 0;
+`omarchy.idle` on again, Blueprint and `fathom.idle` gone).
+
 ### 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM as on 18 November (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`,
