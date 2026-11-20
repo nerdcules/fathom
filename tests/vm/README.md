@@ -173,7 +173,7 @@ it.
   waited at "Continue with update?" until a `y` was sent through QMP; the
   update ended at 06:59:10 and the new check's `checkedAt` is 06:59:10.
 - Issue #11 (Blueprint as the screensaver), the working tree after 8fb1fbe
-  copied into the VM: `./install.sh --screensaver` built Blueprint and
+  copied into the VM (committed as 020e591): `./install.sh --screensaver` built Blueprint and
   finished in 15 s; `fathom.idle` on, `omarchy.idle` off, the clone's
   Service.qml differing from Omarchy's in the one line. With the screensaver
   at 30 s, the idle service logged idle at 07:13:18 and started
