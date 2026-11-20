@@ -19,7 +19,8 @@
 #                               restart a failed service
 #   fathom-care log <system|user> <unit>
 #                               show a service's log in a terminal
-#   fathom-care update          run Omarchy's update in a terminal
+#   fathom-care update          run Omarchy's update in a terminal, then
+#                               check again
 #
 # Everything is measured on this machine. The update check asks the package
 # mirrors, the AUR and fwupd what's new, as Omarchy's own update check does;
@@ -31,6 +32,8 @@ CACHE="$STATE/care.json"
 HISTORY="$STATE/care-history.tsv"
 NOTIFIED="$STATE/care-notified"
 LOCK="${XDG_RUNTIME_DIR:-/tmp}/fathom-care.lock"
+RECHECK="$STATE/care-recheck"
+PACMAN_DB="${FATHOM_PACMAN_DB:-/var/lib/pacman}"
 WARN_PCT=85
 BAD_PCT=95
 JOURNAL_KEEP=200M
@@ -226,6 +229,10 @@ check() {
   exec 9>"$LOCK"
   flock -n 9 || { echo "fathom-care: a check is already running" >&2; return 0; }
 
+  # When it started: packages that change while it runs are newer than it.
+  local started
+  started=$(date +%s)
+
   local fs size used
   read -r size used < <(df -B1 --output=size,used / | tail -1)
   record_history "$used" "$size"
@@ -234,8 +241,8 @@ check() {
   b=$(breakdown)
   r=$(reclaim)
   u=$(updates)
-  jq -n --argjson b "$b" --argjson r "$r" --argjson u "$u" \
-    '{checkedAt: (now | floor), breakdown: $b, reclaim: $r, updates: $u}' >"$CACHE.new"
+  jq -n --argjson started "$started" --argjson b "$b" --argjson r "$r" --argjson u "$u" \
+    '{checkedAt: $started, breakdown: $b, reclaim: $r, updates: $u}' >"$CACHE.new"
   mv "$CACHE.new" "$CACHE"
 
   # Fathom's own updates, only if you turned that on (fathom-update auto on):
@@ -255,6 +262,27 @@ failed_units() {
   [[ $scope == user ]] && flag=(--user)
   systemctl "${flag[@]}" list-units --failed --no-legend --plain --output=json 2>/dev/null |
     jq -c --arg scope "$scope" '.[]? | {scope: $scope, unit: (.unit | .[0:128]), description: (.description // "" | .[0:160])}' || true
+}
+
+# Packages installed or removed since the last check, by Care or anything
+# else (Omarchy's menu, pacman, yay), leave its list of updates out of date:
+# pacman's database of what's installed changed after the check started.
+updates_stale() {
+  local checked=${1:-0} changed
+  changed=$(stat -c %Y "$PACMAN_DB/local" 2>/dev/null) || return 1
+  [[ $checked =~ ^[0-9]+$ ]] || checked=0
+  ((changed > checked))
+}
+
+# Start a check in the background for an out-of-date list: not while pacman
+# is still at work (the next look starts it), and once for each change, so
+# a check that fails isn't started again on every look. Says if it started.
+recheck() {
+  [[ -e $PACMAN_DB/db.lck ]] && return 1
+  [[ -e $RECHECK && $RECHECK -nt $PACMAN_DB/local ]] && return 1
+  mkdir -p "$STATE"
+  touch "$RECHECK"
+  setsid -f "$0" check >/dev/null 2>&1 </dev/null
 }
 
 status() {
@@ -303,6 +331,13 @@ status() {
   units=$({ failed_units system; failed_units user; } | jq -sc '.[0:20]')
   [[ -s $CACHE ]] && cache=$(jq -c 'objects' "$CACHE" 2>/dev/null || echo null)
   [[ -n $cache ]] || cache=null
+
+  # An out-of-date list of updates isn't shown; a new check is started.
+  local stale=false started=false
+  if [[ $cache != null ]] && updates_stale "$(jq -r '.checkedAt // 0' <<<"$cache")"; then
+    stale=true
+    recheck && started=true
+  fi
   # fathom-update's last check, as it saved it; nothing is fetched here.
   [[ -s $STATE/update.json ]] && fathom=$(jq -c 'objects' "$STATE/update.json" 2>/dev/null || echo null)
   [[ -n $fathom ]] || fathom=null
@@ -313,7 +348,8 @@ status() {
     --argjson battery "$bat_health" --argjson cycles "$cycles" --argjson temp "$temp" \
     --argjson lastUpdate "$last_update" --argjson reboot "$reboot" --argjson snapshots "$snapshots" \
     --argjson forecast "$(forecast)" \
-    --argjson checking "$( (exec 9>"$LOCK"; flock -n 9) 2>/dev/null && echo false || echo true)" \
+    --argjson checking "$($started && echo true || { (exec 9>"$LOCK"; flock -n 9) 2>/dev/null && echo false || echo true; })" \
+    --argjson stale "$stale" \
     --argjson warnPct "$WARN_PCT" --argjson badPct "$BAD_PCT" '
     ($used * 100 / $size) as $pct
     | {
@@ -323,7 +359,8 @@ status() {
       disk: {model: $model, size: $size, used: $used, free: $free, pct: $pct,
              breakdown: ($cache.breakdown // null), forecastDays: $forecast},
       reclaim: ($cache.reclaim // []),
-      updates: ($cache.updates // null),
+      updates: (if $stale then null else ($cache.updates // null) end),
+      updatesStale: $stale,
       fathom: $fathom,
       warnings: (
         [$units[] | {kind: "unit"} + .]
@@ -451,7 +488,10 @@ case ${1:-} in
   clean) shift; clean "$@" ;;
   restart) restart_unit "${2:-}" "${3:-}" ;;
   log) unit_log "${2:-}" "${3:-}" ;;
-  update) exec omarchy-launch-floating-terminal-with-presentation omarchy-update ;;
+  # Check again as soon as the update ends, keeping its exit code for the
+  # terminal's Done or Failed. setsid: the check outlives the terminal.
+  update) exec omarchy-launch-floating-terminal-with-presentation \
+    "omarchy-update; code=\$?; setsid -f $(printf %q "$(realpath -s "$0")") check >/dev/null 2>&1 </dev/null; (exit \$code)" ;;
   -h | --help | help) usage ;;
   *)
     echo "fathom-care: unknown command '$1'" >&2

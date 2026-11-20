@@ -556,7 +556,11 @@ is open. It looks after the machine so you don't have to.
 - **Updates:** system packages (flagging a new kernel), AUR packages, firmware
   and Omarchy itself, with the download size. **Update everything** runs
   Omarchy's own updater in a terminal, which checks free space, takes a
-  snapshot, updates, and verifies the system still boots.
+  snapshot, updates, and verifies the system still boots; Care checks again
+  as soon as it ends. Packages installed or removed any other way (Omarchy's
+  menu, pacman, yay) are noticed too: once pacman's list of what's installed
+  is newer than Care's last check, Care stops showing the old list and
+  checks again (once pacman is done, and once for each change).
 
 A systemd user timer runs Care's check every 3 hours, and you get a
 notification when something new needs you: a service fails or the disk passes

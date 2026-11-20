@@ -185,6 +185,94 @@ class CareTest(Stubbed):
         self.assertEqual(cache["updates"]["firmware"], 0)
         self.assertEqual([r for r in cache["reclaim"] if r["id"] == "pacman"], [])
 
+    # ------------------------------------------------ after updates
+
+    def stale_setup(self, checked_ago=3600, changed_ago=60):
+        """A cache from a check `checked_ago` seconds back with 7 updates, and a
+        pacman whose installed packages changed `changed_ago` seconds back."""
+        for tool in ("fwupdmgr", "paccache"):
+            stub(self.bin, tool, "exit 0\n")
+        state = os.path.join(self.home, ".state", "fathom")
+        os.makedirs(state, exist_ok=True)
+        now = time.time()
+        self.cache = os.path.join(state, "care.json")
+        with open(self.cache, "w") as f:
+            json.dump({"checkedAt": int(now - checked_ago), "breakdown": [], "reclaim": [],
+                       "updates": {"packages": [{"name": "p", "from": "1", "to": "2", "bytes": 0}] * 7,
+                                   "aur": [], "firmware": 0, "download": 0}}, f)
+        self.pacman = os.path.join(self.dir, "pacman")
+        os.makedirs(os.path.join(self.pacman, "local"))
+        os.utime(os.path.join(self.pacman, "local"), (now - changed_ago, now - changed_ago))
+        self.env["FATHOM_PACMAN_DB"] = self.pacman
+        self.marker = os.path.join(state, "care-recheck")
+
+    def status(self):
+        out = self.run_tool(CARE, "status", env=self.env)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def wait_for_check(self, after):
+        for _ in range(300):
+            with open(self.cache) as f:
+                cache = json.load(f)
+            if cache["checkedAt"] >= after:
+                return cache
+            time.sleep(0.1)
+        self.fail("no check ran")
+
+    def test_a_list_from_before_the_last_update_starts_a_check(self):
+        self.stale_setup()
+        s = self.status()
+        self.assertIsNone(s["updates"])
+        self.assertTrue(s["updatesStale"])
+        self.assertTrue(s["checking"])
+        cache = self.wait_for_check(int(time.time()) - 5)
+        self.assertEqual(cache["updates"]["packages"], [])        # checkupdates found none
+        s = self.status()
+        self.assertFalse(s["updatesStale"])
+        self.assertEqual(s["updates"]["packages"], [])
+
+    def test_a_list_from_after_the_last_update_is_shown(self):
+        self.stale_setup(checked_ago=60, changed_ago=3600)
+        s = self.status()
+        self.assertFalse(s["updatesStale"])
+        self.assertEqual(len(s["updates"]["packages"]), 7)
+        self.assertFalse(os.path.exists(self.marker))
+
+    def test_no_check_while_pacman_is_at_work(self):
+        self.stale_setup()
+        open(os.path.join(self.pacman, "db.lck"), "w").close()
+        s = self.status()
+        self.assertIsNone(s["updates"])
+        self.assertTrue(s["updatesStale"])
+        self.assertFalse(s["checking"])
+        self.assertFalse(os.path.exists(self.marker))
+
+    def test_one_check_for_each_change(self):
+        # A check was started after the change (and failed): not again.
+        self.stale_setup()
+        open(self.marker, "w").close()
+        s = self.status()
+        self.assertTrue(s["updatesStale"])
+        self.assertFalse(s["checking"])
+        time.sleep(1)
+        with open(self.cache) as f:
+            self.assertEqual(len(json.load(f)["updates"]["packages"]), 7)
+
+    def test_update_checks_again_when_it_ends(self):
+        self.stale_setup()
+        stub(self.bin, "omarchy-update", "exit 3\n")
+        # The launcher runs the command as Omarchy's does, in bash -c.
+        stub(self.bin, "omarchy-launch-floating-terminal-with-presentation",
+             'bash -c "$*; echo \\$? > \"$CODE\""\n')
+        self.env["CODE"] = os.path.join(self.dir, "code")
+        before = int(time.time())
+        out = self.run_tool(CARE, "update", env=self.env)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.wait_for_check(before)
+        with open(self.env["CODE"]) as f:
+            self.assertEqual(f.read().strip(), "3")             # the update's own exit code
+
 
 if __name__ == "__main__":
     unittest.main()

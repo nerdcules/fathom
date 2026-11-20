@@ -285,7 +285,8 @@ GridLayout {
 
     Empty {
       visible: !page.updates
-      text: page.busyChecking ? Skin.t("care.lookingForUpdates") : Skin.t("loading")
+      text: page.busyChecking ? Skin.t("care.lookingForUpdates")
+        : (!!page.care && page.care.updatesStale === true ? Skin.t("care.updatesChanged") : Skin.t("loading"))
     }
     Empty {
       visible: !!page.updates && page.updateCount === 0

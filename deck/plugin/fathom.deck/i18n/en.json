@@ -131,6 +131,7 @@
   "care.free": "Free it",
   "care.checkNow": "Check now",
   "care.checking": "Checking…",
+  "care.updatesChanged": "Packages changed since the last check. Care looks again once pacman is done.",
   "care.confirmTitle": "Free %1?",
   "care.confirmBody": "This deletes: %1. Caches and downloads come back when something needs them, which can make the next build or install slower. You can't undo this.",
   "care.confirmRoot": "Some of this needs your password. The deck closes and you'll get a notification when it's done.",

@@ -162,6 +162,16 @@ it.
   a tap then Tab and Enter went to workspace 2; Esc while held changed
   nothing; the Start power menu opened above its button and asked in
   place; the screensaver preview opened and closed on a key.
+- Issue #10 (Care's updates list after updating), at b56b60e with the fix
+  uncommitted, the old and new `fathom-care` copied into the VM: a check
+  found 2 repo updates (aether, mise-bin). `sudo pacman -Syu` was refused by
+  Omarchy's pacman hook ("Omarchy updates should normally run through:
+  omarchy update"); `omarchy-update -y` upgraded both in 6 s. Then the old
+  `status` still said 2; the new one said `updatesStale` and `checking`,
+  its check finished within a second, and both then said 0 (`checkupdates`:
+  0). Care's own update (`care-new update`) opened Omarchy's terminal, which
+  waited at "Continue with update?" until a `y` was sent through QMP; the
+  update ended at 06:59:10 and the new check's `checkedAt` is 06:59:10.
 
 ### 18 November 2026, Windows 11 (WSL2)
 
