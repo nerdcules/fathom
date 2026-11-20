@@ -11,6 +11,12 @@ Each line names its commit.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-20
+
+Blueprint as the screensaver, Super+Tab from the keyboard, the screensaver
+on Personalise, IP addresses on the panel, and Care up to date after
+updates.
+
 ### Added
 
 - Screensaver: Blueprint, software patterns and architectures drawn as
@@ -32,13 +38,16 @@ Each line names its commit.
   when it starts, when the screen locks (or never), what it shows (Omarchy's
   logo, Fathom's name, a picture or your own text) and a preview. They are
   Omarchy's idle settings, written through `omarchy-shell-config` (8a5c41f).
-
 - `tests/vm`: the VM checks run in WSL2 on Windows 11, with
   `FATHOM_VM_DISPLAY=vnc` (no 3D), and `run.sh` types the VM disk's
   passphrase from a file there (`qmp.py`) (2113525).
 
 ### Fixed
 
+- `./install.sh --screensaver` could switch your own idle service off
+  when it ran just after `--skin` switched the theme: it asked the running
+  shell, which didn't list it. It reads `shell.json` and the plugins'
+  manifests now (c913a63).
 - Care: after updates, its list and count of updates stayed as they were
   until the next 3-hourly check. **Update everything** checks again when
   Omarchy's update ends, and a list from before pacman's last change to
@@ -162,6 +171,7 @@ The first release: everything Fathom had on 17 November 2026.
 - Care's own description said its check runs hourly; it runs every 3 hours
   (332a7c4).
 
-[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nerdcules/fathom/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nerdcules/fathom/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nerdcules/fathom/releases/tag/v0.1.0
