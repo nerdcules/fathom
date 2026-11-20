@@ -75,7 +75,7 @@ GridLayout {
         var pct = F.percent(disks[d].used, disks[d].size)
         var lv = F.level(pct)
         out.push({
-          tone: lv === "bad" ? Skin.urgent : lv === "warn" ? Skin.warn : Skin.accent,
+          tone: lv === "bad" ? Skin.urgent : lv === "warn" ? Skin.warn : Skin.ok,
           name: Skin.t("pcs.disk").arg(disks[d].mount), detail: Skin.t("pcs.free").arg(Skin.size(disks[d].free)),
           right1: Skin.n(pct) + "%", right2: ""
         })
