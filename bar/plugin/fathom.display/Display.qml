@@ -148,6 +148,8 @@ Panel {
     }
   }
 
+  DropTheme { strings: catalog; screen: panel.screen }
+
   BarIconButton {
     id: button
     anchors.fill: parent
@@ -173,11 +175,11 @@ Panel {
     open: root.opened
     padding: 0
     focusTarget: panel.loadedContent
-    contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Style.space(620))
+    // Fathom's sizes, as Quick settings has them (DropSkin.u), not Omarchy's.
+    contentWidth: panel.fittedContentWidth(Math.round(380 * DropSkin.u))
+    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Math.round(640 * DropSkin.u))
 
     content: DropCard {
-      DropTheme { strings: catalog }
       title: catalog.t("display.title")
       subtitle: root.focused ? [root.focused.name, root.focused.width + "×" + root.focused.height].join(" · ") : ""
       glyph: D.g(root.info.displays.length > 1 ? 0xF037A : 0xF0379)

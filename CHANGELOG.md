@@ -30,6 +30,12 @@ Each line names its commit.
   `bar/items.json` lists every Omarchy bar item with its Fathom dropdown
   or plan, and a test fails when Omarchy has one it doesn't name; the
   install names the bar items still without one.
+- One look everywhere: the bar's dropdowns size for the screen by the
+  rule the Command Deck and the desk use, so their text, sliders and
+  buttons match Quick settings', and `tests/test_one_look.py` fails if the
+  three copies of Fathom's look (deck, desk, dropdown kit) drift apart:
+  their shared values, what each takes from the theme, the size rule and
+  the panel glass.
 - Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
   the arrows on their tiles: join, leave, a password field, pair, connect
   (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.

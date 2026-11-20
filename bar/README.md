@@ -34,8 +34,8 @@ A plugin has three parts:
   `tests/bar.test.mjs` tests it under Node.
 - **`<Name>.qml`**, the glue: the bar button (Omarchy's `BarIconButton`),
   reading and changing the machine, and Omarchy's popup frame
-  (`KeyboardPanel`) with a `DropCard` inside. The card holds a
-  `DropTheme` and a `DropSections` drawn from `sections()`. It needs
+  (`KeyboardPanel`) with a `DropCard` inside, holding a `DropSections`
+  drawn from `sections()`; and a `DropTheme`, given the frame's screen. It needs
   Omarchy's shell, so it's tried in the test VM.
 - **`i18n/en.json`**, its words, with the kit's `drop.on` and `drop.off`.
 
@@ -62,7 +62,11 @@ own (a calendar, say) puts its own QML in the card beside the sections.
 
 `DropTheme` gives the kit the theme as Quick settings has it: Omarchy's
 colours, font and corners, the menu's opacity and border, glass when
-Hyprland blurs, and the glow from Personalise. A theme change restyles every
+Hyprland blurs, the glow from Personalise, and Fathom's size for the
+screen (the deck's and desk's rule). Sizes are Fathom's, not Omarchy's:
+a dropdown's width is so many units times that size, as Quick settings'
+is. `tests/test_one_look.py` fails if the kit's look drifts from the deck's
+or the desk's. A theme change restyles every
 dropdown as it happens.
 
 `DropCard` takes the keys as Omarchy's dropdowns do: the arrows or h j k l
