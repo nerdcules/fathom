@@ -54,6 +54,8 @@ menu clicking only what's on top.
 - Start and Confirm: the row under the power menu, the About card or a
   Confirm dialog no longer lights up as the pointer passes over it
   (dfb166e).
+- `tests/vm/check.sh` answers Ward's question when `--sentinel` asks it,
+  instead of waiting out the step's 5 minutes (798ad3b).
 
 ## [0.3.0] - 2026-11-20
 

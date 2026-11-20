@@ -139,6 +139,27 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### 0.4.0: 20 November 2026, Windows 11 (WSL2)
+
+Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH
+from the laptop.
+
+- At 40e77d4 (the 0.4.0 changelog): `check.sh` 24 passed, 2 failed. The
+  opt-in step stopped at Ward's question (new in 282060c: `--sentinel` asks
+  at a terminal) and waited out its 5 minutes; the sign-in check after it
+  failed with it. Fixed in the check, not in `install.sh` (798ad3b): it
+  types "n" once the question shows. A first try typed it at the start;
+  the VM echoed it at once and it was gone before the question came.
+- At 798ad3b: `check.sh` 27 passed, 0 failed, in 71 s, the real-ufw checks
+  among them 15 passed, 0 failed, and the new "asked about Ward once; no
+  is remembered".
+- The hover fix (dfb166e), with real pointer moves through QMP, at
+  798ad3b, `./install.sh --deck` and six projects in `~/Work`: with the
+  pointer on Restart in the power menu, only Restart lit up; on "Restart
+  now?", only its button. The Recent row under it (bravo) stayed dark in
+  both (it lit up at eb8d811, in the #13 entry below). No window opened.
+  Then `uninstall.sh` (exit 0) and the projects removed.
+
 ### Issue #13: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM (Omarchy 4.5.0-3), `FATHOM_VM_DISPLAY=vnc`, driven over SSH
