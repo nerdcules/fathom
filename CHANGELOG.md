@@ -33,6 +33,9 @@ Each line names its commit.
 
 ### Changed
 
+- Ward's exploited count leaves out CVEs Ward settled as "later" (in a
+  Docker image nothing runs, say), and `install.sh` checks for Ward through
+  `FATHOM_WARD` like `fathom-care` (cea554d).
 - The test alert says it reached "this device", and an item marked done in
   Sankofa from a paired device names that device instead of "the phone"
   (173c08e).
