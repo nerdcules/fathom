@@ -62,7 +62,12 @@ Item {
 
   // "" for the tiles, or "wifi" / "bluetooth" for a list.
   property string page: ""
-  function openPage(name) { askSsid = ""; failedSsid = ""; btFailed = ""; page = name }
+  function openPage(name) {
+    askSsid = ""; failedSsid = ""; btFailed = ""
+    var list = stops(body)
+    for (var i = 0; i < list.length; i++) if (list[i].activeFocus) returnTo = list[i]
+    page = name
+  }
 
   // ------------------------------------------------ Wi-Fi list
 
@@ -243,11 +248,49 @@ Item {
     host.setSetting(what, on ? "on" : "off")
   }
 
+  // Keys (#15). The desk's stage has the keyboard and hands keys here; once
+  // a tile, slider or button has focus, it takes its own (Space or Return
+  // toggles or presses, Right opens a tile's list, Left and Right move a
+  // slider) and the rest come here: Tab and the arrows (or j and k) walk
+  // the page's controls, Left (or h) on a list goes back, Esc closes.
   function key(e) {
-    if (e.key !== Qt.Key_Escape) return
-    if (page !== "") { if (askSsid !== "") askSsid = ""; else page = "" }
-    else done()
+    var k = e.key
+    if (k === Qt.Key_Escape) {
+      if (page !== "") { if (askSsid !== "") askSsid = ""; else page = "" }
+      else done()
+    }
+    else if (k === Qt.Key_Tab || k === Qt.Key_Down || k === Qt.Key_J) walk(true)
+    else if (k === Qt.Key_Backtab || k === Qt.Key_Up || k === Qt.Key_K) walk(false)
+    else if (page !== "" && (k === Qt.Key_Left || k === Qt.Key_H)) page = ""
+    else return
     e.accepted = true
+  }
+
+  // The page's controls, in the order they're drawn: whatever takes Tab,
+  // shown and usable.
+  function stops(item, out) {
+    out = out || []
+    if (!item || !item.visible || !item.enabled) return out
+    if (item.activeFocusOnTab) out.push(item)
+    for (var i = 0; i < item.children.length; i++) stops(item.children[i], out)
+    return out
+  }
+  function walk(forward) {
+    var list = stops(page === "" ? body : listPage)
+    if (list.length === 0) return
+    var at = -1
+    for (var i = 0; i < list.length; i++) if (list[i].activeFocus) at = i
+    var next = at < 0 ? (forward ? 0 : list.length - 1) : (at + (forward ? 1 : -1) + list.length) % list.length
+    list[next].forceActiveFocus(Qt.TabFocusReason)
+  }
+
+  // Back from a list, the keyboard returns to the tile that opened it; a
+  // page that's hidden can't keep focus, so the view holds it meanwhile.
+  property Item returnTo: null
+  onPageChanged: {
+    if (page === "" && returnTo && returnTo.visible) returnTo.forceActiveFocus(Qt.OtherFocusReason)
+    else view.forceActiveFocus()
+    if (page === "") returnTo = null
   }
 
   PwObjectTracker { objects: view.sink ? [view.sink] : [] }
@@ -511,6 +554,15 @@ Item {
             onClicked: { view.done(); Quickshell.execDetached(["omarchy-menu", "summon", "root"]) }
           }
         }
+      }
+
+      // The keys (#15).
+      Label {
+        width: parent.width
+        text: Skin.t("quick.keys")
+        color: Skin.dim
+        wrapMode: Text.WordWrap
+        font.pixelSize: 11 * Skin.u
       }
 
       // Fathom's version, as the deck and Start show it.

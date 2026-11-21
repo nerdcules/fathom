@@ -458,6 +458,11 @@ wrong) or to leave it; a network that needs a username as well opens
 `nmtui`. Click a device to connect, disconnect or pair it, through Omarchy's
 `omarchy-bluetooth-device`. Wi-Fi scans and Bluetooth looks for devices only
 while its list shows. Esc or the back arrow goes back to the tiles.
+It works from the keyboard too: Tab or the Down and Up arrows (or j and k)
+move between the tiles, sliders and buttons, with a ring around the one
+you're on; Space or Return toggles a tile or presses a button, Right (or
+l) opens a tile's list, Left and Right move a slider, and on a list Left
+(or h) goes back.
 
 **The bar's cluster**, as on Windows 11: Omarchy's Bluetooth, network,
 volume and battery widgets become one button, with the same glyphs, after

@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../desk/plugin/fathom.desk"
+import "../../desk/plugin/fathom.desk/kit"
 
 // Quick settings' list page (#14) with real clicks and keys: a row click
 // sends its key, a header row sends nothing, the password field sends what
@@ -30,6 +31,16 @@ Item {
     onPicked: function(key) { top.log.push("picked " + key) }
     onPasswordGiven: function(key, password) { top.log.push("password " + key + " " + password) }
     onAskCancelled: top.log.push("cancel")
+  }
+
+  // A tile (#15): Space toggles it, Right opens its list.
+  QuickTile {
+    id: tile
+    x: 20; y: 600; width: 140
+    title: "Wi-Fi"
+    moreable: true
+    onToggled: top.log.push("tile toggled")
+    onMore: top.log.push("tile more")
   }
 
   function all(item, pred, out) {
@@ -94,6 +105,26 @@ Item {
       compare(top.log, ["password Cafe sec", "password Cafe sec", "cancel"])
       click(labelled("Cancel"))
       compare(top.log[3], "cancel")
+    }
+
+    function test_keys_reach_the_rows_and_the_tiles() {
+      // #15: a row takes Tab focus and Space or Return picks it; a tile
+      // toggles on Space and Return and opens its list on Right.
+      var rows = all(list, function(i) { return i.activeFocusOnTab === true && i.visible && i.hasOwnProperty("radius") && i.height > 40 })
+      verify(rows.length >= 3, "the rows take Tab")
+      rows[1].forceActiveFocus()
+      keyClick(Qt.Key_Return)
+      rows[2].forceActiveFocus()
+      keyClick(Qt.Key_Space)
+      tile.forceActiveFocus()
+      keyClick(Qt.Key_Space)
+      keyClick(Qt.Key_Right)
+      compare(top.log, ["picked Cafe", "picked Library", "tile toggled", "tile more"])
+      verify(tile.activeFocusOnTab)
+      rows[0].forceActiveFocus()
+      tile.available = false
+      verify(!tile.activeFocusOnTab, "an unavailable tile isn't a stop")
+      tile.available = true
     }
 
     function test_no_rows_shows_the_empty_text() {

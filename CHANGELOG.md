@@ -49,6 +49,11 @@ Each line names its commit.
 - One look everywhere: the bar's dropdowns size for the screen by the
   rule the Command Deck and the desk use, so their text, sliders and
   buttons match Quick settings'.
+- Quick settings by keyboard (#15): Tab or the arrows (or j and k) move
+  between its tiles, sliders, buttons and list rows, Space or Return
+  toggles or picks, Right (or l) opens a tile's list and Left (or h) comes
+  back to that tile, and a line at the foot says so. Before, only Esc did
+  anything.
 - Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
   the arrows on their tiles: join, leave, a password field, pair, connect
   (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.

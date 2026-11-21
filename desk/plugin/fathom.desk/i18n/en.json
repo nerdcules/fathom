@@ -74,6 +74,7 @@
   "quick.list.noBluetooth": "No Bluetooth on this machine.",
   "quick.list.bluetoothOff": "Bluetooth is off.",
   "quick.list.wifiNote": "Click a network to join or leave it.",
+  "quick.keys": "Tab or ↓ ↑ moves · Space toggles · → opens the list · Esc closes",
   "bar.wifi": "Wi-Fi: %1",
   "bar.ethernet": "Ethernet",
   "bar.offline": "Not connected",

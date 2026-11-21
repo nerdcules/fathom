@@ -3,7 +3,8 @@ import "kit"
 import "."
 
 // One Quick settings tile: a glyph, a name and its state; lit when on.
-// Click toggles. With `moreable`, a chevron at the side opens the details.
+// Click, Space or Return toggles. With `moreable`, a chevron at the side,
+// or Right (or l), opens the details. Tab reaches it (#15).
 Rectangle {
   id: tile
   property string glyph: ""
@@ -22,6 +23,13 @@ Rectangle {
   border.width: 1
   border.color: on ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
   Behavior on color { ColorAnimation { duration: Skin.ms(120) } }
+  activeFocusOnTab: available
+  Keys.onSpacePressed: tile.toggled()
+  Keys.onReturnPressed: tile.toggled()
+  Keys.onEnterPressed: tile.toggled()
+  Keys.onPressed: function(e) {
+    if ((e.key === Qt.Key_Right || e.key === Qt.Key_L) && tile.moreable) { tile.more(); e.accepted = true }
+  }
   Accessible.role: Accessible.CheckBox
   Accessible.name: title
   Accessible.checked: on

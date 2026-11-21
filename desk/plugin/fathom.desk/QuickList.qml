@@ -124,6 +124,12 @@ Item {
               border.color: lit ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
               Accessible.role: Accessible.Button
               Accessible.name: entry.isHeader ? "" : String(entry.modelData.name || "")
+              // Tab and the arrows reach it; Space or Return picks it (#15).
+              activeFocusOnTab: !entry.isHeader
+              Keys.onSpacePressed: list.picked(String(entry.modelData.key))
+              Keys.onReturnPressed: list.picked(String(entry.modelData.key))
+              Keys.onEnterPressed: list.picked(String(entry.modelData.key))
+              FocusRing {}
 
               MouseArea {
                 id: rowMouse
