@@ -36,6 +36,13 @@ Each line names its commit.
   Omarchy's life bar; its keys and settings are Omarchy's. The kit's
   factory gained a meter and text fields, and a card can take keys of its
   own first.
+- The weather's Fathom dropdown: Omarchy's icon, sources (wttr.in,
+  open-meteo, Omarchy's place lookup) and settings, with Fathom's
+  dropdown: the temperature, feels-like, wind and humidity, the place
+  (search for another, or go back to where you are), and the coming days.
+  Unlike Omarchy's, a place being saved stops waiting when open-meteo
+  keeps failing, instead of saying "Loading…" for good. The factory gained
+  facts, a strip of tiles and a search field.
 - A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
   records the Omarchy files each copies behaviour from, with a
   fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.

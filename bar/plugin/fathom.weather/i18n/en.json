@@ -1,0 +1,15 @@
+{
+  "weather.title": "Weather",
+  "weather.feels": "Feels like",
+  "weather.wind": "Wind",
+  "weather.humidity": "Humidity",
+  "weather.finding": "Finding where you are…",
+  "weather.change": "Change place",
+  "weather.searchCity": "Search city",
+  "weather.saving": "Loading…",
+  "weather.useMyLocation": "Use where I am",
+  "weather.cancel": "Cancel",
+  "weather.fetching": "Fetching forecast…",
+  "drop.on": "On",
+  "drop.off": "Off"
+}

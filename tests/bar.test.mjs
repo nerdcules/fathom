@@ -180,3 +180,55 @@ test("clock: the month as the calendar draws it (Omarchy's arithmetic)", () => {
   assert.equal(M.weekStartSettingName(M.toggledWeekStart(1)), "sunday");
   assert.equal(M.normalizedWeekStart("monday", 0), 1);
 });
+
+const W = load("plugin/fathom.weather/Weather.js", ["sections"]);
+const WM = load("plugin/fathom.weather/Model.js", ["openMeteoCurrentCondition", "buildForecastDays", "dayIcon",
+  "bareTempForDay", "currentIcon", "formatTemp", "shouldUseImperial", "locationCommit", "parseGeocodingResults"]);
+
+// The shape open-meteo answers the dropdown's request with (made up values).
+const METEO = {
+  current: { temperature_2m: 7.4, apparent_temperature: 4.9, relative_humidity_2m: 81, wind_speed_10m: 13.2, weather_code: 3, is_day: 1 },
+  daily: { time: ["2026-11-21", "2026-11-22", "2026-11-23", "2026-11-24"], weather_code: [3, 61, 0, 2],
+    temperature_2m_max: [8.2, 9.6, 6.1, 7], temperature_2m_min: [3.1, 5.4, 0.2, 1] },
+};
+
+test("weather: what the dropdown shows, from Omarchy's model", () => {
+  const t = (k) => `[${k}]`;
+  const current = WM.openMeteoCurrentCondition(METEO);
+  assert.ok(current, "a current condition from open-meteo");
+  const days = WM.buildForecastDays(null, METEO, "2026-11-21").map((d) => ({
+    key: d.date, glyph: WM.dayIcon(d), name: d.date,
+    max: WM.bareTempForDay(d, "max", false, String), min: WM.bareTempForDay(d, "min", false, String),
+  }));
+  assert.ok(days.length >= 1 && days.every((d) => d.key > "2026-11-21"), "the coming days, not today");
+  const s = plain(W.sections({ hasCurrent: true, feels: "5°C", wind: "13 km/h", humidity: "81%", location: "Leeds",
+    editing: false, saving: false, query: "", results: [], chosen: 0, days }, t));
+  assert.deepEqual(s.map((x) => [x.type, !!x.hidden]),
+    [["facts", false], ["rows", false], ["search", true], ["actions", true], ["strip", false], ["text", true]]);
+  assert.deepEqual(s[0].items.map((i) => i.value), ["5°C", "13 km/h", "81%"]);
+  assert.equal(s[1].rows[0].name, "Leeds");
+  assert.ok(s[4].items.every((i) => /°/.test(i.detail) && i.glyph !== ""), "each day: an icon and its high / low");
+});
+
+test("weather: changing the place, and before anything is fetched", () => {
+  const t = (k) => `[${k}]`;
+  const results = WM.parseGeocodingResults(JSON.stringify({ results: [
+    { name: "London", admin1: "England", country: "United Kingdom", latitude: 51.5, longitude: -0.12 },
+    { name: "London", admin1: "Ontario", country: "Canada", latitude: 42.98, longitude: -81.23 } ] }));
+  let s = plain(W.sections({ hasCurrent: false, location: "", editing: true, saving: false, query: "Lon",
+    results, chosen: 1, days: [] }, t));
+  assert.deepEqual(s.map((x) => !!x.hidden), [true, true, false, false, true, false]);
+  assert.deepEqual(s[2].results.map((r) => [r.key, r.name, r.detail]),
+    [["0", "London", plain(results)[0].description], ["1", "London", plain(results)[1].description]]);
+  assert.equal(s[2].chosen, 1);
+  assert.equal(s[2].text, "Lon");
+  // Picking one: the field waits, no results or buttons, until it loads.
+  s = plain(W.sections({ hasCurrent: true, editing: true, saving: true, results, days: [] }, t));
+  assert.equal(s[2].busy, true);
+  assert.deepEqual(s[2].results, []);
+  assert.equal(s[3].hidden, true);
+  // Nothing found yet: the place says it's being found.
+  assert.equal(plain(W.sections({ hasCurrent: false, location: "", days: [] }, t))[1].rows[0].name, "[weather.finding]");
+  // Return in the field takes the chosen result, as Omarchy's does.
+  assert.equal(plain(WM.locationCommit("Lon", results, 1)).latitude, 42.98);
+});

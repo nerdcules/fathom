@@ -8,3 +8,6 @@ DropTheme 1.0 DropTheme.qml
 DropSections 1.0 DropSections.qml
 DropMeter 1.0 DropMeter.qml
 DropFields 1.0 DropFields.qml
+DropFacts 1.0 DropFacts.qml
+DropStrip 1.0 DropStrip.qml
+DropSearch 1.0 DropSearch.qml

@@ -139,6 +139,34 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, the weather: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- `./install.sh --desk`: `fathom.weather` took `omarchy.weather`'s place
+  in the centre. With no place set, it showed the temperature,
+  feels-like, wind, humidity and two coming days for the place Omarchy's
+  lookup found for the PC's network.
+- Real input through QMP: clicking the place opened the search; typing
+  "leeds" listed five places; Down and Return chose Leeds, Alabama, and
+  wrote it to Omarchy's `weather.json`; the units became °F, by Omarchy's
+  rule for a US place. "Use where I am" removed `weather.json` and the
+  dropdown went back to the place found. `omarchy-shell omarchy.weather
+  edit` opened it on the search; a right-click sent Omarchy's weather
+  notification.
+- Found: open-meteo answered this network with 403 to every request (the
+  laptop got 200 in 0.12 s), and after a place was saved the field said
+  "Loading…" for good: Omarchy's logic waits for open-meteo, and after
+  three failed retries nothing ends the wait. Omarchy's own panel's
+  spinner was still turning 8 seconds after a save. Fathom's now ends the
+  wait when the retries run out; after that change, a save closed the
+  search and showed the place.
+- `uninstall.sh` left `shell.json` the same as the baseline, and no plugin.
+- Not tried: open-meteo answering (it never did here), `unit` and
+  `refreshMinutes` settings, Super+Ctrl+Alt+W.
+
 ### Issue #14, the clock: 20 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled

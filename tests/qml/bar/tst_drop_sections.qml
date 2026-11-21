@@ -29,7 +29,11 @@ Item {
     { type: "text", text: "A note", dim: true },
     { type: "meter", key: "year", label: "2026", trail: "88%", value: 0.88 },
     { type: "fields", key: "life", okLabel: "Save", cancelLabel: "Cancel", hidden: true,
-      fields: [{ key: "born", label: "Born", value: "", digits: true }, { key: "to", label: "Live to", value: "90", digits: true }] }
+      fields: [{ key: "born", label: "Born", value: "", digits: true }, { key: "to", label: "Live to", value: "90", digits: true }] },
+    { type: "facts", items: [{ label: "Wind", value: "12 km/h" }, { label: "Humidity", value: "80%" }] },
+    { type: "strip", key: "days", items: [{ key: "sat", glyph: "S", name: "Sat", detail: "9° / 4°" }, { key: "sun", glyph: "S", name: "Sun", detail: "8° / 3°" }] },
+    { type: "search", key: "city", hidden: true, text: "Lon", placeholder: "Search city", chosen: 0,
+      results: [{ key: "0", name: "London", detail: "England" }, { key: "1", name: "Londonderry", detail: "Northern Ireland" }] }
   ]
 
   DropCard {
@@ -49,6 +53,7 @@ Item {
       onToggled: function(k, on) { top.log.push(k + " " + on) }
       onSubmitted: function(k, v) { top.log.push(k + " " + JSON.stringify(v)) }
       onCancelled: function(k) { top.log.push(k + " cancelled") }
+      onEdited: function(k, t) { top.log.push(k + " edited " + t) }
     }
   }
 
@@ -167,6 +172,39 @@ Item {
       compare(top.log, ['life {"born":"1980","to":"90"}'])
       keyClick(Qt.Key_Escape)
       compare(top.log[1], "life cancelled", "Esc cancels, it doesn't close the dropdown")
+      sections.model = Qt.binding(function() { return top.spec })
+    }
+
+    function test_facts_and_a_strip_show_what_they_are_given() {
+      compare(find("fact Wind").text, "12 km/h")
+      compare(find("fact Humidity").text, "80%")
+      verify(find("tile sat"), "a tile for each")
+      verify(find("tile sun"))
+      verify(find("tile sat").width > 50, "tiles share the width")
+    }
+
+    function test_a_search_field_and_its_results() {
+      var copy = top.spec.map(function(x) { var c = {}; for (var k in x) c[k] = x[k]; return c })
+      copy[12].hidden = false
+      sections.model = copy
+      wait(80)
+      var field = find("search field")
+      verify(field.activeFocus, "the field takes the keyboard")
+      compare(field.text, "Lon", "with the text it was given")
+      keyClick(Qt.Key_End); keyClick("d")
+      compare(top.log, ["city edited Lond"])
+      keyClick(Qt.Key_Down)
+      compare(top.log[1], "city 100", "Down moves the chosen result (index 1, logged x100)")
+      keyClick(Qt.Key_Tab)
+      verify(field.activeFocus, "Tab doesn't leave the field")
+      compare(top.log.length, 2, "nor switch dropdowns")
+      keyClick(Qt.Key_Return)
+      compare(top.log[2], 'city {"chosen":0,"text":"Lond"}', "the text and the chosen result (still 0: the dropdown sets it)")
+      click(find("result 1"))
+      compare(top.log[3], "city 1")
+      field.forceActiveFocus()
+      keyClick(Qt.Key_Escape)
+      compare(top.log[4], "city cancelled")
       sections.model = Qt.binding(function() { return top.spec })
     }
 

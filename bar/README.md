@@ -55,6 +55,9 @@ item needs a description, not a new screen:
 | `actions` | `key`, `buttons: [{key, label, glyph, primary}]` | `picked(key, button key)` |
 | `meter` | `key`, `label`, `trail`, `value` (0 to 1) | `picked(key, "doubleClick")` |
 | `fields` | `key`, `fields: [{key, label, value, placeholder, digits}]`, `okLabel`, `cancelLabel` | `submitted(key, {field: text})`, `cancelled(key)` |
+| `facts` | `items: [{label, value}]` | |
+| `strip` | `key`, `items: [{key, glyph, name, detail}]` | |
+| `search` | `key`, `text`, `placeholder`, `busy`, `busyLabel`, `results: [{key, name, detail}]`, `chosen` | `edited(key, text)`, `moved(key, chosen)`, `submitted(key, {text, chosen})`, `cancelled(key)`, `picked(key, result key)` |
 | `text` | `text`, `dim` | |
 
 `hidden: true` leaves a section out. A new description, which every value

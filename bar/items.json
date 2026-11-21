@@ -56,7 +56,15 @@
       }
     },
     "omarchy.weather": {
-      "planned": "the forecast"
+      "fathom": "fathom.weather",
+      "follows": {
+        "shell/plugins/panels/weather/BarWidget.qml": "ab3e32b97cf37847",
+        "shell/plugins/panels/weather/Panel.qml": "55dfe63d84b5421a",
+        "shell/plugins/panels/weather/Model.js": "3e7dee236b287a6b",
+        "bin/omarchy-weather-location": "c0ff6801196e6b8d",
+        "bin/omarchy-weather-status": "d4bf91dad1d30a5c",
+        "bin/omarchy-notification-weather": "e9e75b64881a85cb"
+      }
     },
     "omarchy.tailscale": {
       "planned": "the tailnet: on or off, exit node, machines, copy an address"

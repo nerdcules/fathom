@@ -15,6 +15,13 @@ import "."
 //   fields   {key, fields: [{key, label, value, placeholder,
 //             digits}], okLabel, cancelLabel}                   -> submitted(key, {field: text}),
 //                                                                  cancelled(key)
+//   facts    {items: [{label, value}]}
+//   strip    {key, items: [{key, glyph, name, detail}]}
+//   search   {key, text, placeholder, busy, busyLabel,
+//             results: [{key, name, detail}], chosen}           -> edited(key, text), moved(key, chosen
+//                                                                  index), submitted(key, {text,
+//                                                                  chosen}), cancelled(key),
+//                                                                  picked(key, result key)
 //   text     {text, dim}
 //
 // `hidden: true` leaves a section out. Every part is the kit's, in the Quick
@@ -27,6 +34,7 @@ Column {
   signal toggled(string key, bool on)
   signal submitted(string key, var values)
   signal cancelled(string key)
+  signal edited(string key, string text)
 
   spacing: 14 * DropSkin.u
 
@@ -45,7 +53,8 @@ Column {
       visible: !spec.hidden
       active: !spec.hidden
       sourceComponent: ({ slider: sliderPart, choices: choicesPart, rows: rowsPart, "switch": switchPart,
-                          actions: actionsPart, text: textPart, meter: meterPart, fields: fieldsPart })[spec.type] || null
+                          actions: actionsPart, text: textPart, meter: meterPart, fields: fieldsPart,
+                          facts: factsPart, strip: stripPart, search: searchPart })[spec.type] || null
     }
   }
 
@@ -189,6 +198,45 @@ Column {
       cancelLabel: spec.cancelLabel || ""
       onSubmitted: function(values) { sections.submitted(spec.key, values) }
       onCancelled: sections.cancelled(spec.key)
+    }
+  }
+
+  Component {
+    id: factsPart
+    DropFacts {
+      property var spec: parent ? parent.spec : ({})
+      width: sections.width
+      items: spec.items || []
+    }
+  }
+
+  Component {
+    id: stripPart
+    DropStrip {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      items: spec.items || []
+    }
+  }
+
+  Component {
+    id: searchPart
+    DropSearch {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key
+      width: sections.width
+      text: spec.text || ""
+      placeholder: spec.placeholder || ""
+      busy: spec.busy === true
+      busyLabel: spec.busyLabel || ""
+      results: spec.results || []
+      chosen: Number(spec.chosen) || 0
+      onEdited: function(t) { sections.edited(spec.key, t) }
+      onChose: function(i) { sections.moved(spec.key, i) }
+      onSubmitted: function(t, i) { sections.submitted(spec.key, { text: t, chosen: i }) }
+      onCancelled: sections.cancelled(spec.key)
+      onPicked: function(k) { sections.picked(spec.key, k) }
     }
   }
 

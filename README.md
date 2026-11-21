@@ -36,7 +36,7 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
-| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display and the clock so far (see [Desk](#desk)) |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display, the clock and the weather so far (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
@@ -409,7 +409,7 @@ Windows' ways of handling windows, on Hyprland. Install it with `--desk`
 | **Super+Z** | Snap layouts for the focused window |
 | **Super+Alt+A** | Quick settings |
 | **Super+Ctrl+A** or **P**, **Super+Ctrl+N**, **Super+Ctrl+B** | Quick settings; on its Wi-Fi list; on its Bluetooth list (Omarchy's keys for the four widgets the cluster replaces) |
-| **Super+Ctrl+D**, **Super+Ctrl+Alt+D** | The Display dropdown; the calendar (Omarchy's keys, which reach Fathom's) |
+| **Super+Ctrl+D**, **Super+Ctrl+Alt+D**, **Super+Ctrl+Alt+W** | The Display dropdown; the calendar; the weather (Omarchy's keys, which reach Fathom's) |
 
 **Alt+Tab** shows every window as a card with a live picture of it, most
 recently used first, with the window you used before this one picked. Tab
@@ -481,7 +481,11 @@ it) and the **clock** (Omarchy's label and formats, with Fathom's calendar:
 the month with ISO week numbers and today lit, the year so far, and
 Omarchy's life bar for anyone who sets a birth year by double-clicking
 the year; the arrows step the month and year, T goes back to today, W
-changes the first day of the week, as in Omarchy's). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
+changes the first day of the week, as in Omarchy's) and the **weather**
+(Omarchy's icon and sources: the temperature, feels-like, wind and
+humidity, the place, and the coming days; click the place to search for
+another, or go back to where you are; a right-click sends the weather as
+a notification, a middle-click fetches it again). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
 so `install.sh --desk` puts it where Omarchy's was, with its settings, and
 Omarchy's keys and scripts for it reach Fathom's; an item that isn't on
 the bar isn't touched. The install ends by naming the bar items that don't
@@ -525,7 +529,7 @@ fathom-desk set brightness 40          # also wifi, focus, nightlight, awake on|
 Installing adds `~/.local/bin/fathom-desk`, `~/.config/hypr/fathom-desk.lua`
 (loaded from Fathom's marked block in `hyprland.lua`) and the `fathom.desk`
 shell plugin, and a plugin for each bar dropdown (`fathom.display`,
-`fathom.clock`).
+`fathom.clock`, `fathom.weather`).
 Uninstalling removes them, and Hyprland's reload puts Omarchy's own Alt+Tab,
 Super+Tab and Super+Ctrl keys back.
 

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.weather",
+  "name": "Weather (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's weather icon with Fathom's dropdown: the conditions, the place and the coming days, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Weather.qml"
+  },
+  "barWidget": {
+    "displayName": "Weather (Fathom)",
+    "description": "The weather, with Fathom's dropdown",
+    "category": "Info",
+    "allowMultiple": false,
+    "settingsForm": "weatherSettings"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.weather"
+  }
+}
