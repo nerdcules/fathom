@@ -32,13 +32,13 @@ Row {
           horizontalAlignment: Text.AlignHCenter
           text: item.glyph || ""
           color: Skin.accent
-          font.pixelSize: 22 * Skin.u
+          font.pixelSize: Skin.text.heading
         }
         Label {
           width: parent.width
           horizontalAlignment: Text.AlignHCenter
           text: item.name || ""
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           font.weight: Font.DemiBold
         }
         Label {
@@ -46,7 +46,7 @@ Row {
           horizontalAlignment: Text.AlignHCenter
           text: item.detail || ""
           color: Skin.dim
-          font.pixelSize: 11 * Skin.u
+          font.pixelSize: Skin.text.caption
         }
       }
     }

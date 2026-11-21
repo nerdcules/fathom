@@ -169,7 +169,7 @@ Item {
         width: Math.min(implicitWidth, layouts.width)
         text: view.targetWin ? Skin.t("snap.title").arg(view.targetWin.title !== "" ? view.targetWin.title : view.targetWin.appClass)
           : Skin.t("snap.noWindow")
-        font.pixelSize: 15 * Skin.u
+        font.pixelSize: Skin.text.title
         font.weight: Font.DemiBold
       }
 
@@ -222,7 +222,7 @@ Item {
               horizontalAlignment: Text.AlignHCenter
               text: Skin.t("snap.layout." + D.LAYOUTS[layoutCell.index].id)
               color: Skin.dim
-              font.pixelSize: 11 * Skin.u
+              font.pixelSize: Skin.text.caption
             }
           }
         }
@@ -239,7 +239,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: Skin.t("snap.hint")
           color: Skin.dim
-          font.pixelSize: 11 * Skin.u
+          font.pixelSize: Skin.text.caption
         }
       }
     }
@@ -267,7 +267,7 @@ Item {
       id: assistTitle
       anchors { top: parent.top; left: parent.left; right: parent.right; margins: 16 * Skin.u }
       text: Skin.t("snap.assist")
-      font.pixelSize: 15 * Skin.u
+      font.pixelSize: Skin.text.title
       font.weight: Font.DemiBold
     }
     Item {

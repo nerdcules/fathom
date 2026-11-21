@@ -161,6 +161,19 @@ class OneKit(unittest.TestCase):
                 fixed = re.findall(r"radius: \d+ \* Skin\.u", read(path))
                 self.assertEqual(fixed, [], f"{path}: a corner from Skin.corner()")
 
+    def test_font_sizes_are_named(self):
+        # #20: every size comes from Skin.text, Fathom's named scale.
+        scale = re.search(r"readonly property var text: \(\{(.*?)\}\)", read("kit/Skin.qml"), re.S).group(1)
+        names = dict(re.findall(r"(\w+): (\d+) \* u", scale))
+        self.assertEqual(names, {"caption": "11", "detail": "12", "body": "13", "label": "14", "title": "15",
+                                 "large": "17", "heading": "18", "greeting": "26", "display": "30", "clock": "84"})
+        for folder in ["kit"] + PLUGINS:
+            for path in qml_files(folder):
+                src = read(path)
+                self.assertEqual(re.findall(r"pixelSize: \d[^\n]*", src), [], f"{path}: a size from Skin.text")
+                for name in re.findall(r"Skin\.text\.(\w+)", src):
+                    self.assertIn(name, names, f"{path}: Skin.text.{name}")
+
 
 if __name__ == "__main__":
     unittest.main()

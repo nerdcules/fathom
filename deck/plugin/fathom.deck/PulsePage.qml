@@ -86,8 +86,8 @@ GridLayout {
       anchors.fill: parent
       spacing: 10 * Skin.u
       Dot { tone: mini.tone }
-      Label { text: mini.name; font.pixelSize: 13 * Skin.u; Layout.fillWidth: true }
-      Label { text: mini.figure; color: Skin.dim; font.pixelSize: 12 * Skin.u }
+      Label { text: mini.name; font.pixelSize: Skin.text.body; Layout.fillWidth: true }
+      Label { text: mini.figure; color: Skin.dim; font.pixelSize: Skin.text.detail }
     }
   }
 
@@ -183,7 +183,7 @@ GridLayout {
         visible: page.running
         text: page.running ? Skin.t("pulse.listening").arg(page.pulse.ports.grpc).arg(page.pulse.ports.http) : ""
         color: Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
     }
 
@@ -196,7 +196,7 @@ GridLayout {
       visible: !!page.problem
       text: page.problem ? Skin.t("pulse.problem").arg(page.problem.where).arg(page.problem.reason) : ""
       color: Skin.warn
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -290,7 +290,7 @@ GridLayout {
               anchors.centerIn: parent
               text: page.rateText(edge.modelData.rate)
               color: edge.health === "ok" || edge.health === "idle" ? Skin.dim : Skin.levelColor(edge.health)
-              font.pixelSize: 11 * Skin.u
+              font.pixelSize: Skin.text.caption
             }
           }
         }
@@ -341,14 +341,14 @@ GridLayout {
                 visible: text !== ""
                 text: page.glyphFor(box.modelData.kind)
                 color: Skin.violet
-                font.pixelSize: 13 * Skin.u
+                font.pixelSize: Skin.text.body
               }
             }
             Label {
               width: parent.width
               text: box.modelData.count > 0 ? page.figuresText(box.modelData) : (box.modelData.detail || Skin.t("pulse.noRequests"))
               color: box.health === "bad" || box.health === "warn" ? Skin.levelColor(box.health) : Skin.dim
-              font.pixelSize: 11 * Skin.u
+              font.pixelSize: Skin.text.caption
             }
           }
           MouseArea {
@@ -373,7 +373,7 @@ GridLayout {
           horizontalAlignment: Text.AlignHCenter
           text: Skin.tn("pulse.more", modelData.hidden).arg(Skin.n(modelData.hidden))
           color: Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
         }
       }
     }
@@ -382,7 +382,7 @@ GridLayout {
       visible: page.running && !page.pulse.exact && page.nodes.length > 0
       text: Skin.t("pulse.dayApprox")
       color: Skin.dim
-      font.pixelSize: 11 * Skin.u
+      font.pixelSize: Skin.text.caption
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -452,7 +452,7 @@ GridLayout {
             Dot { tone: page.stateColor(agentRow.modelData.state) }
             Label {
               text: agentRow.modelData.name
-              font.pixelSize: 13 * Skin.u
+              font.pixelSize: Skin.text.body
               font.weight: agentRow.isPicked ? Font.DemiBold : Font.Normal
               Layout.fillWidth: true
             }
@@ -480,7 +480,7 @@ GridLayout {
             horizontalAlignment: Text.AlignRight
             text: agentRow.modelData.working > 0 ? page.durText(agentRow.modelData.working) : ""
             color: Skin.dim
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
         }
       }
@@ -490,7 +490,7 @@ GridLayout {
       visible: page.agentProjects.length > agentsCard.maxRows
       text: Skin.tn("pulse.agents.more", page.agentProjects.length - agentsCard.maxRows).arg(Skin.n(page.agentProjects.length - agentsCard.maxRows))
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     // The hours along the bottom.
@@ -510,14 +510,14 @@ GridLayout {
             x: (modelData - page.axis.from) / (page.axis.to - page.axis.from) * hours.width - width / 2
             text: page.clock(modelData)
             color: Skin.dim
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
         }
         Label {
           anchors.right: parent.right
           text: Skin.t("pulse.agents.now")
           color: Skin.dim
-          font.pixelSize: 11 * Skin.u
+          font.pixelSize: Skin.text.caption
         }
       }
       Item { Layout.preferredWidth: agentsCard.totalW }
@@ -535,13 +535,13 @@ GridLayout {
           spacing: 6 * Skin.u
           Layout.alignment: Qt.AlignTop
           Rectangle { width: 10 * Skin.u; height: 10 * Skin.u; radius: Skin.corner(3); color: page.stateColor(modelData) }
-          Label { text: Skin.t("pulse.agents." + modelData); color: Skin.dim; font.pixelSize: 11 * Skin.u; Layout.rightMargin: 8 * Skin.u }
+          Label { text: Skin.t("pulse.agents." + modelData); color: Skin.dim; font.pixelSize: Skin.text.caption; Layout.rightMargin: 8 * Skin.u }
         }
       }
       Label {
         text: Skin.t("pulse.agents.idleNote").arg(page.agents ? Math.round(page.agents.idleAfter / 60) : 10)
         color: Skin.dim
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
         Layout.fillWidth: true
@@ -572,7 +572,7 @@ GridLayout {
       visible: !!page.project
       text: page.project ? page.project.path : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       Layout.fillWidth: true
     }
 
@@ -580,7 +580,7 @@ GridLayout {
       visible: !!page.selected && !!page.selected.detail
       text: page.selected ? page.selected.detail || "" : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       Layout.fillWidth: true
     }
 
@@ -617,7 +617,7 @@ GridLayout {
             Label {
               width: parent.width
               text: modelData.value
-              font.pixelSize: 20 * Skin.u
+              font.pixelSize: Skin.text.heading
               // "1 h 38 min" in a narrow tile: smaller rather than cut off.
               fontSizeMode: Text.HorizontalFit
               minimumPixelSize: 12 * Skin.u

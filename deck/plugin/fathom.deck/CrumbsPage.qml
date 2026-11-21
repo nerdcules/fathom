@@ -210,7 +210,7 @@ GridLayout {
             anchors.rightMargin: 12 * Skin.u
             verticalAlignment: Text.AlignVCenter
             text: siteBox.modelData
-            font.pixelSize: 13 * Skin.u
+            font.pixelSize: Skin.text.body
           }
         }
       }
@@ -247,7 +247,7 @@ GridLayout {
             Dot { tone: domainBox.tone; anchors.verticalCenter: parent.verticalCenter }
             Label {
               text: domainBox.modelData.domain
-              font.pixelSize: 13 * Skin.u
+              font.pixelSize: Skin.text.body
               width: map.boxW - 90 * Skin.u
               anchors.verticalCenter: parent.verticalCenter
             }
@@ -258,7 +258,7 @@ GridLayout {
             anchors.verticalCenter: parent.verticalCenter
             text: page.isBlocked(domainBox.modelData.domain) ? Skin.t("crumbs.blockedShort") : Skin.n(domainBox.modelData.sites.length)
             color: page.isBlocked(domainBox.modelData.domain) ? Skin.ok : Skin.dim
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
           Tip {
             target: domainBox
@@ -280,10 +280,10 @@ GridLayout {
           required property string modelData
           spacing: 6 * Skin.u
           Dot { tone: page.categoryColor(modelData); anchors.verticalCenter: parent.verticalCenter }
-          Label { text: page.categoryName(modelData); color: Skin.dim; font.pixelSize: 12 * Skin.u }
+          Label { text: page.categoryName(modelData); color: Skin.dim; font.pixelSize: Skin.text.detail }
         }
       }
-      Label { text: Skin.t("crumbs.keyLines"); color: Skin.dim; font.pixelSize: 12 * Skin.u }
+      Label { text: Skin.t("crumbs.keyLines"); color: Skin.dim; font.pixelSize: Skin.text.detail }
     }
   }
 
@@ -320,7 +320,7 @@ GridLayout {
       Pill { text: Skin.t("crumbs.allowed"); selected: !page.draft.thirdParty; onClicked: page.setRule("thirdParty", false) }
       Pill { text: Skin.t("crumbs.blocked"); selected: page.draft.thirdParty; onClicked: page.setRule("thirdParty", true) }
     }
-    Empty { text: Skin.t("crumbs.thirdPartyDetail"); font.pixelSize: 12 * Skin.u }
+    Empty { text: Skin.t("crumbs.thirdPartyDetail"); font.pixelSize: Skin.text.detail }
 
     SectionTitle { visible: page.hasEdge; text: Skin.t("crumbs.prevention") }
     Flow {
@@ -342,7 +342,7 @@ GridLayout {
     Empty {
       visible: page.draft.blocked.length === 0
       text: Skin.t("crumbs.blockedNone")
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
     Flow {
       Layout.fillWidth: true
@@ -359,7 +359,7 @@ GridLayout {
         }
       }
     }
-    Empty { text: Skin.t("crumbs.rulesDetail"); font.pixelSize: 12 * Skin.u }
+    Empty { text: Skin.t("crumbs.rulesDetail"); font.pixelSize: Skin.text.detail }
 
     footer: [
       Pill {
@@ -387,7 +387,7 @@ GridLayout {
         horizontalAlignment: Text.AlignRight
         text: page.message
         color: page.failed ? Skin.urgent : Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
         wrapMode: Text.WordWrap
         maximumLineCount: 3
       }
@@ -461,7 +461,7 @@ GridLayout {
       Layout.fillWidth: true
       text: page.chosen ? Skin.t("crumbs.ledFrom").arg(page.chosen.sites.join(", ")) : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
     }
@@ -470,7 +470,7 @@ GridLayout {
       Layout.fillWidth: true
       text: page.chosen ? Skin.t("crumbs.hosts").arg(page.chosen.hosts.join(", ")) : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
     }
@@ -487,7 +487,7 @@ GridLayout {
     Empty {
       visible: page.selected !== ""
       text: Skin.t("crumbs.valuesHidden")
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     footer: [

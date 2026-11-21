@@ -83,7 +83,7 @@ Column {
         visible: text !== ""
         text: spec.title || ""
         color: Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
       Flow {
         width: parent.width
@@ -115,7 +115,7 @@ Column {
         visible: text !== ""
         text: spec.title || ""
         color: Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
       Repeater {
         model: (spec.rows || []).length
@@ -250,7 +250,7 @@ Column {
       text: spec.text || ""
       color: spec.dim ? Skin.dim : Skin.fg
       wrapMode: Text.WordWrap
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
   }
 }

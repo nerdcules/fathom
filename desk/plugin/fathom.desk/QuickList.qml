@@ -54,7 +54,7 @@ Item {
       Label {
         anchors { left: backButton.right; leftMargin: 10 * Skin.u; right: toggle.left; rightMargin: 10 * Skin.u; verticalCenter: parent.verticalCenter }
         text: list.title
-        font.pixelSize: 15 * Skin.u
+        font.pixelSize: Skin.text.title
         font.weight: Font.DemiBold
       }
       Pill {
@@ -77,7 +77,7 @@ Item {
       text: list.emptyText
       color: Skin.dim
       wrapMode: Text.WordWrap
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
     }
 
     Flickable {
@@ -109,7 +109,7 @@ Item {
               topPadding: 4 * Skin.u
               text: entry.isHeader ? String(entry.modelData.header) : ""
               color: Skin.dim
-              font.pixelSize: 12 * Skin.u
+              font.pixelSize: Skin.text.detail
             }
 
             Rectangle {
@@ -144,7 +144,7 @@ Item {
                 width: 22 * Skin.u
                 text: entry.isHeader ? "" : String(entry.modelData.glyph || "")
                 color: rowBox.lit ? Skin.fg : Skin.accent
-                font.pixelSize: 18 * Skin.u
+                font.pixelSize: Skin.text.heading
               }
               Column {
                 anchors { left: rowGlyph.right; leftMargin: 10 * Skin.u; right: working.left; rightMargin: 8 * Skin.u; verticalCenter: parent.verticalCenter }
@@ -152,7 +152,7 @@ Item {
                 Label {
                   width: parent.width
                   text: entry.isHeader ? "" : String(entry.modelData.name || "")
-                  font.pixelSize: 13 * Skin.u
+                  font.pixelSize: Skin.text.body
                   font.weight: Font.DemiBold
                 }
                 Label {
@@ -160,7 +160,7 @@ Item {
                   visible: text !== ""
                   text: entry.isHeader ? "" : String(entry.modelData.detail || "")
                   color: rowBox.lit ? Skin.fg : Skin.dim
-                  font.pixelSize: 11 * Skin.u
+                  font.pixelSize: Skin.text.caption
                 }
               }
               Label {
@@ -169,7 +169,7 @@ Item {
                 visible: !entry.isHeader && entry.modelData.busy === true
                 text: list.workingLabel
                 color: Skin.dim
-                font.pixelSize: 11 * Skin.u
+                font.pixelSize: Skin.text.caption
               }
             }
 
@@ -197,7 +197,7 @@ Item {
                   echoMode: TextInput.Password
                   color: Skin.fg
                   font.family: Skin.fontFamily
-                  font.pixelSize: 13 * Skin.u
+                  font.pixelSize: Skin.text.body
                   clip: true
                   Accessible.name: list.askLabel
                   Keys.onReturnPressed: list.passwordGiven(String(entry.modelData.key), text)
@@ -208,7 +208,7 @@ Item {
                     visible: password.text === ""
                     text: list.askLabel
                     color: Skin.dim
-                    font.pixelSize: 13 * Skin.u
+                    font.pixelSize: Skin.text.body
                   }
                 }
               }
@@ -235,7 +235,7 @@ Item {
       text: list.note
       color: Skin.dim
       wrapMode: Text.WordWrap
-      font.pixelSize: 11 * Skin.u
+      font.pixelSize: Skin.text.caption
     }
   }
 }

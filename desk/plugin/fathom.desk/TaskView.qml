@@ -128,14 +128,14 @@ Item {
     text: view.shownWorkspace === (view.host ? view.host.currentWorkspace : -1)
       ? Skin.t("tasks.thisWorkspace").arg(view.shownWorkspace)
       : Skin.t("tasks.workspace").arg(view.shownWorkspace)
-    font.pixelSize: 20 * Skin.u
+    font.pixelSize: Skin.text.heading
     font.weight: Font.DemiBold
   }
   Label {
     anchors { top: heading.bottom; topMargin: 4 * Skin.u; horizontalCenter: parent.horizontalCenter }
     text: Skin.tn("tasks.count", view.windows.length).arg(view.windows.length)
     color: Skin.dim
-    font.pixelSize: 13 * Skin.u
+    font.pixelSize: Skin.text.body
   }
 
   // The windows.
@@ -251,7 +251,7 @@ Item {
         Label {
           anchors { bottom: parent.bottom; bottomMargin: 5 * Skin.u; horizontalCenter: parent.horizontalCenter }
           text: Skin.t("tasks.tile").arg(tile.wsId)
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           font.weight: tile.current ? Font.DemiBold : Font.Normal
         }
         MouseArea {
@@ -281,12 +281,12 @@ Item {
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 22 * Skin.u }
         text: "+"
         color: Skin.accent
-        font.pixelSize: 30 * Skin.u
+        font.pixelSize: Skin.text.display
       }
       Label {
         anchors { bottom: parent.bottom; bottomMargin: 5 * Skin.u; horizontalCenter: parent.horizontalCenter }
         text: Skin.t("tasks.new")
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
       MouseArea {
         id: newMouse
@@ -314,7 +314,7 @@ Item {
       anchors.margins: 10 * Skin.u
       verticalAlignment: Text.AlignVCenter
       text: view.dragging ? view.dragging.title : ""
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
     }
   }
 
@@ -322,6 +322,6 @@ Item {
     anchors { bottom: parent.bottom; bottomMargin: 10 * Skin.u; horizontalCenter: parent.horizontalCenter }
     text: Skin.t("tasks.hint")
     color: Skin.dim
-    font.pixelSize: 11 * Skin.u
+    font.pixelSize: Skin.text.caption
   }
 }

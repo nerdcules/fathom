@@ -132,14 +132,14 @@ Item {
           spacing: 0
           Label {
             text: clock.now.toLocaleTimeString(Skin.locale, "HH:mm")
-            font.pixelSize: 84 * Skin.u
+            font.pixelSize: Skin.text.clock
             font.weight: Font.Light
             font.letterSpacing: -2 * Skin.u
           }
           Label {
             text: clock.now.toLocaleDateString(Skin.locale, "dddd d MMMM")
             color: Skin.dim
-            font.pixelSize: 18 * Skin.u
+            font.pixelSize: Skin.text.heading
           }
           Row {
             Layout.topMargin: 16 * Skin.u
@@ -203,7 +203,7 @@ Item {
               spacing: 10 * Skin.u
               Layout.alignment: Qt.AlignRight
               Dot { tone: Skin.levelColor(modelData.tone) }
-              Label { text: modelData.text; font.pixelSize: 15 * Skin.u }
+              Label { text: modelData.text; font.pixelSize: Skin.text.title }
             }
           }
         }
@@ -333,14 +333,14 @@ Item {
         Label {
           text: deck.error !== "" ? deck.error : Skin.t("hint")
           color: deck.error !== "" ? Skin.urgent : Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           Layout.fillWidth: true
         }
         // Fathom's version, on every page.
         Label {
           text: "Fathom " + Build.text
           color: Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           Layout.rightMargin: 14 * Skin.u
         }
         Label {
@@ -350,7 +350,7 @@ Item {
           visible: !!source
           text: source ? Skin.t("updated").arg(new Date(source.time * 1000).toLocaleTimeString(Skin.locale, "HH:mm:ss")) : ""
           color: Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
         }
       }
     }

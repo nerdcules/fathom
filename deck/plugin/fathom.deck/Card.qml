@@ -40,19 +40,19 @@ Glass {
       Label {
         text: card.glyph
         color: Skin.accent
-        font.pixelSize: 18 * Skin.u
+        font.pixelSize: Skin.text.heading
         visible: card.glyph !== ""
       }
       Label {
         text: card.title
-        font.pixelSize: 18 * Skin.u
+        font.pixelSize: Skin.text.heading
         font.weight: Font.DemiBold
       }
       Item { Layout.fillWidth: true }
       Label {
         text: card.subtitle
         color: card.subtitleColor
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
         horizontalAlignment: Text.AlignRight
         Layout.maximumWidth: card.width * 0.55
       }

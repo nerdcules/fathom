@@ -189,7 +189,7 @@ GridLayout {
           visible: F.level(diskRow.pct) !== "ok"
           text: F.level(diskRow.pct) === "bad" ? Skin.t("system.diskFull") : Skin.t("system.diskFilling")
           color: Skin.levelColor(F.level(diskRow.pct))
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           wrapMode: Text.WordWrap
           elide: Text.ElideNone
           Layout.fillWidth: true
@@ -212,12 +212,12 @@ GridLayout {
         Label {
           text: addressRow.modelData.first ? page.kindName(addressRow.modelData) : ""
           color: Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
           Layout.preferredWidth: 80 * Skin.u
         }
         Label {
           text: addressRow.modelData.address
-          font.pixelSize: 13 * Skin.u
+          font.pixelSize: Skin.text.body
           elide: Text.ElideMiddle
           Layout.fillWidth: true
         }
@@ -243,7 +243,7 @@ GridLayout {
       visible: !!space && space.images !== ""
       text: space ? Skin.t("system.dockerSpaceLine").arg(space.images).arg(space.cache || "0B").arg(space.volumes || "0B") : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -354,7 +354,7 @@ GridLayout {
       text: Skin.tn("dotnet.toolingLine", page.dotnetTooling.length)
         .arg(Skin.n(page.dotnetTooling.length)).arg(Skin.size(F.sum(page.dotnetTooling, "rss")))
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -404,7 +404,7 @@ GridLayout {
       visible: !!page.ai && !!page.ai.ollama
       text: page.ai && page.ai.ollama ? Skin.tn("ai.models", page.ai.ollama.models.length).arg(Skin.n(page.ai.ollama.models.length)) : ""
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
   }
 

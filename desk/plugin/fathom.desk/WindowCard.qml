@@ -64,7 +64,7 @@ Item {
       width: titleRow.width - (card.icon !== "" ? 26 * Skin.u : 0) - (closeButton.visible ? 30 * Skin.u : 0)
       anchors.verticalCenter: parent.verticalCenter
       text: card.win ? (card.win.title !== "" ? card.win.title : card.appName) : ""
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       font.weight: card.selected ? Font.DemiBold : Font.Normal
     }
   }
@@ -130,7 +130,7 @@ Item {
         anchors.centerIn: parent
         text: Skin.t("minimized")
         color: Skin.dim
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
       }
     }
   }
@@ -176,7 +176,7 @@ Item {
     Label {
       anchors.centerIn: parent
       text: "✕"
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
     MouseArea {
       id: closeMouse

@@ -21,13 +21,13 @@ Row {
         width: parent.width
         text: item.label || ""
         color: Skin.dim
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
       }
       Label {
         objectName: "fact " + (item.label || "")
         width: parent.width
         text: item.value || ""
-        font.pixelSize: 14 * Skin.u
+        font.pixelSize: Skin.text.label
         font.weight: Font.DemiBold
       }
     }

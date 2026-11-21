@@ -50,7 +50,7 @@ Item {
       anchors.fill: parent
       anchors.margins: 24 * Skin.u
       spacing: 14 * Skin.u
-      Label { text: confirm.title; font.pixelSize: 18 * Skin.u; font.weight: Font.DemiBold; Layout.fillWidth: true }
+      Label { text: confirm.title; font.pixelSize: Skin.text.heading; font.weight: Font.DemiBold; Layout.fillWidth: true }
       Label {
         text: confirm.body
         color: Skin.dim

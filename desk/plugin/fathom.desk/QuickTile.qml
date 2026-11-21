@@ -48,7 +48,7 @@ Rectangle {
     anchors { left: parent.left; top: parent.top; margins: 12 * Skin.u }
     text: tile.glyph
     color: tile.on ? Skin.fg : Skin.accent
-    font.pixelSize: 19 * Skin.u
+    font.pixelSize: Skin.text.heading
   }
 
   // The chevron for details.
@@ -63,7 +63,7 @@ Rectangle {
       anchors.centerIn: parent
       text: String.fromCodePoint(0xF0142)
       color: tile.on ? Skin.fg : Skin.dim
-      font.pixelSize: 15 * Skin.u
+      font.pixelSize: Skin.text.title
     }
     MouseArea {
       id: moreMouse
@@ -80,14 +80,14 @@ Rectangle {
     Label {
       width: parent.width
       text: tile.title
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       font.weight: Font.DemiBold
     }
     Label {
       width: parent.width
       text: tile.detail
       color: tile.on ? Skin.fg : Skin.dim
-      font.pixelSize: 11 * Skin.u
+      font.pixelSize: Skin.text.caption
     }
   }
 

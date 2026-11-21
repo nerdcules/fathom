@@ -7,6 +7,6 @@ Text {
   textFormat: Text.PlainText
   color: Skin.fg
   font.family: Skin.fontFamily
-  font.pixelSize: 14 * Skin.u
+  font.pixelSize: Skin.text.label
   elide: Text.ElideRight
 }

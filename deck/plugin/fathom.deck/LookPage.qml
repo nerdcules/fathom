@@ -145,7 +145,7 @@ GridLayout {
           color: Skin.fg
           selectionColor: Skin.tint(Skin.accent, 0.4)
           font.family: Skin.fontFamily
-          font.pixelSize: 14 * Skin.u
+          font.pixelSize: Skin.text.label
           maximumLength: 7
           validator: RegularExpressionValidator { regularExpression: /#?[0-9a-fA-F]{0,6}/ }
           text: picker.value
@@ -159,7 +159,7 @@ GridLayout {
       Label {
         text: Skin.t("look.hexHint")
         color: Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
         Layout.fillWidth: true
       }
     }
@@ -179,7 +179,7 @@ GridLayout {
     RowLayout {
       Layout.fillWidth: true
       Label { text: slider.title; Layout.fillWidth: true }
-      Label { text: slider.valueText; color: Skin.dim; font.pixelSize: 13 * Skin.u }
+      Label { text: slider.valueText; color: Skin.dim; font.pixelSize: Skin.text.body }
     }
     Item {
       id: track
@@ -243,7 +243,7 @@ GridLayout {
       value: page.draft.accent
       onChose: function(hex) { page.change("accent", hex) }
     }
-    Empty { text: Skin.t("look.accentDetail"); font.pixelSize: 12 * Skin.u }
+    Empty { text: Skin.t("look.accentDetail"); font.pixelSize: Skin.text.detail }
 
     SectionTitle { text: Skin.t("look.frame") }
     Row {
@@ -266,7 +266,7 @@ GridLayout {
     }
     Empty {
       text: page.draft.frameStyle === "gradient" ? Skin.t("look.frameGradientDetail") : Skin.t("look.frameSolidDetail")
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
   }
 
@@ -286,7 +286,7 @@ GridLayout {
       valueText: page.draft.corners === 0 ? Skin.t("look.square") : Skin.t("look.px").arg(Skin.n(page.draft.corners))
       onMoved: function(v) { page.change("corners", v) }
     }
-    Empty { text: Skin.t("look.cornersDetail"); font.pixelSize: 12 * Skin.u }
+    Empty { text: Skin.t("look.cornersDetail"); font.pixelSize: Skin.text.detail }
 
     NumberSlider {
       title: Skin.t("look.opacity")
@@ -299,7 +299,7 @@ GridLayout {
     Empty {
       text: page.blur ? Skin.t("look.opacityDetail") : Skin.t("look.opacityNoBlur")
       color: page.blur ? Skin.dim : Skin.warn
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     SectionTitle { text: Skin.t("look.glow") }
@@ -323,7 +323,7 @@ GridLayout {
         }
       }
     }
-    Empty { text: Skin.t("look.barDetail"); font.pixelSize: 12 * Skin.u }
+    Empty { text: Skin.t("look.barDetail"); font.pixelSize: Skin.text.detail }
   }
 
   // ------------------------------------------------ Preview and wallpaper
@@ -416,7 +416,7 @@ GridLayout {
         Column {
           anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 * Skin.u }
           spacing: 8 * Skin.u
-          Label { text: Skin.t("look.previewPanel"); font.pixelSize: 12 * Skin.u }
+          Label { text: Skin.t("look.previewPanel"); font.pixelSize: Skin.text.detail }
           Rectangle {
             width: parent.width * 0.6
             height: 18 * Skin.u
@@ -504,7 +504,7 @@ GridLayout {
         horizontalAlignment: Text.AlignRight
         text: page.busy ? Skin.t("look.applyingDetail") : page.message
         color: page.failed ? Skin.urgent : Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
     ]
   }
@@ -556,7 +556,7 @@ GridLayout {
       visible: !!page.saver && page.saver.lockAfter === 0
       text: Skin.t("look.ssLockNever")
       color: Skin.warn
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     SectionTitle { text: Skin.t("look.ssShows") }
@@ -600,12 +600,12 @@ GridLayout {
     Empty {
       visible: !!page.saver && page.saver.shows === "custom"
       text: Skin.t("look.ssShowsCustom")
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
     Empty {
       visible: !!page.saver && !!page.saver.service
       text: page.saver && page.saver.service ? Skin.t("look.ssService").arg(page.saver.service) : ""
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     footer: [

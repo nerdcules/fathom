@@ -46,7 +46,7 @@ Column {
       enabled: !search.busy
       color: Skin.fg
       font.family: Skin.fontFamily
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       clip: true
       Accessible.name: search.placeholder
       onTextEdited: search.edited(text)
@@ -63,7 +63,7 @@ Column {
         anchors.right: search.busy ? parent.right : undefined
         text: search.busy ? search.busyLabel : search.placeholder
         color: Skin.dim
-        font.pixelSize: 13 * Skin.u
+        font.pixelSize: Skin.text.body
       }
     }
   }

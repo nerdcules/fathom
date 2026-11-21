@@ -215,7 +215,7 @@ GridLayout {
       text: Skin.t("sentinel.watchingList") + (page.snitch && page.snitch.installed ? ", OpenSnitch" : "")
         + (page.ward && page.ward.installed ? ", Ward" : "")
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true

@@ -49,7 +49,7 @@ Rectangle {
     width: 22 * Skin.u
     text: row.glyph
     color: row.active ? Skin.fg : Skin.accent
-    font.pixelSize: 18 * Skin.u
+    font.pixelSize: Skin.text.heading
   }
   Column {
     anchors { left: rowGlyph.right; leftMargin: 10 * Skin.u; right: trailLabel.left; rightMargin: 8 * Skin.u; verticalCenter: parent.verticalCenter }
@@ -57,7 +57,7 @@ Rectangle {
     Label {
       width: parent.width
       text: row.name
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       font.weight: Font.DemiBold
     }
     Label {
@@ -65,7 +65,7 @@ Rectangle {
       visible: text !== ""
       text: row.detail
       color: row.active ? Skin.fg : Skin.dim
-      font.pixelSize: 11 * Skin.u
+      font.pixelSize: Skin.text.caption
     }
   }
   Label {
@@ -73,7 +73,7 @@ Rectangle {
     anchors { right: parent.right; rightMargin: 14 * Skin.u; verticalCenter: parent.verticalCenter }
     text: row.busy ? row.busyLabel : row.trail
     color: Skin.dim
-    font.pixelSize: 11 * Skin.u
+    font.pixelSize: Skin.text.caption
   }
   FocusRing {}
 }

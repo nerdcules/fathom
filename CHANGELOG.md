@@ -94,6 +94,12 @@ Each line names its commit.
   a tile is 14 units at Fathom's 22, square at 0 and 19 at 30, and so on
   for rows, cards and tooltips. They stayed fixed while the panels around
   them changed. Buttons, sliders and status marks stay round.
+- A named type scale (#20): every text size comes from ten named sizes
+  (caption 11, detail 12, body 13, label 14, title 15, large 17, heading
+  18, greeting 26, display 30, clock 84, times Fathom's size for the
+  screen). Five one-off sizes moved onto the nearest: Quick settings'
+  battery glyph 16 to 17, its tiles' glyphs 19 to 18, Pulse's figures and
+  Task view's heading 20 to 18, the weather's day glyphs 22 to 18.
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).

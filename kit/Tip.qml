@@ -24,5 +24,5 @@ Rectangle {
     return Math.max(8, Math.min(parent.width - width - 8, p.x - width / 2))
   }
   y: (!target || !show || !parent) ? 0 : target.mapToItem(parent, 0, 0).y - height - 6 * Skin.u
-  Label { id: tipText; anchors.centerIn: parent; text: tip.text; font.pixelSize: 12 * Skin.u }
+  Label { id: tipText; anchors.centerIn: parent; text: tip.text; font.pixelSize: Skin.text.detail }
 }

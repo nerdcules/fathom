@@ -51,7 +51,7 @@ Column {
       anchors { left: previous.right; right: todayButton.visible ? todayButton.left : next.left; margins: 8 * Skin.u; verticalCenter: parent.verticalCenter }
       horizontalAlignment: Text.AlignHCenter
       text: grid.monthLabel
-      font.pixelSize: 14 * Skin.u
+      font.pixelSize: Skin.text.label
       font.weight: Font.DemiBold
     }
     Pill {
@@ -97,7 +97,7 @@ Column {
             anchors.centerIn: parent
             text: grid.weekLabel
             color: Skin.accent
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
           MouseArea {
             id: weekMouse
@@ -117,7 +117,7 @@ Column {
             verticalAlignment: Text.AlignVCenter
             text: String(modelData)
             color: Skin.dim
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
         }
       }
@@ -136,7 +136,7 @@ Column {
             verticalAlignment: Text.AlignVCenter
             text: String(week.week)
             color: Skin.tint(Skin.fg, 0.4)
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
           Repeater {
             model: week.days.length
@@ -162,7 +162,7 @@ Column {
                 color: day.today ? Skin.fg
                   : !day.inMonth ? Skin.tint(Skin.fg, 0.3)
                   : day.weekend ? Skin.dim : Skin.fg
-                font.pixelSize: 13 * Skin.u
+                font.pixelSize: Skin.text.body
                 font.weight: day.today ? Font.Bold : Font.Normal
               }
             }

@@ -76,7 +76,7 @@ Item {
       text: row.detail
       visible: text !== ""
       color: row.detailColor
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       maximumLineCount: 3
     }
@@ -92,8 +92,8 @@ Item {
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       visible: !actionsRow.showing
-      Label { anchors.right: parent.right; text: row.right1; font.pixelSize: 13 * Skin.u }
-      Label { anchors.right: parent.right; text: row.right2; visible: text !== ""; color: Skin.dim; font.pixelSize: 12 * Skin.u }
+      Label { anchors.right: parent.right; text: row.right1; font.pixelSize: Skin.text.body }
+      Label { anchors.right: parent.right; text: row.right2; visible: text !== ""; color: Skin.dim; font.pixelSize: Skin.text.detail }
     }
     Row {
       id: actionsRow

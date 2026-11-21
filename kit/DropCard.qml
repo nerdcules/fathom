@@ -104,7 +104,7 @@ FocusScope {
         anchors.centerIn: parent
         text: card.glyph
         color: Skin.accent
-        font.pixelSize: 18 * Skin.u
+        font.pixelSize: Skin.text.heading
       }
     }
     Column {
@@ -113,7 +113,7 @@ FocusScope {
       Label {
         width: parent.width
         text: card.title
-        font.pixelSize: 15 * Skin.u
+        font.pixelSize: Skin.text.title
         font.weight: Font.DemiBold
       }
       Label {
@@ -121,7 +121,7 @@ FocusScope {
         visible: text !== ""
         text: card.subtitle
         color: Skin.dim
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
       }
     }
     Item {

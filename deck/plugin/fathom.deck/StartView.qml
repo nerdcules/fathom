@@ -172,7 +172,7 @@ Item {
         width: tile.width - 12 * Skin.u
         horizontalAlignment: Text.AlignHCenter
         text: tile.item ? tile.item.name : ""
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
     }
     MouseArea {
@@ -225,7 +225,7 @@ Item {
 
       Label {
         text: Skin.t("start.title")
-        font.pixelSize: 26 * Skin.u
+        font.pixelSize: Skin.text.greeting
         font.weight: Font.Light
         Layout.fillWidth: true
       }
@@ -244,7 +244,7 @@ Item {
           anchors.leftMargin: 18 * Skin.u
           anchors.rightMargin: 12 * Skin.u
           spacing: 12 * Skin.u
-          Label { text: ""; color: Skin.accent; font.pixelSize: 17 * Skin.u }
+          Label { text: ""; color: Skin.accent; font.pixelSize: Skin.text.large }
           Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -255,7 +255,7 @@ Item {
               color: Skin.fg
               selectionColor: Skin.tint(Skin.accent, 0.4)
               font.family: Skin.fontFamily
-              font.pixelSize: 17 * Skin.u
+              font.pixelSize: Skin.text.large
               clip: true
               maximumLength: 2000
               focus: true
@@ -276,7 +276,7 @@ Item {
               visible: search.text === ""
               text: Skin.t("start.placeholder")
               color: Skin.dim
-              font.pixelSize: 17 * Skin.u
+              font.pixelSize: Skin.text.large
             }
           }
           Rectangle {
@@ -284,7 +284,7 @@ Item {
             implicitHeight: 24 * Skin.u
             radius: Skin.corner(6)
             color: Skin.faint
-            Label { id: keyHint; anchors.centerIn: parent; text: "super"; color: Skin.dim; font.pixelSize: 11 * Skin.u }
+            Label { id: keyHint; anchors.centerIn: parent; text: "super"; color: Skin.dim; font.pixelSize: Skin.text.caption }
           }
         }
       }
@@ -430,7 +430,7 @@ Item {
             text: start.status ? String(start.status.name || start.status.user || "?").charAt(0).toUpperCase() : ""
             color: Skin.bg
             font.weight: Font.Bold
-            font.pixelSize: 14 * Skin.u
+            font.pixelSize: Skin.text.label
           }
         }
         Column {
@@ -438,14 +438,14 @@ Item {
           Label {
             text: start.status ? (start.status.name || start.status.user) + " · " + start.status.host : ""
             color: Skin.dim
-            font.pixelSize: 13 * Skin.u
+            font.pixelSize: Skin.text.body
           }
           // Fathom's version, always under your name.
           Label {
             text: "Fathom " + Build.text
             color: Skin.dim
             opacity: 0.8
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
         }
         Pill {
@@ -597,7 +597,7 @@ Item {
       Label {
         width: parent.width
         text: start.powerAsk !== "" ? Skin.t("start.confirm." + start.powerAsk) : ""
-        font.pixelSize: 15 * Skin.u
+        font.pixelSize: Skin.text.title
         font.weight: Font.DemiBold
       }
       Label {
@@ -606,7 +606,7 @@ Item {
         color: Skin.dim
         wrapMode: Text.WordWrap
         elide: Text.ElideNone
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
       Row {
         anchors.right: parent.right
@@ -696,7 +696,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "FATHOM"
             color: Skin.accent
-            font.pixelSize: 30 * Skin.u
+            font.pixelSize: Skin.text.display
             font.weight: Font.Medium
             font.letterSpacing: 10 * Skin.u
             leftPadding: font.letterSpacing
@@ -705,7 +705,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Build.text
             color: Skin.dim
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
           Label {
             width: parent.width
@@ -713,7 +713,7 @@ Item {
             color: Skin.fg
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 14 * Skin.u
+            font.pixelSize: Skin.text.label
             lineHeight: 1.15
           }
           Rectangle {
@@ -734,27 +734,27 @@ Item {
             color: Skin.fg
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 13 * Skin.u
+            font.pixelSize: Skin.text.body
             font.weight: Font.DemiBold
           }
           Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Skin.t("start.aboutLicence")
             color: Skin.dim
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
           Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "github.com/nerdcules/fathom"
             color: Skin.accent
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
           Item { width: 1; height: 4 * Skin.u }
           Label {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Skin.t("start.aboutClose")
             color: Skin.dim
-            font.pixelSize: 11 * Skin.u
+            font.pixelSize: Skin.text.caption
           }
         }
       }

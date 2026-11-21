@@ -5,7 +5,7 @@ import "."
 
 Label {
   color: Skin.dim
-  font.pixelSize: 11 * Skin.u
+  font.pixelSize: Skin.text.caption
   font.letterSpacing: 1.4 * Skin.u
   font.capitalization: Font.AllUppercase
   Layout.fillWidth: true

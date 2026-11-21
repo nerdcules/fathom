@@ -77,6 +77,17 @@ QtObject {
     return pressed ? pressedFill : (hovered ? hoverFill : idle)
   }
 
+  // Type (#20): Fathom's sizes by name, in pixels for this screen (times u).
+  // caption: section titles and small print; detail: second lines, tips;
+  // body: buttons, figures; label: list names (Label's own); title: tile
+  // and dropdown titles; large: the search field and slider glyphs;
+  // heading: card and dialog titles, a tile's glyph; greeting: Start's
+  // question; display: big figures; clock: the deck's time.
+  readonly property var text: ({
+    caption: 11 * u, detail: 12 * u, body: 13 * u, label: 14 * u, title: 15 * u,
+    large: 17 * u, heading: 18 * u, greeting: 26 * u, display: 30 * u, clock: 84 * u
+  })
+
   function t(key) { return strings ? strings.t(key) : key }
   function tn(key, n) { return strings ? strings.tn(key, n) : key }
   function n(v, d) { return fmt(v, d || 0) }

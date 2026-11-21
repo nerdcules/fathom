@@ -104,7 +104,7 @@ GridLayout {
     Label {
       visible: !!page.disk
       text: page.disk ? Skin.t("care.diskUsed").arg(Skin.size(page.disk.used)).arg(Skin.size(page.disk.size)).arg(Skin.size(page.disk.free)) : ""
-      font.pixelSize: 15 * Skin.u
+      font.pixelSize: Skin.text.title
       Layout.fillWidth: true
     }
 
@@ -154,7 +154,7 @@ GridLayout {
           Label {
             text: Skin.t("care.part." + modelData.key) + " " + Skin.size(modelData.bytes)
             color: Skin.dim
-            font.pixelSize: 12 * Skin.u
+            font.pixelSize: Skin.text.detail
           }
         }
       }
@@ -164,7 +164,7 @@ GridLayout {
       visible: !!f
       text: f ? Skin.tn("care.forecast." + f.unit, f.n).arg(Skin.n(f.n)) : ""
       color: Skin.warn
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -376,8 +376,8 @@ GridLayout {
         required property var modelData
         Layout.fillWidth: true
         spacing: 8 * Skin.u
-        Label { text: modelData.name; font.pixelSize: 13 * Skin.u; Layout.fillWidth: true }
-        Label { text: modelData.to; color: Skin.dim; font.pixelSize: 12 * Skin.u; Layout.maximumWidth: 150 * Skin.u }
+        Label { text: modelData.name; font.pixelSize: Skin.text.body; Layout.fillWidth: true }
+        Label { text: modelData.to; color: Skin.dim; font.pixelSize: Skin.text.detail; Layout.maximumWidth: 150 * Skin.u }
       }
     }
     Label {
@@ -385,14 +385,14 @@ GridLayout {
       visible: more > 0
       text: Skin.tn("care.more", more).arg(Skin.n(more))
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
 
     Label {
       visible: !!page.updates && page.updateCount > 0
       text: page.info && page.info.snapshots ? Skin.t("care.updateSafety") : Skin.t("care.updateSafetyNoSnapshot")
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       wrapMode: Text.WordWrap
       elide: Text.ElideNone
       Layout.fillWidth: true
@@ -419,7 +419,7 @@ GridLayout {
         visible: !!page.care && !!page.care.checkedAt
         text: page.care && page.care.checkedAt ? Skin.t("care.checked").arg(page.agoText(page.care.checkedAt)) : ""
         color: Skin.dim
-        font.pixelSize: 12 * Skin.u
+        font.pixelSize: Skin.text.detail
       }
     ]
   }

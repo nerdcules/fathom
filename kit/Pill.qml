@@ -49,13 +49,13 @@ Rectangle {
       visible: pill.glyph !== ""
       text: pill.glyph
       color: pill.primary ? Skin.fg : pill.glyphColor
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       anchors.verticalCenter: parent.verticalCenter
     }
     Label {
       visible: pill.text !== ""
       text: pill.text
-      font.pixelSize: 13 * Skin.u
+      font.pixelSize: Skin.text.body
       font.weight: pill.primary || pill.selected ? Font.DemiBold : Font.Normal
       anchors.verticalCenter: parent.verticalCenter
     }

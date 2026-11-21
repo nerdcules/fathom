@@ -105,7 +105,7 @@ Item {
     readonly property var win: visible ? view.windows[view.selected] : null
     text: win ? (win.minimized ? Skin.t("switch.minimized") : Skin.t("switch.onWorkspace").arg(win.workspace)) : ""
     color: Skin.dim
-    font.pixelSize: 12 * Skin.u
+    font.pixelSize: Skin.text.detail
     style: Text.Outline
     styleColor: Skin.tint(Skin.bg, 0.6)
   }

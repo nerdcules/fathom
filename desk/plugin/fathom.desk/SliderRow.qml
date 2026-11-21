@@ -30,7 +30,7 @@ Item {
       anchors.centerIn: parent
       text: row.glyph
       color: Skin.accent
-      font.pixelSize: 17 * Skin.u
+      font.pixelSize: Skin.text.large
     }
     MouseArea {
       id: glyphMouse
@@ -85,6 +85,6 @@ Item {
     horizontalAlignment: Text.AlignRight
     text: row.label
     color: Skin.dim
-    font.pixelSize: 12 * Skin.u
+    font.pixelSize: Skin.text.detail
   }
 }

@@ -459,13 +459,13 @@ Item {
               width: 96 * Skin.u
               text: addressRow.modelData.first ? view.kindName(addressRow.modelData) : ""
               color: Skin.dim
-              font.pixelSize: 12 * Skin.u
+              font.pixelSize: Skin.text.detail
               elide: Text.ElideRight
             }
             Label {
               anchors { left: kindLabel.right; right: copyButton.left; rightMargin: 8 * Skin.u; verticalCenter: parent.verticalCenter }
               text: addressRow.modelData.address
-              font.pixelSize: 13 * Skin.u
+              font.pixelSize: Skin.text.body
               elide: Text.ElideMiddle
             }
             Pill {
@@ -533,11 +533,11 @@ Item {
           Label {
             text: view.g(0xF0079)
             color: view.battery && view.battery.pct !== null && view.battery.pct <= 15 ? Skin.urgent : Skin.accent
-            font.pixelSize: 16 * Skin.u
+            font.pixelSize: Skin.text.large
           }
           Label {
             text: view.battery ? Skin.t("quick.battery").arg(view.battery.pct).arg(view.battery.status) : ""
-            font.pixelSize: 13 * Skin.u
+            font.pixelSize: Skin.text.body
           }
         }
         Row {
@@ -562,7 +562,7 @@ Item {
         text: Skin.t("quick.keys")
         color: Skin.dim
         wrapMode: Text.WordWrap
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
       }
 
       // Fathom's version, as the deck and Start show it.
@@ -571,7 +571,7 @@ Item {
         horizontalAlignment: Text.AlignRight
         text: "Fathom " + Build.text
         color: Skin.dim
-        font.pixelSize: 11 * Skin.u
+        font.pixelSize: Skin.text.caption
       }
     }
   }

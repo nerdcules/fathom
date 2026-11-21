@@ -26,14 +26,14 @@ Item {
       width: parent.width - trailText.implicitWidth - 8 * Skin.u
       text: meter.label
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
     Label {
       id: trailText
       anchors.right: parent.right
       text: meter.trail
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
     }
   }
   Rectangle {

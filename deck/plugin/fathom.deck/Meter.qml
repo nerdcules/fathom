@@ -18,12 +18,12 @@ ColumnLayout {
     Label {
       text: meter.label
       color: Skin.dim
-      font.pixelSize: 12 * Skin.u
+      font.pixelSize: Skin.text.detail
       font.letterSpacing: 1.2 * Skin.u
       font.capitalization: Font.AllUppercase
     }
     Item { Layout.fillWidth: true }
-    Label { text: meter.value; font.pixelSize: 13 * Skin.u }
+    Label { text: meter.value; font.pixelSize: Skin.text.body }
   }
   Rectangle {
     Layout.fillWidth: true

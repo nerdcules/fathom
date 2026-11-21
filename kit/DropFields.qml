@@ -57,7 +57,7 @@ Column {
           anchors.verticalCenter: parent.verticalCenter
           text: spec.label || ""
           color: Skin.dim
-          font.pixelSize: 12 * Skin.u
+          font.pixelSize: Skin.text.detail
         }
         Rectangle {
           width: 80 * Skin.u
@@ -74,7 +74,7 @@ Column {
             text: spec.value !== undefined && spec.value !== null ? String(spec.value) : ""
             color: Skin.fg
             font.family: Skin.fontFamily
-            font.pixelSize: 13 * Skin.u
+            font.pixelSize: Skin.text.body
             clip: true
             inputMethodHints: spec.digits ? Qt.ImhDigitsOnly : Qt.ImhNone
             validator: spec.digits ? digitsOnly : null
@@ -85,7 +85,7 @@ Column {
               visible: input.text === ""
               text: spec.placeholder || ""
               color: Skin.dim
-              font.pixelSize: 13 * Skin.u
+              font.pixelSize: Skin.text.body
             }
           }
         }
