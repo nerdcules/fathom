@@ -1,11 +1,12 @@
-"""Fathom looks the same everywhere (the user's rule, #14).
+"""Fathom looks the same everywhere (the user's rule, #14), from one kit (#22).
 
-The look lives in three copies, one per shell plugin, because a plugin can
-only load its own files: the Command Deck's Skin.qml, the desk's Skin.qml
-(Quick settings, Alt+Tab, Task view, Snap) and the bar dropdowns' kit
-DropSkin.qml. These tests fail when the copies drift apart: the shared
-values and formulas, what each takes from the theme, and the size rule for
-the screen.
+The look and the parts every surface shares (Skin, Label, Pill, Glass, Tip,
+Dot and the bar dropdowns' parts) live once, in kit/. Each shell plugin that
+draws with them (the Command Deck, the desk, each bar dropdown) has kit/ as
+a link to it in the repo, and install.sh gives the installed plugin a copy:
+a plugin can only load its own files. These tests fail when a plugin grows
+its own copy again, uses something the skin doesn't have, or takes the
+theme or sizes for the screen differently.
 """
 
 import os
@@ -13,29 +14,15 @@ import re
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+KIT = os.path.join(REPO, "kit")
 
-SKINS = {
-    "deck": "deck/plugin/fathom.deck/Skin.qml",
-    "desk": "desk/plugin/fathom.desk/Skin.qml",
-    "bar": "bar/kit/DropSkin.qml",
-}
-# Where each sets its skin from the theme, and the name of its skin there.
-THEMES = {
-    "deck": ("deck/plugin/fathom.deck/Panel.qml", "Skin"),
-    "desk": ("desk/plugin/fathom.desk/Panel.qml", "Skin"),
-    "bar": ("bar/kit/DropTheme.qml", "DropSkin"),
-}
-SIZES = {
-    "deck": "deck/plugin/fathom.deck/Stage.qml",
-    "desk": "desk/plugin/fathom.desk/Panel.qml",
-    "bar": "bar/kit/DropTheme.qml",
-}
-
-# The look every copy has: colours, font, motion, size, glass, corners,
-# opacity, edge, glow, and the derived tints.
-SHARED = ["fg", "bg", "accent", "urgent", "ok", "warn", "violet", "fontFamily", "motion", "u", "glass",
-          "radius", "glassAlpha", "edgeAlpha", "glow", "dim", "faint", "panelAlpha", "tint", "t", "tn"]
-# What every copy takes from Omarchy's theme.
+# The plugins drawn with the kit.
+PLUGINS = ["deck/plugin/fathom.deck", "desk/plugin/fathom.desk"] + sorted(
+    os.path.join("bar/plugin", p) for p in os.listdir(os.path.join(REPO, "bar/plugin")))
+# Where each binds the theme into the skin, and its size rule.
+THEMES = ["deck/plugin/fathom.deck/Panel.qml", "desk/plugin/fathom.desk/Panel.qml", "kit/DropTheme.qml"]
+SIZES = ["deck/plugin/fathom.deck/Stage.qml", "desk/plugin/fathom.desk/Panel.qml", "kit/DropTheme.qml"]
+# What every surface takes from Omarchy's theme.
 FROM_THEME = ["fg", "bg", "accent", "urgent", "fontFamily", "motion", "radius", "glassAlpha", "edgeAlpha"]
 
 
@@ -44,58 +31,83 @@ def read(path):
         return f.read()
 
 
-def skin(path):
-    """Each property's and function's definition, by name, without the
-    skin's own name in it."""
-    out = {}
-    for line in read(path).splitlines():
-        m = re.match(r"\s*(?:readonly\s+)?property\s+\w+\s+(\w+)\s*:\s*(.+?)\s*$", line)
+def qml_files(folder):
+    for name in sorted(os.listdir(os.path.join(REPO, folder))):
+        if name.endswith(".qml") or name.endswith(".js"):
+            yield os.path.join(folder, name)
+
+
+def skin_members():
+    out = set()
+    for line in read("kit/Skin.qml").splitlines():
+        m = re.match(r"\s*(?:readonly\s+)?property\s+[\w.]+\s+(\w+)\s*:", line) or re.match(r"\s*function\s+(\w+)\s*\(", line)
         if m:
-            out[m.group(1)] = m.group(2)
-            continue
-        m = re.match(r"\s*function\s+(\w+)\s*(\(.*)$", line)
-        if m:
-            out[m.group(1)] = m.group(2).strip()
+            out.add(m.group(1))
     return out
 
 
-def theme_bindings(path, name):
+def theme_bindings(path):
     found = {}
-    for m in re.finditer(r"Binding\s*\{\s*target:\s*" + name + r";\s*property:\s*\"(\w+)\";\s*value:\s*([^;}]+?)\s*[;}]",
-                         read(path)):
+    for m in re.finditer(r"Binding\s*\{\s*target:\s*Skin;\s*property:\s*\"(\w+)\";\s*value:\s*([^;}]+?)\s*[;}]", read(path)):
         found[m.group(1)] = m.group(2)
     return found
 
 
-class OneLook(unittest.TestCase):
-    def test_the_three_copies_share_the_look(self):
-        skins = {k: skin(p) for k, p in SKINS.items()}
-        for name in SHARED:
-            values = {k: s.get(name) for k, s in skins.items()}
-            self.assertNotIn(None, values.values(), f"{name} is in every copy: {values}")
-            self.assertEqual(len(set(values.values())), 1, f"{name} is the same in every copy: {values}")
+class OneKit(unittest.TestCase):
+    def test_each_plugins_kit_is_the_repos(self):
+        for plugin in PLUGINS:
+            link = os.path.join(REPO, plugin, "kit")
+            self.assertTrue(os.path.islink(link), f"{plugin}/kit is a link to kit/")
+            self.assertEqual(os.readlink(link), "../../../kit", plugin)
+            self.assertEqual(os.path.realpath(link), os.path.realpath(KIT), plugin)
+
+    def test_no_plugin_has_its_own_copy_of_a_kit_part(self):
+        parts = {n for n in os.listdir(KIT) if n.endswith(".qml") or n.endswith(".js")}
+        # And the names the copies had before #22.
+        parts |= {"DropSkin.qml", "DropLabel.qml", "DropButton.qml", "Button.qml"}
+        for plugin in PLUGINS:
+            own = parts & set(os.listdir(os.path.join(REPO, plugin)))
+            self.assertEqual(own, set(), f"{plugin} draws with kit/, not its own copies")
+
+    def test_every_qml_file_in_a_plugin_imports_the_kit(self):
+        for plugin in PLUGINS:
+            for path in qml_files(plugin):
+                if path.endswith(".qml") and re.search(r"\b(Skin|Label|Pill|Glass|Tip|Dot)\b", read(path)):
+                    self.assertRegex(read(path), r'(?m)^import "kit"$', path)
+
+    def test_the_skin_has_everything_the_parts_ask_of_it(self):
+        members = skin_members()
+        for folder in ["kit"] + PLUGINS:
+            for path in qml_files(folder):
+                code = re.sub(r"//[^\n]*", "", read(path))   # not the comments
+                for name in set(re.findall(r"\bSkin\.(\w+)", code)):
+                    self.assertIn(name, members, f"{path}: Skin.{name}")
 
     def test_each_takes_the_same_from_the_theme(self):
-        bindings = {k: theme_bindings(p, n) for k, (p, n) in THEMES.items()}
+        bindings = {p: theme_bindings(p) for p in THEMES}
         for name in FROM_THEME:
-            values = {k: b.get(name) for k, b in bindings.items()}
-            self.assertNotIn(None, values.values(), f"{name} comes from the theme in every copy: {values}")
+            values = {p: b.get(name) for p, b in bindings.items()}
+            self.assertNotIn(None, values.values(), f"{name} comes from the theme everywhere: {values}")
             self.assertEqual(len(set(values.values())), 1, f"{name} comes from the same place: {values}")
 
     def test_each_sizes_for_the_screen_by_the_same_rule(self):
         rule = re.compile(r"Math\.max\(0\.7, Math\.min\(1\.25, Math\.min\([^/]+/ 1600, [^/]+/ 1000\)\)\)")
-        for k, path in SIZES.items():
-            self.assertRegex(read(path), rule, f"{k}: clamp(0.7, 1.25, min(width/1600, height/1000))")
+        for path in SIZES:
+            self.assertRegex(read(path), rule, f"{path}: clamp(0.7, 1.25, min(width/1600, height/1000))")
 
-    def test_the_dropdowns_draw_the_glass_as_the_desk_does(self):
-        # Quick settings' panel (desk Glass.qml) and a dropdown's card.
-        glass = read("desk/plugin/fathom.desk/Glass.qml").replace("Skin.", "S.")
-        card = read("bar/kit/DropCard.qml").replace("DropSkin.", "S.")
-        for line in ("radius: S.radius", "color: S.tint(S.bg, S.panelAlpha)", "border.width: 1",
-                     "border.color: S.tint(S.accent, S.edgeAlpha)", "visible: S.glow",
-                     "GradientStop { position: 0; color: S.tint(S.accent, 0.09) }"):
-            self.assertIn(line, glass)
-            self.assertIn(line, card)
+    def test_panels_are_drawn_by_glass(self):
+        # The panel's edge and glow are drawn in one place; the Start menu,
+        # the deck's cards and the dropdowns' card use it.
+        edge = "border.color: Skin.tint(Skin.accent, Skin.edgeAlpha)"
+        glow = "GradientStop { position: 0; color: Skin.tint(Skin.accent, 0.09) }"
+        for folder in ["kit"] + PLUGINS:
+            for path in qml_files(folder):
+                if path == "kit/Glass.qml":
+                    continue
+                self.assertNotIn(edge, read(path), path)
+                self.assertNotIn(glow, read(path), path)
+        for path in ("deck/plugin/fathom.deck/StartView.qml", "deck/plugin/fathom.deck/Card.qml", "kit/DropCard.qml"):
+            self.assertRegex(read(path), r"\bGlass \{", path)
 
 
 if __name__ == "__main__":

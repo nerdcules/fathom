@@ -26,7 +26,7 @@ Each line names its commit.
   puts it in that item's place with its settings, Omarchy's key
   (Super+Ctrl+D) and IPC (`omarchy-shell omarchy.monitor state`) reach it,
   and `uninstall.sh` puts Omarchy's back. Built from a shared kit
-  (`bar/kit`) whose factory draws a dropdown from a list of sections.
+  (`kit/`) whose factory draws a dropdown from a list of sections.
   `bar/items.json` lists every Omarchy bar item with its Fathom dropdown
   or plan, and a test fails when Omarchy has one it doesn't name; the
   install names the bar items still without one.
@@ -48,22 +48,33 @@ Each line names its commit.
   fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.
 - One look everywhere: the bar's dropdowns size for the screen by the
   rule the Command Deck and the desk use, so their text, sliders and
-  buttons match Quick settings', and `tests/test_one_look.py` fails if the
-  three copies of Fathom's look (deck, desk, dropdown kit) drift apart:
-  their shared values, what each takes from the theme, the size rule and
-  the panel glass.
+  buttons match Quick settings'.
 - Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
   the arrows on their tiles: join, leave, a password field, pair, connect
   (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.
 
 ### Changed
 
+- One kit instead of three copies (#22): the Command Deck, the desk and
+  the bar's dropdowns draw with one skin, one button (`Pill`), one panel
+  (`Glass`, now also the Start menu's and the deck's cards), one label,
+  tooltip and status dot, from `kit/`, which `install.sh` copies into
+  each plugin. The copies had drifted (only the deck's skin had number
+  formatting and dialogs; only the desk's and the dropdowns' had the scrim
+  and motion timing). `tests/test_one_look.py` now fails if a plugin
+  grows its own copy, uses something the skin lacks, or takes the theme
+  or its size differently. Buttons in Quick settings, Snap layouts and the
+  dropdowns are now the deck's: padding of 20 units (was 22, at Fathom's
+  size for the screen), and a lit (primary) one has a semibold word.
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).
 
 ### Fixed
 
+- `fathom-update` didn't reinstall the desk when only the bar's
+  dropdowns (`bar/`) changed, so they stayed at the old version; it does
+  now, and reinstalls the deck and the desk when the kit changes.
 - `fathom-desk --help` no longer prints `set -euo pipefail` (b52638d).
 - Super+Ctrl+A, B, N and P did nothing once the cluster had taken
   Omarchy's audio, Bluetooth, network and power widgets off the bar; they

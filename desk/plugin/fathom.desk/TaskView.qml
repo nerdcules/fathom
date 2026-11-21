@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import Quickshell
 import "."
 import "Desk.js" as D

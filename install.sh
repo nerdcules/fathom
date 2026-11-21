@@ -393,11 +393,16 @@ stage_plugin() {
   rm -rf "${STAGE:?}/$id"
   mkdir -p "$STAGE"
   if [[ -d $REPO/bar/plugin/$id ]]; then
-    # A bar dropdown (#14): its own folder, with the kit they share as kit/.
     cp -r "$REPO/bar/plugin/$id" "$STAGE/$id"
-    cp -r "$REPO/bar/kit" "$STAGE/$id/kit"
   else
     cp -r "$REPO/${id#fathom.}/plugin/$id" "$STAGE/$id"
+  fi
+  # Fathom's kit (#22: the skin and the parts the deck, the desk and the
+  # bar's dropdowns share): in the repo the plugin's kit/ is a link to it,
+  # and the shell only loads real files, so the plugin gets a copy.
+  if [[ -L $STAGE/$id/kit ]]; then
+    rm "$STAGE/$id/kit"
+    cp -r "$REPO/kit" "$STAGE/$id/kit"
   fi
   [[ -f $STAGE/$id/Version.js ]] && write_version_js "$STAGE/$id/Version.js"
   if ! omarchy plugin validate "$STAGE/$id" >/dev/null; then

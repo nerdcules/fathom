@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import "../deck/plugin/fathom.deck"
+import "../deck/plugin/fathom.deck/kit"
 
 // Renders one of the Command Deck's pages, or Start, outside the shell from
 // demo-data.py's output, and saves it as a PNG:

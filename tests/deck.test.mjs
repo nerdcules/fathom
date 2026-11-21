@@ -10,7 +10,7 @@ const dir = new URL("../deck/plugin/fathom.deck/", import.meta.url);
 const read = (name) => readFileSync(new URL(name, dir), "utf8");
 
 const F = {};
-vm.runInNewContext(read("Format.js").replace(/^\.pragma library\s*$/m, "") + `
+vm.runInNewContext(read("kit/Format.js").replace(/^\.pragma library\s*$/m, "") + `
   this.bytes = bytes; this.percent = percent; this.level = level;
   this.containerHealth = containerHealth; this.hostPorts = hostPorts;
   this.groupContainers = groupContainers; this.countRunning = countRunning;
@@ -119,11 +119,12 @@ test("the deck only acts on names docker could have made", () => {
 });
 
 test("every piece of text in the deck is plain text", () => {
-  // All text goes through Label, which sets PlainText.
-  assert.match(read("Label.qml"), /^Text \{\s*textFormat: Text\.PlainText/m);
-  for (const file of qmlFiles) {
+  // All text goes through the kit's Label, which sets PlainText.
+  assert.match(read("kit/Label.qml"), /^Text \{\s*textFormat: Text\.PlainText/m);
+  const kitFiles = readdirSync(new URL("kit/", dir)).filter((f) => f.endsWith(".qml")).map((f) => `kit/${f}`);
+  for (const file of [...qmlFiles, ...kitFiles]) {
     const src = read(file);
-    if (file !== "Label.qml") assert.equal((src.match(/^\s*Text \{/gm) || []).length, 0, `${file}: use Label, not Text`);
+    if (file !== "kit/Label.qml") assert.equal((src.match(/^\s*Text \{/gm) || []).length, 0, `${file}: use Label, not Text`);
     assert.doesNotMatch(src, /textFormat: Text\.(RichText|StyledText|AutoText|MarkdownText)/, file);
   }
 });
@@ -503,5 +504,5 @@ test("addressRows is the same in the deck and the desk", () => {
     return src.slice(start, src.indexOf("\n}\n", start) + 2);
   };
   const desk = readFileSync(new URL("../desk/plugin/fathom.desk/Desk.js", import.meta.url), "utf8");
-  assert.equal(body(read("Format.js")), body(desk));
+  assert.equal(body(read("kit/Format.js")), body(desk));
 });

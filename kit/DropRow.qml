@@ -21,13 +21,13 @@ Rectangle {
   signal clicked()
 
   width: parent ? parent.width : 300
-  height: 50 * DropSkin.u
-  radius: 12 * DropSkin.u
+  height: 50 * Skin.u
+  radius: 12 * Skin.u
   readonly property bool hot: mouse.containsMouse || cursor || activeFocus
-  color: active ? DropSkin.tint(DropSkin.accent, mouse.pressed ? 0.55 : (hot ? 0.45 : 0.36))
-    : (mouse.pressed ? DropSkin.tint(DropSkin.fg, 0.16) : (hot && clickable ? DropSkin.tint(DropSkin.fg, 0.11) : DropSkin.tint(DropSkin.fg, 0.06)))
+  color: active ? Skin.tint(Skin.accent, mouse.pressed ? 0.55 : (hot ? 0.45 : 0.36))
+    : (mouse.pressed ? Skin.tint(Skin.fg, 0.16) : (hot && clickable ? Skin.tint(Skin.fg, 0.11) : Skin.tint(Skin.fg, 0.06)))
   border.width: 1
-  border.color: active ? DropSkin.tint(DropSkin.accent, 0.8) : DropSkin.tint(DropSkin.fg, 0.1)
+  border.color: active ? Skin.tint(Skin.accent, 0.8) : Skin.tint(Skin.fg, 0.1)
   // A stop for the dropdown's arrow keys (DropCard), when it can be used.
   readonly property bool dropStop: clickable
   Accessible.role: Accessible.Button
@@ -44,36 +44,36 @@ Rectangle {
     cursorShape: Qt.PointingHandCursor
     onClicked: row.clicked()
   }
-  DropLabel {
+  Label {
     id: rowGlyph
-    anchors { left: parent.left; leftMargin: 14 * DropSkin.u; verticalCenter: parent.verticalCenter }
-    width: 22 * DropSkin.u
+    anchors { left: parent.left; leftMargin: 14 * Skin.u; verticalCenter: parent.verticalCenter }
+    width: 22 * Skin.u
     text: row.glyph
-    color: row.active ? DropSkin.fg : DropSkin.accent
-    font.pixelSize: 18 * DropSkin.u
+    color: row.active ? Skin.fg : Skin.accent
+    font.pixelSize: 18 * Skin.u
   }
   Column {
-    anchors { left: rowGlyph.right; leftMargin: 10 * DropSkin.u; right: trailLabel.left; rightMargin: 8 * DropSkin.u; verticalCenter: parent.verticalCenter }
+    anchors { left: rowGlyph.right; leftMargin: 10 * Skin.u; right: trailLabel.left; rightMargin: 8 * Skin.u; verticalCenter: parent.verticalCenter }
     spacing: 1
-    DropLabel {
+    Label {
       width: parent.width
       text: row.name
-      font.pixelSize: 13 * DropSkin.u
+      font.pixelSize: 13 * Skin.u
       font.weight: Font.DemiBold
     }
-    DropLabel {
+    Label {
       width: parent.width
       visible: text !== ""
       text: row.detail
-      color: row.active ? DropSkin.fg : DropSkin.dim
-      font.pixelSize: 11 * DropSkin.u
+      color: row.active ? Skin.fg : Skin.dim
+      font.pixelSize: 11 * Skin.u
     }
   }
-  DropLabel {
+  Label {
     id: trailLabel
-    anchors { right: parent.right; rightMargin: 14 * DropSkin.u; verticalCenter: parent.verticalCenter }
+    anchors { right: parent.right; rightMargin: 14 * Skin.u; verticalCenter: parent.verticalCenter }
     text: row.busy ? row.busyLabel : row.trail
-    color: DropSkin.dim
-    font.pixelSize: 11 * DropSkin.u
+    color: Skin.dim
+    font.pixelSize: 11 * Skin.u
   }
 }

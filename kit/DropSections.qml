@@ -36,7 +36,7 @@ Column {
   signal cancelled(string key)
   signal edited(string key, string text)
 
-  spacing: 14 * DropSkin.u
+  spacing: 14 * Skin.u
 
   // Counted, not handed the list: a new description (every value change
   // makes one) then updates the parts in place instead of building them
@@ -78,19 +78,20 @@ Column {
     Column {
       property var spec: parent ? parent.spec : ({})
       width: sections.width
-      spacing: 8 * DropSkin.u
-      DropLabel {
+      spacing: 8 * Skin.u
+      Label {
         visible: text !== ""
         text: spec.title || ""
-        color: DropSkin.dim
-        font.pixelSize: 12 * DropSkin.u
+        color: Skin.dim
+        font.pixelSize: 12 * Skin.u
       }
       Flow {
         width: parent.width
-        spacing: 8 * DropSkin.u
+        spacing: 8 * Skin.u
         Repeater {
           model: (spec.options || []).length
-          delegate: DropButton {
+          delegate: Pill {
+            tabStop: false
             required property int index
             readonly property var modelData: spec.options[index] || ({})
             objectName: spec.key + " " + modelData.value
@@ -109,12 +110,12 @@ Column {
     Column {
       property var spec: parent ? parent.spec : ({})
       width: sections.width
-      spacing: 6 * DropSkin.u
-      DropLabel {
+      spacing: 6 * Skin.u
+      Label {
         visible: text !== ""
         text: spec.title || ""
-        color: DropSkin.dim
-        font.pixelSize: 12 * DropSkin.u
+        color: Skin.dim
+        font.pixelSize: 12 * Skin.u
       }
       Repeater {
         model: (spec.rows || []).length
@@ -145,7 +146,7 @@ Column {
       glyph: spec.glyph || ""
       name: spec.name || ""
       detail: spec.detail || ""
-      trail: spec.on ? DropSkin.t("drop.on") : DropSkin.t("drop.off")
+      trail: spec.on ? Skin.t("drop.on") : Skin.t("drop.off")
       active: spec.on === true
       Accessible.role: Accessible.CheckBox
       Accessible.checked: spec.on === true
@@ -158,10 +159,11 @@ Column {
     Flow {
       property var spec: parent ? parent.spec : ({})
       width: sections.width
-      spacing: 8 * DropSkin.u
+      spacing: 8 * Skin.u
       Repeater {
         model: (spec.buttons || []).length
-        delegate: DropButton {
+        delegate: Pill {
+          tabStop: false
           required property int index
           readonly property var modelData: spec.buttons[index] || ({})
           objectName: spec.key + " " + modelData.key
@@ -242,13 +244,13 @@ Column {
 
   Component {
     id: textPart
-    DropLabel {
+    Label {
       property var spec: parent ? parent.spec : ({})
       width: sections.width
       text: spec.text || ""
-      color: spec.dim ? DropSkin.dim : DropSkin.fg
+      color: spec.dim ? Skin.dim : Skin.fg
       wrapMode: Text.WordWrap
-      font.pixelSize: 12 * DropSkin.u
+      font.pixelSize: 12 * Skin.u
     }
   }
 }

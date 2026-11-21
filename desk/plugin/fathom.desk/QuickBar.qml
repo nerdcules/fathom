@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Networking

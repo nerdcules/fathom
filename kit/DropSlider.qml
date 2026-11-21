@@ -21,7 +21,7 @@ Item {
     return steps > 0 ? Math.round(v * steps) / steps : v
   }
 
-  height: 34 * DropSkin.u
+  height: 34 * Skin.u
   opacity: enabled ? 1 : 0.45
   // A stop for the dropdown's arrow keys (DropCard).
   readonly property bool dropStop: true
@@ -33,15 +33,15 @@ Item {
   Rectangle {
     id: glyphButton
     anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-    width: 32 * DropSkin.u
+    width: 32 * Skin.u
     height: width
     radius: width / 2
-    color: glyphMouse.containsMouse ? DropSkin.tint(DropSkin.fg, 0.12) : "transparent"
-    DropLabel {
+    color: glyphMouse.containsMouse ? Skin.tint(Skin.fg, 0.12) : "transparent"
+    Label {
       anchors.centerIn: parent
       text: row.glyph
-      color: DropSkin.accent
-      font.pixelSize: 17 * DropSkin.u
+      color: Skin.accent
+      font.pixelSize: 17 * Skin.u
     }
     MouseArea {
       id: glyphMouse
@@ -54,49 +54,49 @@ Item {
 
   Item {
     id: track
-    anchors { left: glyphButton.right; leftMargin: 10 * DropSkin.u; right: valueLabel.left; rightMargin: 12 * DropSkin.u; verticalCenter: parent.verticalCenter }
-    height: 22 * DropSkin.u
+    anchors { left: glyphButton.right; leftMargin: 10 * Skin.u; right: valueLabel.left; rightMargin: 12 * Skin.u; verticalCenter: parent.verticalCenter }
+    height: 22 * Skin.u
 
     Rectangle {
       anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-      height: 6 * DropSkin.u
+      height: 6 * Skin.u
       radius: height / 2
-      color: DropSkin.tint(DropSkin.fg, 0.14)
+      color: Skin.tint(Skin.fg, 0.14)
       Rectangle {
         width: Math.max(height, parent.width * Math.max(0, Math.min(1, row.value)))
         height: parent.height
         radius: height / 2
-        color: DropSkin.accent
+        color: Skin.accent
       }
     }
     Rectangle {
       x: track.width * Math.max(0, Math.min(1, row.value)) - width / 2
       anchors.verticalCenter: parent.verticalCenter
-      width: 16 * DropSkin.u
+      width: 16 * Skin.u
       height: width
       radius: width / 2
-      color: DropSkin.fg
+      color: Skin.fg
       border.width: row.activeFocus ? 2 : 0
-      border.color: DropSkin.accent
+      border.color: Skin.accent
     }
     MouseArea {
       objectName: "track"
       anchors.fill: parent
-      anchors.margins: -6 * DropSkin.u
+      anchors.margins: -6 * Skin.u
       cursorShape: Qt.PointingHandCursor
-      function at(x) { return row.snap((x - 6 * DropSkin.u) / track.width) }
+      function at(x) { return row.snap((x - 6 * Skin.u) / track.width) }
       onPressed: function(e) { row.forceActiveFocus(); row.moved(at(e.x)) }
       onPositionChanged: function(e) { if (pressed) row.moved(at(e.x)) }
     }
   }
 
-  DropLabel {
+  Label {
     id: valueLabel
     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-    width: 64 * DropSkin.u
+    width: 64 * Skin.u
     horizontalAlignment: Text.AlignRight
     text: row.label
-    color: DropSkin.dim
-    font.pixelSize: 12 * DropSkin.u
+    color: Skin.dim
+    font.pixelSize: 12 * Skin.u
   }
 }

@@ -1,8 +1,9 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
 import "Version.js" as Build
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Start menu: search or ask, pinned apps, recent work, and quick
 // switches. Plain QtQuick so it renders outside the shell for testing;
@@ -203,18 +204,12 @@ Item {
     MouseArea { anchors.fill: parent; onClicked: start.closeRequested() }
   }
 
-  Rectangle {
+  Glass {
     id: panel
     width: Math.min(parent.width - 64 * Skin.u, 860 * Skin.u)
     height: Math.min(parent.height - 96 * Skin.u, column.implicitHeight + 56 * Skin.u)
     anchors.horizontalCenter: parent.horizontalCenter
     y: Math.max(32 * Skin.u, parent.height * 0.09)
-    // The windows' corners, not scaled: Omarchy's panels share them too.
-    radius: Skin.radius
-    color: Skin.tint(Skin.bg, Skin.panelAlpha)
-    border.width: 1
-    border.color: Skin.tint(Skin.accent, Skin.edgeAlpha)
-    clip: true
     opacity: start.shown ? 1 : 0
     scale: start.shown ? 1 : 0.97
     transformOrigin: Item.Top
@@ -222,18 +217,6 @@ Item {
     Behavior on scale { NumberAnimation { duration: 160 * Skin.motion; easing.type: Easing.OutCubic } }
 
     MouseArea { anchors.fill: parent }
-
-    // The gradient frame's glow, along the top edge.
-    Rectangle {
-      visible: Skin.glow
-      anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
-      height: 90 * Skin.u
-      radius: panel.radius
-      gradient: Gradient {
-        GradientStop { position: 0; color: Skin.tint(Skin.accent, 0.09) }
-        GradientStop { position: 1; color: "transparent" }
-      }
-    }
 
     ColumnLayout {
       id: column

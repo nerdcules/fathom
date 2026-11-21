@@ -136,17 +136,17 @@ step update-install 'cd ~/fathom-git && ./install.sh --desk'; check "install fro
 vm 'fathom-update check --json' >"$logs/update-check-1.json" 2>&1
 jq -e '.available == false and .version == "v0.1.0"' "$logs/update-check-1.json" >/dev/null
 check "  ...fathom-update: up to date at v0.1.0" $?
-vm 'git clone -q ~/up.git ~/fathom-up && cd ~/fathom-up && echo "// fathom-update test" >> desk/plugin/fathom.desk/Glass.qml \
+vm 'git clone -q ~/up.git ~/fathom-up && cd ~/fathom-up && echo "// fathom-update test" >> desk/plugin/fathom.desk/QuickTile.qml \
     && git -c user.name=check -c user.email=check@example.invalid commit -qam "Desk: a test change" \
     && git tag v0.2.0 && git push -q --tags origin main' >>"$logs/update-setup.log" 2>&1
 vm 'fathom-update check --json' >"$logs/update-check-2.json" 2>&1
 jq -e '.available and .target == "v0.2.0" and .parts == ["desk"] and (.needsPassword | not)' "$logs/update-check-2.json" >/dev/null
 check "  ...v0.2.0 found: one part (desk), no password" $?
 step update-apply 'fathom-update apply'; check "fathom-update apply" $?
-vm 'grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/Glass.qml && [ "$(jq -r .commit ~/.local/state/fathom/source)" = "$(git -C ~/fathom-git rev-parse v0.2.0)" ]'
+vm 'grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/QuickTile.qml && [ "$(jq -r .commit ~/.local/state/fathom/source)" = "$(git -C ~/fathom-git rev-parse v0.2.0)" ]'
 check "  ...the installed desk is v0.2.0's" $?
 step update-rollback 'fathom-update rollback'; check "fathom-update rollback" $?
-vm '! grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/Glass.qml'
+vm '! grep -q "fathom-update test" ~/.config/omarchy/plugins/fathom.desk/QuickTile.qml'
 check "  ...the installed desk is v0.1.0's again" $?
 step update-uninstall 'cd ~/fathom-git && ./uninstall.sh'; check "uninstall after updating" $?
 vm 'rm -rf ~/up.git ~/fathom-git ~/fathom-up ~/fathom.bundle'

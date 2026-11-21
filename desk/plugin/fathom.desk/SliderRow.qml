@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 
 // A glyph, a slider from 0 to 1 and its value in words. Drag or click the

@@ -13,40 +13,40 @@ Item {
   property real value: 0
   signal doubleClicked()
 
-  implicitHeight: words.height + 6 * DropSkin.u + bar.height
+  implicitHeight: words.height + 6 * Skin.u + bar.height
   height: implicitHeight
 
   Item {
     id: words
     width: parent.width
     height: labelText.implicitHeight
-    DropLabel {
+    Label {
       id: labelText
       anchors.left: parent.left
-      width: parent.width - trailText.implicitWidth - 8 * DropSkin.u
+      width: parent.width - trailText.implicitWidth - 8 * Skin.u
       text: meter.label
-      color: DropSkin.dim
-      font.pixelSize: 12 * DropSkin.u
+      color: Skin.dim
+      font.pixelSize: 12 * Skin.u
     }
-    DropLabel {
+    Label {
       id: trailText
       anchors.right: parent.right
       text: meter.trail
-      color: DropSkin.dim
-      font.pixelSize: 12 * DropSkin.u
+      color: Skin.dim
+      font.pixelSize: 12 * Skin.u
     }
   }
   Rectangle {
     id: bar
-    anchors { left: parent.left; right: parent.right; top: words.bottom; topMargin: 6 * DropSkin.u }
-    height: 6 * DropSkin.u
+    anchors { left: parent.left; right: parent.right; top: words.bottom; topMargin: 6 * Skin.u }
+    height: 6 * Skin.u
     radius: height / 2
-    color: DropSkin.tint(DropSkin.fg, 0.14)
+    color: Skin.tint(Skin.fg, 0.14)
     Rectangle {
       width: Math.max(meter.value > 0 ? height : 0, parent.width * Math.max(0, Math.min(1, meter.value)))
       height: parent.height
       radius: height / 2
-      color: DropSkin.accent
+      color: Skin.accent
     }
   }
   MouseArea {

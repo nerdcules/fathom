@@ -1,10 +1,11 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
 
 // A glass card with a title row, a scrolling body and an optional footer.
 // Sized to its content; Layout.preferredWidth shares a row's width.
-Rectangle {
+Glass {
   id: card
   property string title: ""
   property string subtitle: ""
@@ -18,30 +19,14 @@ Rectangle {
   Layout.preferredWidth: 1
   Layout.minimumHeight: 240 * Skin.u
   implicitHeight: inner.implicitHeight + 44 * Skin.u
-  // Drawn as the Start menu's panel is (StartView.qml): the windows'
-  // corners (not scaled), the accent at the theme's border alpha, its glow
-  // along the top, and the look's opacity over Hyprland's blur (Skin.qml).
-  // Without blur the deck's scrim is solid, and a card at 62% on it keeps
-  // its shade apart from the scrim's.
-  radius: Skin.radius
-  color: Skin.tint(Skin.bg, Skin.glass ? Skin.glassAlpha : 0.62)
-  border.width: 1
-  border.color: Skin.tint(Skin.accent, Skin.edgeAlpha)
+  // Fathom's panel (Glass.qml), but without blur the deck's scrim is solid,
+  // and a card at 62% on it keeps its shade apart from the scrim's.
+  alpha: Skin.glass ? Skin.glassAlpha : 0.62
+  clip: false
 
   // Swallow clicks so only the scrim around the cards closes the deck.
   MouseArea { anchors.fill: parent }
 
-  // A faint top glow, like light catching glass.
-  Rectangle {
-    visible: Skin.glow
-    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
-    height: 90 * Skin.u
-    radius: card.radius
-    gradient: Gradient {
-      GradientStop { position: 0; color: Skin.tint(Skin.accent, 0.09) }
-      GradientStop { position: 1; color: "transparent" }
-    }
-  }
 
   ColumnLayout {
     id: inner

@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
@@ -424,7 +425,7 @@ Item {
               font.pixelSize: 13 * Skin.u
               elide: Text.ElideMiddle
             }
-            Button {
+            Pill {
               id: copyButton
               anchors { right: parent.right; verticalCenter: parent.verticalCenter }
               readonly property bool done: addressList.copied === addressRow.modelData.address
@@ -499,12 +500,12 @@ Item {
         Row {
           anchors { right: parent.right; verticalCenter: parent.verticalCenter }
           spacing: 8 * Skin.u
-          Button {
+          Pill {
             glyph: view.g(0xF033E)
             text: Skin.t("quick.lock")
             onClicked: { view.done(); Quickshell.execDetached(["omarchy-system-lock"]) }
           }
-          Button {
+          Pill {
             glyph: view.g(0xF0493)
             text: Skin.t("quick.menu")
             onClicked: { view.done(); Quickshell.execDetached(["omarchy-menu", "summon", "root"]) }

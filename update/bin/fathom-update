@@ -51,8 +51,9 @@ DEFAULTS = {"channel": "releases", "auto": False}
 PARTS = {
     "skin": ("theme/", "look/"),
     "player": ("player/",),
-    "deck": ("deck/", "care/", "start/"),
-    "desk": ("desk/",),
+    "deck": ("deck/", "care/", "start/", "kit/"),
+    # The desk's install also puts the bar's dropdowns on the bar.
+    "desk": ("desk/", "bar/", "kit/"),
     "screensaver": ("screensaver/",),
     "mail": ("mail/",),
     "sentinel": ("sentinel/",),

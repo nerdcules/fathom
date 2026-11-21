@@ -27,7 +27,7 @@ class Factory(unittest.TestCase):
     def test_sections_with_clicks_and_keys(self):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
-        shutil.copytree(os.path.join(BAR, "kit"), os.path.join(tmp, "kit"))
+        shutil.copytree(os.path.join(REPO, "kit"), os.path.join(tmp, "kit"))
         shutil.copy(os.path.join(REPO, "tests", "qml", "bar", "tst_drop_sections.qml"), tmp)
         env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
         r = subprocess.run([qmltestrunner(), "-input", os.path.join(tmp, "tst_drop_sections.qml")],
@@ -44,8 +44,8 @@ class Cards(unittest.TestCase):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp)
         dest = os.path.join(tmp, plugin_id)
+        # The plugin's kit/ is a link to the repo's kit; the copy follows it.
         shutil.copytree(os.path.join(BAR, "plugin", plugin_id), dest)
-        shutil.copytree(os.path.join(BAR, "kit"), os.path.join(dest, "kit"))
         shutil.copy(os.path.join(REPO, "tests", "qml", "bar", test_file), tmp)
         env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
         r = subprocess.run([qmltestrunner(), "-input", os.path.join(tmp, test_file)],
@@ -173,6 +173,7 @@ class Install(unittest.TestCase):
                                         {"id": "fathom.clock"}, {"id": "fathom.desk"}])
         plugin = self.box.path(".config", "omarchy", "plugins", "fathom.display")
         self.assertTrue(os.path.isfile(os.path.join(plugin, "kit", "DropCard.qml")), "the kit goes in as kit/")
+        self.assertFalse(os.path.islink(os.path.join(plugin, "kit")), "a copy, not the repo's link")
         self.assertIn("Fathom's dropdowns on the bar: fathom.display fathom.clock.", r.stdout)
         self.assertIn("Bar items without a Fathom dropdown yet: omarchy.tray.", r.stdout)
         r = self.box.run("uninstall.sh")

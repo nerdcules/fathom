@@ -1,7 +1,8 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Care page: what fills the disk and what can be freed, warnings, and
 // pending updates, from `fathom-care status`.

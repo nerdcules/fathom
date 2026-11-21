@@ -1,8 +1,9 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import QtQuick.Shapes
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // Crumbs: the cookies every browser here keeps, from `fathom-crumbs status`.
 // A map of which sites led to which trackers, every domain with its

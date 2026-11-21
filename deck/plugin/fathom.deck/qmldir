@@ -1,9 +1,4 @@
-singleton Skin 1.0 Skin.qml
-Label 1.0 Label.qml
-Dot 1.0 Dot.qml
 Meter 1.0 Meter.qml
-Pill 1.0 Pill.qml
-Tip 1.0 Tip.qml
 Card 1.0 Card.qml
 ListRow 1.0 ListRow.qml
 SectionTitle 1.0 SectionTitle.qml

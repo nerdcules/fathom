@@ -1,7 +1,8 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Deck page: System (with this machine's IP addresses), Containers,
 // .NET and AI cards, from `fathom-deck status`, and a card for paired PCs

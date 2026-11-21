@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -6,7 +7,7 @@ import qs.Commons as Commons
 import qs.Ui
 import "."
 import "Version.js" as Build
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Command Deck at a glance, in the bar: containers that need attention,
 // Care's warnings, a disk filling up, Sentinel's alerts and the coding agents

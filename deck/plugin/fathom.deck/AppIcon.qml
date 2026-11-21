@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 
 // An app's icon, or a lettered tile when it has none (or a glyph for

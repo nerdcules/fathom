@@ -15,7 +15,7 @@ Column {
   signal submitted(var values)
   signal cancelled()
 
-  spacing: 8 * DropSkin.u
+  spacing: 8 * Skin.u
 
   function values() {
     var out = {}
@@ -43,7 +43,7 @@ Column {
 
   Flow {
     width: parent.width
-    spacing: 10 * DropSkin.u
+    spacing: 10 * Skin.u
     Repeater {
       id: inputs
       model: form.fields.length
@@ -52,40 +52,40 @@ Column {
         readonly property var spec: form.fields[index] || ({})
         readonly property string key: String(spec.key || "")
         property alias field: input
-        spacing: 8 * DropSkin.u
-        DropLabel {
+        spacing: 8 * Skin.u
+        Label {
           anchors.verticalCenter: parent.verticalCenter
           text: spec.label || ""
-          color: DropSkin.dim
-          font.pixelSize: 12 * DropSkin.u
+          color: Skin.dim
+          font.pixelSize: 12 * Skin.u
         }
         Rectangle {
-          width: 80 * DropSkin.u
-          height: 30 * DropSkin.u
+          width: 80 * Skin.u
+          height: 30 * Skin.u
           radius: height / 2
-          color: DropSkin.tint(DropSkin.fg, 0.06)
+          color: Skin.tint(Skin.fg, 0.06)
           border.width: 1
-          border.color: input.activeFocus ? DropSkin.accent : DropSkin.tint(DropSkin.fg, 0.18)
+          border.color: input.activeFocus ? Skin.accent : Skin.tint(Skin.fg, 0.18)
           TextInput {
             id: input
             objectName: "field " + parent.parent.key
-            anchors { fill: parent; leftMargin: 12 * DropSkin.u; rightMargin: 12 * DropSkin.u }
+            anchors { fill: parent; leftMargin: 12 * Skin.u; rightMargin: 12 * Skin.u }
             verticalAlignment: TextInput.AlignVCenter
             text: spec.value !== undefined && spec.value !== null ? String(spec.value) : ""
-            color: DropSkin.fg
-            font.family: DropSkin.fontFamily
-            font.pixelSize: 13 * DropSkin.u
+            color: Skin.fg
+            font.family: Skin.fontFamily
+            font.pixelSize: 13 * Skin.u
             clip: true
             inputMethodHints: spec.digits ? Qt.ImhDigitsOnly : Qt.ImhNone
             validator: spec.digits ? digitsOnly : null
             Accessible.name: spec.label || ""
             Keys.onPressed: function(e) { form.keys(e, index) }
-            DropLabel {
+            Label {
               anchors.verticalCenter: parent.verticalCenter
               visible: input.text === ""
               text: spec.placeholder || ""
-              color: DropSkin.dim
-              font.pixelSize: 13 * DropSkin.u
+              color: Skin.dim
+              font.pixelSize: 13 * Skin.u
             }
           }
         }
@@ -95,14 +95,16 @@ Column {
   RegularExpressionValidator { id: digitsOnly; regularExpression: /[0-9]{0,4}/ }
 
   Row {
-    spacing: 8 * DropSkin.u
-    DropButton {
+    spacing: 8 * Skin.u
+    Pill {
+      tabStop: false
       objectName: "fields ok"
       primary: true
       text: form.okLabel
       onClicked: form.submitted(form.values())
     }
-    DropButton {
+    Pill {
+      tabStop: false
       objectName: "fields cancel"
       text: form.cancelLabel
       onClicked: form.cancelled()

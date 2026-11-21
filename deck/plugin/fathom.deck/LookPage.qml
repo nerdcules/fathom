@@ -1,7 +1,8 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // Personalise: Fathom's accent, window frame, corners, how see-through
 // panels are and their glow, plus the bar, the wallpaper and the

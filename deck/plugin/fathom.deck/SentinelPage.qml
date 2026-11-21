@@ -1,7 +1,8 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Sentinel page: is this machine protected, what happened today, and
 // who's on the network, from `fathom-sentinel status`.

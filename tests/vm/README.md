@@ -139,6 +139,22 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #22, one kit: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`; the tree went over as a tar, with the plugins' `kit/`
+links).
+
+- `check.sh` 27 passed, 0 failed. Its update check now changes
+  `QuickTile.qml` instead of the desk's `Glass.qml`, which moved to the kit.
+- `./install.sh --deck --desk`: each installed plugin got `kit/` as a real
+  folder. Quick settings, the calendar dropdown, the deck and Start opened
+  and drew as before (screenshots, not kept).
+- The shell's log after the install: no error from Fathom's QML except
+  one `TypeError` from the skin's `t()` at the shell's start; the VM's
+  journal has 16 earlier ones from the desk's own `Skin.qml`, the first on
+  18 November, so the kit didn't bring it.
+
 ### Issue #14, the weather: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled

@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 
 // A list page inside Quick settings (#14): Wi-Fi networks or Bluetooth
@@ -43,7 +44,7 @@ Item {
     Item {
       width: parent.width
       height: 34 * Skin.u
-      Button {
+      Pill {
         id: backButton
         anchors { left: parent.left; verticalCenter: parent.verticalCenter }
         glyph: list.g(0xF0141)
@@ -56,7 +57,7 @@ Item {
         font.pixelSize: 15 * Skin.u
         font.weight: Font.DemiBold
       }
-      Button {
+      Pill {
         id: toggle
         visible: list.canToggle
         anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -206,13 +207,13 @@ Item {
                   }
                 }
               }
-              Button {
+              Pill {
                 id: connectButton
                 primary: true
                 text: list.connectLabel
                 onClicked: list.passwordGiven(String(entry.modelData.key), password.text)
               }
-              Button {
+              Pill {
                 id: cancelButton
                 text: list.cancelLabel
                 onClicked: list.askCancelled()

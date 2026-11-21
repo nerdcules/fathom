@@ -23,7 +23,7 @@ FocusScope {
   property string title: ""
   property string subtitle: ""
   property string glyph: ""
-  property real pad: 18 * DropSkin.u
+  property real pad: 18 * Skin.u
   default property alias body: bodyColumn.data
   property alias trailing: trailHolder.data
   property alias bodySpacing: bodyColumn.spacing
@@ -34,7 +34,7 @@ FocusScope {
   signal closeRequested()
   signal tabRequested(int direction)
 
-  implicitHeight: pad * 2 + header.height + 14 * DropSkin.u + bodyColumn.implicitHeight
+  implicitHeight: pad * 2 + header.height + 14 * Skin.u + bodyColumn.implicitHeight
   focus: true
 
   // The controls a key can reach, in the order they're drawn: the kit's
@@ -80,25 +80,10 @@ FocusScope {
     else if (k === Qt.Key_Up || k === Qt.Key_K || k === Qt.Key_Left || k === Qt.Key_H) { card.walk(false); e.accepted = true }
   }
 
-  // The glass, as Quick settings draws its panel (desk Glass.qml).
-  Rectangle {
+  // The glass, as Quick settings draws its panel.
+  Glass {
     id: glass
     anchors.fill: parent
-    radius: DropSkin.radius
-    color: DropSkin.tint(DropSkin.bg, DropSkin.panelAlpha)
-    border.width: 1
-    border.color: DropSkin.tint(DropSkin.accent, DropSkin.edgeAlpha)
-    clip: true
-    Rectangle {
-      visible: DropSkin.glow
-      anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }
-      height: Math.min(90 * DropSkin.u, glass.height - 2)
-      radius: glass.radius
-      gradient: Gradient {
-        GradientStop { position: 0; color: DropSkin.tint(DropSkin.accent, 0.09) }
-        GradientStop { position: 1; color: "transparent" }
-      }
-    }
   }
 
   Item {
@@ -106,37 +91,37 @@ FocusScope {
     x: card.pad
     y: card.pad
     width: card.width - card.pad * 2
-    height: 40 * DropSkin.u
+    height: 40 * Skin.u
 
     Rectangle {
       id: badge
       anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-      width: 36 * DropSkin.u
+      width: 36 * Skin.u
       height: width
       radius: width / 2
-      color: DropSkin.tint(DropSkin.accent, 0.18)
-      DropLabel {
+      color: Skin.tint(Skin.accent, 0.18)
+      Label {
         anchors.centerIn: parent
         text: card.glyph
-        color: DropSkin.accent
-        font.pixelSize: 18 * DropSkin.u
+        color: Skin.accent
+        font.pixelSize: 18 * Skin.u
       }
     }
     Column {
-      anchors { left: badge.right; leftMargin: 12 * DropSkin.u; right: trailHolder.left; rightMargin: 10 * DropSkin.u; verticalCenter: parent.verticalCenter }
+      anchors { left: badge.right; leftMargin: 12 * Skin.u; right: trailHolder.left; rightMargin: 10 * Skin.u; verticalCenter: parent.verticalCenter }
       spacing: 1
-      DropLabel {
+      Label {
         width: parent.width
         text: card.title
-        font.pixelSize: 15 * DropSkin.u
+        font.pixelSize: 15 * Skin.u
         font.weight: Font.DemiBold
       }
-      DropLabel {
+      Label {
         width: parent.width
         visible: text !== ""
         text: card.subtitle
-        color: DropSkin.dim
-        font.pixelSize: 11 * DropSkin.u
+        color: Skin.dim
+        font.pixelSize: 11 * Skin.u
       }
     }
     Item {
@@ -150,8 +135,8 @@ FocusScope {
   Column {
     id: bodyColumn
     x: card.pad
-    y: header.y + header.height + 14 * DropSkin.u
+    y: header.y + header.height + 14 * Skin.u
     width: card.width - card.pad * 2
-    spacing: 14 * DropSkin.u
+    spacing: 14 * Skin.u
   }
 }

@@ -11,9 +11,20 @@ look, now and as Omarchy adds items (#14). This folder holds them.
   bar's cluster
   (`fathom.desk`) stands for Omarchy's Bluetooth, network, volume and
   battery items.
-- `kit/`: what every dropdown is made of, copied into each plugin as
-  `kit/` by `install.sh`.
+- `plugin/<id>/kit`: a link to Fathom's kit (`kit/` at the top of the
+  repo), which `install.sh` replaces with a copy in the installed plugin.
 - `plugin/<id>/`: one Omarchy plugin per dropdown.
+
+The kit is shared with the Command Deck and the desk (#22): the skin
+(`Skin`: the look's values and Personalise's), `Label`, `Pill` (Fathom's
+one button), `Glass` (Fathom's one panel), `Tip`, `Dot` and number
+formatting (`Format.js`), and the dropdowns' own parts, all named `Drop…`.
+A shell plugin can load only its own files, so each plugin's `kit/` is a
+link in the repo and a copy once installed; `tests/test_one_look.py`
+fails if a plugin grows its own copy of a kit part, asks the skin for
+something it doesn't have, or takes the theme or its size differently.
+In a dropdown a `Pill` sets `tabStop: false`, so Tab goes to the next
+dropdown and the arrows reach the pill instead.
 
 ## How a dropdown is made
 
@@ -75,8 +86,8 @@ colours, font and corners, the menu's opacity and border, glass when
 Hyprland blurs, the glow from Personalise, and Fathom's size for the
 screen (the deck's and desk's rule). Sizes are Fathom's, not Omarchy's:
 a dropdown's width is so many units times that size, as Quick settings'
-is. `tests/test_one_look.py` fails if the kit's look drifts from the deck's
-or the desk's. A theme change restyles every
+is. The deck and the desk bind the same theme into the same skin. A theme
+change restyles every
 dropdown as it happens.
 
 `DropCard` takes the keys as Omarchy's dropdowns do: the arrows or h j k l

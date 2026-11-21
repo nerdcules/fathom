@@ -8,7 +8,7 @@ Row {
   // [{label, value}]
   property var items: []
   readonly property real column: items.length > 0 ? (width - spacing * (items.length - 1)) / items.length : width
-  spacing: 10 * DropSkin.u
+  spacing: 10 * Skin.u
 
   Repeater {
     model: facts.items.length
@@ -17,17 +17,17 @@ Row {
       readonly property var item: facts.items[index] || ({})
       width: facts.column
       spacing: 2
-      DropLabel {
+      Label {
         width: parent.width
         text: item.label || ""
-        color: DropSkin.dim
-        font.pixelSize: 11 * DropSkin.u
+        color: Skin.dim
+        font.pixelSize: 11 * Skin.u
       }
-      DropLabel {
+      Label {
         objectName: "fact " + (item.label || "")
         width: parent.width
         text: item.value || ""
-        font.pixelSize: 14 * DropSkin.u
+        font.pixelSize: 14 * Skin.u
         font.weight: Font.DemiBold
       }
     }

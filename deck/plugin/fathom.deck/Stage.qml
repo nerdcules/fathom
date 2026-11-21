@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 
 // What every view of the deck sits on: it sets the scale for the screen,

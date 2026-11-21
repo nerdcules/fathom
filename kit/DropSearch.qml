@@ -22,7 +22,7 @@ Column {
   signal cancelled()
   signal picked(string key)
 
-  spacing: 6 * DropSkin.u
+  spacing: 6 * Skin.u
 
   function begin() {
     field.text = search.text
@@ -33,20 +33,20 @@ Column {
 
   Rectangle {
     width: parent.width
-    height: 34 * DropSkin.u
+    height: 34 * Skin.u
     radius: height / 2
-    color: DropSkin.tint(DropSkin.fg, 0.06)
+    color: Skin.tint(Skin.fg, 0.06)
     border.width: 1
-    border.color: field.activeFocus ? DropSkin.accent : DropSkin.tint(DropSkin.fg, 0.18)
+    border.color: field.activeFocus ? Skin.accent : Skin.tint(Skin.fg, 0.18)
     TextInput {
       id: field
       objectName: "search field"
-      anchors { fill: parent; leftMargin: 14 * DropSkin.u; rightMargin: 14 * DropSkin.u }
+      anchors { fill: parent; leftMargin: 14 * Skin.u; rightMargin: 14 * Skin.u }
       verticalAlignment: TextInput.AlignVCenter
       enabled: !search.busy
-      color: DropSkin.fg
-      font.family: DropSkin.fontFamily
-      font.pixelSize: 13 * DropSkin.u
+      color: Skin.fg
+      font.family: Skin.fontFamily
+      font.pixelSize: 13 * Skin.u
       clip: true
       Accessible.name: search.placeholder
       onTextEdited: search.edited(text)
@@ -57,13 +57,13 @@ Column {
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { search.submitted(field.text, search.chosen); e.accepted = true }
         else if (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab) e.accepted = true
       }
-      DropLabel {
+      Label {
         anchors.verticalCenter: parent.verticalCenter
         visible: field.text === "" || search.busy
         anchors.right: search.busy ? parent.right : undefined
         text: search.busy ? search.busyLabel : search.placeholder
-        color: DropSkin.dim
-        font.pixelSize: 13 * DropSkin.u
+        color: Skin.dim
+        font.pixelSize: 13 * Skin.u
       }
     }
   }
@@ -75,7 +75,7 @@ Column {
       readonly property var result: search.results[index] || ({})
       objectName: "result " + (result.key || index)
       width: search.width
-      height: 44 * DropSkin.u
+      height: 44 * Skin.u
       name: result.name || ""
       detail: result.detail || ""
       cursor: index === search.chosen

@@ -147,6 +147,15 @@ class UpdateTest(unittest.TestCase):
         self.assertTrue(r["needsPassword"])
         self.assertIn("asks for your password", self.update("check").stdout)
 
+    def test_a_kit_or_bar_change_reinstalls_the_desk(self):
+        # The kit (#22) goes into the deck and the desk; the desk's install
+        # puts the bar's dropdowns on the bar. Only the desk is installed here.
+        for path in ("kit/Skin.qml", "bar/plugin/fathom.clock/Clock.qml"):
+            with self.subTest(path=path):
+                self.write(self.up, path, f"{path} v2\n")
+                self.commit(self.up, f"change {path}", tag="v0.2.0" if path.startswith("kit") else "v0.3.0")
+                self.assertEqual(self.checked()["parts"], ["desk"])
+
     def test_an_installer_change_reinstalls_every_installed_part(self):
         with open(os.path.join(self.up, "install.sh"), "a") as f:
             f.write("# changed\n")

@@ -175,9 +175,9 @@ Panel {
     open: root.opened
     padding: 0
     focusTarget: panel.loadedContent
-    // Fathom's sizes, as Quick settings has them (DropSkin.u), not Omarchy's.
-    contentWidth: panel.fittedContentWidth(Math.round(380 * DropSkin.u))
-    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Math.round(640 * DropSkin.u))
+    // Fathom's sizes, as Quick settings has them (Skin.u), not Omarchy's.
+    contentWidth: panel.fittedContentWidth(Math.round(380 * Skin.u))
+    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Math.round(640 * Skin.u))
 
     content: DropCard {
       title: catalog.t("display.title")

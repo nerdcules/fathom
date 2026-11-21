@@ -25,19 +25,20 @@ Column {
   signal today()
   signal toggleWeekStart()
 
-  readonly property real weekColumn: 30 * DropSkin.u
+  readonly property real weekColumn: 30 * Skin.u
   readonly property real cell: (width - weekColumn) / 7
-  readonly property real rowHeight: 36 * DropSkin.u
+  readonly property real rowHeight: 36 * Skin.u
 
-  spacing: 8 * DropSkin.u
+  spacing: 8 * Skin.u
 
   function g(cp) { return String.fromCodePoint(cp) }
 
   // The month, between its arrows.
   Item {
     width: parent.width
-    height: 32 * DropSkin.u
-    DropButton {
+    height: 32 * Skin.u
+    Pill {
+      tabStop: false
       id: previous
       objectName: "previous"
       anchors { left: parent.left; verticalCenter: parent.verticalCenter }
@@ -45,23 +46,25 @@ Column {
       Accessible.name: grid.previousLabel
       onClicked: grid.step(-1)
     }
-    DropLabel {
+    Label {
       objectName: "month"
-      anchors { left: previous.right; right: todayButton.visible ? todayButton.left : next.left; margins: 8 * DropSkin.u; verticalCenter: parent.verticalCenter }
+      anchors { left: previous.right; right: todayButton.visible ? todayButton.left : next.left; margins: 8 * Skin.u; verticalCenter: parent.verticalCenter }
       horizontalAlignment: Text.AlignHCenter
       text: grid.monthLabel
-      font.pixelSize: 14 * DropSkin.u
+      font.pixelSize: 14 * Skin.u
       font.weight: Font.DemiBold
     }
-    DropButton {
+    Pill {
+      tabStop: false
       id: todayButton
       objectName: "today"
       visible: grid.showToday
-      anchors { right: next.left; rightMargin: 6 * DropSkin.u; verticalCenter: parent.verticalCenter }
+      anchors { right: next.left; rightMargin: 6 * Skin.u; verticalCenter: parent.verticalCenter }
       text: grid.todayLabel
       onClicked: grid.today()
     }
-    DropButton {
+    Pill {
+      tabStop: false
       id: next
       objectName: "next"
       anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -81,20 +84,20 @@ Column {
 
       // The weekdays.
       Row {
-        height: 26 * DropSkin.u
+        height: 26 * Skin.u
         Rectangle {
           objectName: "weekHeading"
           width: grid.weekColumn
           height: parent.height
-          radius: 8 * DropSkin.u
-          color: weekMouse.containsMouse ? DropSkin.tint(DropSkin.fg, 0.11) : "transparent"
+          radius: 8 * Skin.u
+          color: weekMouse.containsMouse ? Skin.tint(Skin.fg, 0.11) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: grid.weekTip
-          DropLabel {
+          Label {
             anchors.centerIn: parent
             text: grid.weekLabel
-            color: DropSkin.accent
-            font.pixelSize: 11 * DropSkin.u
+            color: Skin.accent
+            font.pixelSize: 11 * Skin.u
           }
           MouseArea {
             id: weekMouse
@@ -106,15 +109,15 @@ Column {
         }
         Repeater {
           model: grid.weekdayLabels
-          delegate: DropLabel {
+          delegate: Label {
             required property var modelData
             width: grid.cell
-            height: 26 * DropSkin.u
+            height: 26 * Skin.u
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: String(modelData)
-            color: DropSkin.dim
-            font.pixelSize: 11 * DropSkin.u
+            color: Skin.dim
+            font.pixelSize: 11 * Skin.u
           }
         }
       }
@@ -126,14 +129,14 @@ Column {
           required property int index
           readonly property var week: grid.weeks[index] || ({ week: 0, days: [] })
           height: grid.rowHeight
-          DropLabel {
+          Label {
             width: grid.weekColumn
             height: parent.height
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: String(week.week)
-            color: DropSkin.tint(DropSkin.fg, 0.4)
-            font.pixelSize: 11 * DropSkin.u
+            color: Skin.tint(Skin.fg, 0.4)
+            font.pixelSize: 11 * Skin.u
           }
           Repeater {
             model: week.days.length
@@ -145,21 +148,21 @@ Column {
               height: grid.rowHeight
               Rectangle {
                 anchors.centerIn: parent
-                width: Math.min(parent.width, parent.height) - 4 * DropSkin.u
+                width: Math.min(parent.width, parent.height) - 4 * Skin.u
                 height: width
                 radius: width / 2
                 visible: day.today === true
-                color: DropSkin.tint(DropSkin.accent, 0.36)
+                color: Skin.tint(Skin.accent, 0.36)
                 border.width: 1
-                border.color: DropSkin.tint(DropSkin.accent, 0.8)
+                border.color: Skin.tint(Skin.accent, 0.8)
               }
-              DropLabel {
+              Label {
                 anchors.centerIn: parent
                 text: String(day.day || "")
-                color: day.today ? DropSkin.fg
-                  : !day.inMonth ? DropSkin.tint(DropSkin.fg, 0.3)
-                  : day.weekend ? DropSkin.dim : DropSkin.fg
-                font.pixelSize: 13 * DropSkin.u
+                color: day.today ? Skin.fg
+                  : !day.inMonth ? Skin.tint(Skin.fg, 0.3)
+                  : day.weekend ? Skin.dim : Skin.fg
+                font.pixelSize: 13 * Skin.u
                 font.weight: day.today ? Font.Bold : Font.Normal
               }
             }

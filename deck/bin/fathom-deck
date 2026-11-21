@@ -480,7 +480,7 @@ brief() {
     def s($n): tostring | .[0:$n];
     def num: if type == "number" then . else (tonumber? // 0) end;
     def arr: if type == "array" then . else [] end;
-    # As the deck colours a row (Format.js containerHealth).
+    # As the deck colours a row (kit/Format.js containerHealth).
     def health: (.status // "" | tostring) as $st | (.state // "" | tostring) as $state
       | if ($st | contains("(unhealthy)")) then "bad"
         elif $state == "restarting" then "warn"

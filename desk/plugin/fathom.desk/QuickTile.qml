@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 
 // One Quick settings tile: a glyph, a name and its state; lit when on.

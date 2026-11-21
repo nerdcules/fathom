@@ -205,8 +205,8 @@ Panel {
     centerOnBar: false
     padding: 0
     focusTarget: panel.loadedContent
-    contentWidth: panel.fittedContentWidth(Math.round(380 * DropSkin.u))
-    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Math.round(680 * DropSkin.u))
+    contentWidth: panel.fittedContentWidth(Math.round(380 * Skin.u))
+    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Math.round(680 * Skin.u))
 
     content: DropCard {
       title: root.today.toLocaleDateString(root.formatLocale, "dddd d MMMM")

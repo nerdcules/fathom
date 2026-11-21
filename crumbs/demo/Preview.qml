@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import "../../deck/plugin/fathom.deck"
+import "../../deck/plugin/fathom.deck/kit"
 
 // Renders the Command Deck's Crumbs page outside the shell, from
 // make-demo.py's output, and saves it. make-preview.sh runs it:

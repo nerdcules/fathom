@@ -1,8 +1,11 @@
 import QtQuick
 import "."
 
-// A rounded button: a glyph, a word, or both. Works with the mouse and with
-// Tab, Return and Space.
+// Fathom's button (#22): a rounded pill with a glyph, a word, or both. The
+// deck, the desk and the bar's dropdowns all use this one. Works with the
+// mouse and with Return and Space; Tab reaches it, except in a bar dropdown
+// (`tabStop: false`), where Tab moves to the next dropdown and the arrows
+// walk the card's stops (DropCard) instead.
 Rectangle {
   id: pill
   property string text: ""
@@ -11,13 +14,17 @@ Rectangle {
   property bool enabledAction: true
   property bool primary: false
   property bool selected: false
+  property bool tabStop: true
   property color glyphColor: Skin.accent
   signal clicked()
+
+  // A stop for a dropdown's arrow keys (DropCard).
+  readonly property bool dropStop: !tabStop && enabledAction
 
   implicitWidth: pillRow.implicitWidth + 20 * Skin.u
   implicitHeight: 30 * Skin.u
   radius: height / 2
-  activeFocusOnTab: enabledAction
+  activeFocusOnTab: tabStop && enabledAction
   color: {
     if (!enabledAction) return "transparent"
     if (primary) return Skin.tint(Skin.accent, pillMouse.pressed ? 0.55 : (pillMouse.containsMouse || activeFocus ? 0.42 : 0.30))

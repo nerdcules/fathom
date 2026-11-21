@@ -1,8 +1,9 @@
 import QtQuick
+import "kit"
 import QtQuick.Layouts
 import QtQuick.Shapes
 import "."
-import "Format.js" as F
+import "kit/Format.js" as F
 
 // The Pulse page: a map of what calls what, from `fathom-pulse status`, and
 // an inspector for the node you pick.

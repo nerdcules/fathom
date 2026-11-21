@@ -65,6 +65,18 @@ class Install(unittest.TestCase):
     def installed_parts(self):
         return read(self.box.path(".local/state/fathom/installed")).decode().split()
 
+    def test_the_deck_and_the_desk_get_a_real_copy_of_the_kit(self):
+        # In the repo each plugin's kit/ is a link to kit/ (#22); the shell
+        # loads only real files, so the installed plugin gets a copy.
+        self.ok("--deck", "--desk")
+        names = sorted(os.listdir(os.path.join(REPO, "kit")))
+        for plugin in ("fathom.deck", "fathom.desk"):
+            kit = self.box.path(f".config/omarchy/plugins/{plugin}/kit")
+            self.assertFalse(os.path.islink(kit), plugin)
+            self.assertEqual(sorted(os.listdir(kit)), names, plugin)
+            for name in names:
+                self.assertEqual(read(os.path.join(kit, name)), read(os.path.join(REPO, "kit", name)), f"{plugin}: {name}")
+
     def test_the_installed_deck_and_the_record_carry_the_version(self):
         # The sandbox has no git, so the version is "unknown": what matters is
         # that the installed copy has it and the repo's file is untouched.

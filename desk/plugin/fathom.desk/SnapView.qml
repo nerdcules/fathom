@@ -1,4 +1,5 @@
 import QtQuick
+import "kit"
 import "."
 import "Desk.js" as D
 
@@ -229,7 +230,7 @@ Item {
 
       Row {
         spacing: 10 * Skin.u
-        Button {
+        Pill {
           visible: !!view.targetWin && view.targetWin.floating
           text: Skin.t("snap.tile")
           onClicked: { view.host.dispatch(D.tile(view.target)); view.done() }
