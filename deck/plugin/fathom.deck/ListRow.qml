@@ -33,8 +33,10 @@ Item {
     anchors.fill: parent
     anchors.margins: -4 * Skin.u
     radius: 10 * Skin.u
-    color: row.current ? Skin.tint(Skin.accent, 0.16)
-      : (rowHover.hovered || actionsRow.activeFocusInside ? Skin.faint : "transparent")
+    color: row.current ? Skin.selectedFill
+      : (rowHover.hovered || actionsRow.activeFocusInside ? Skin.hoverFill : "transparent")
+    border.width: row.current ? 1 : 0
+    border.color: Skin.selectedEdge
   }
   HoverHandler { id: rowHover; cursorShape: row.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor }
   // A MouseArea, not a TapHandler: a TapHandler only grabs the press

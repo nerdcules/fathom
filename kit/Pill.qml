@@ -28,13 +28,10 @@ Rectangle {
   color: {
     if (!enabledAction) return "transparent"
     if (primary) return Skin.tint(Skin.accent, pillMouse.pressed ? 0.55 : (pillMouse.containsMouse || activeFocus ? 0.42 : 0.30))
-    if (selected) return Skin.tint(Skin.accent, 0.22)
-    if (pillMouse.pressed) return Skin.tint(Skin.accent, 0.30)
-    if (pillMouse.containsMouse || activeFocus) return Skin.tint(Skin.accent, 0.18)
-    return Skin.faint
+    return Skin.stateFill(Skin.faint, selected, pillMouse.containsMouse || activeFocus, pillMouse.pressed)
   }
   border.width: activeFocus || selected ? 1 : 0
-  border.color: Skin.accent
+  border.color: selected ? Skin.selectedEdge : Skin.accent
   opacity: enabledAction ? 1 : 0.4
   Accessible.role: Accessible.Button
   Accessible.name: tip || text

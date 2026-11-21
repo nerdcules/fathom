@@ -66,6 +66,12 @@ Each line names its commit.
   or its size differently. Buttons in Quick settings, Snap layouts and the
   dropdowns are now the deck's: padding of 20 units (was 22, at Fathom's
   size for the screen), and a lit (primary) one has a semibold word.
+- One set of state strengths everywhere (#18), Omarchy's own: hover
+  tints the accent at 0.12 and pressed at 0.22; selected, on, chosen and a
+  list's cursor fill with it at 0.36 with a 0.8 edge. Fathom's buttons,
+  Quick settings' tiles and lists, the dropdowns' rows, the deck's lists and
+  Start's pinned apps drew these four ways (a picked button was 0.22 with a
+  full edge, a list's cursor 0.16 with none; hover was grey on the tiles).
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).

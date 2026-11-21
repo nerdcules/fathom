@@ -119,10 +119,9 @@ Item {
               height: 50 * Skin.u
               radius: 12 * Skin.u
               readonly property bool lit: entry.modelData.active === true
-              color: lit ? Skin.tint(Skin.accent, rowMouse.pressed ? 0.55 : (rowMouse.containsMouse ? 0.45 : 0.36))
-                : (rowMouse.pressed ? Skin.tint(Skin.fg, 0.16) : (rowMouse.containsMouse ? Skin.tint(Skin.fg, 0.11) : Skin.tint(Skin.fg, 0.06)))
+              color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), lit, rowMouse.containsMouse, rowMouse.pressed)
               border.width: 1
-              border.color: lit ? Skin.tint(Skin.accent, 0.8) : Skin.tint(Skin.fg, 0.1)
+              border.color: lit ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
               Accessible.role: Accessible.Button
               Accessible.name: entry.isHeader ? "" : String(entry.modelData.name || "")
 

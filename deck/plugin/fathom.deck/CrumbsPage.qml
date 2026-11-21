@@ -201,7 +201,7 @@ GridLayout {
           width: map.boxW
           height: map.boxH
           radius: height / 2
-          color: siteHover.hovered ? Skin.tint(Skin.fg, 0.14) : Skin.faint
+          color: Skin.stateFill(Skin.faint, false, siteHover.hovered, false)
           z: 2
           HoverHandler { id: siteHover; onHoveredChanged: map.hot = hovered ? siteBox.modelData : "" }
           Label {

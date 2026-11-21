@@ -435,7 +435,9 @@ GridLayout {
           anchors.leftMargin: -6 * Skin.u
           anchors.rightMargin: -6 * Skin.u
           radius: 8 * Skin.u
-          color: agentRow.isPicked ? Skin.tint(Skin.accent, 0.14) : (rowHover.hovered ? Skin.faint : "transparent")
+          color: agentRow.isPicked ? Skin.selectedFill : (rowHover.hovered ? Skin.hoverFill : "transparent")
+          border.width: agentRow.isPicked ? 1 : 0
+          border.color: Skin.selectedEdge
         }
         HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
         MouseArea { anchors.fill: parent; onClicked: page.pickProject(agentRow.modelData.id) }

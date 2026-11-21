@@ -24,10 +24,9 @@ Rectangle {
   height: 50 * Skin.u
   radius: 12 * Skin.u
   readonly property bool hot: mouse.containsMouse || cursor || activeFocus
-  color: active ? Skin.tint(Skin.accent, mouse.pressed ? 0.55 : (hot ? 0.45 : 0.36))
-    : (mouse.pressed ? Skin.tint(Skin.fg, 0.16) : (hot && clickable ? Skin.tint(Skin.fg, 0.11) : Skin.tint(Skin.fg, 0.06)))
+  color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), active, hot && (clickable || active), mouse.pressed)
   border.width: 1
-  border.color: active ? Skin.tint(Skin.accent, 0.8) : Skin.tint(Skin.fg, 0.1)
+  border.color: active ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
   // A stop for the dropdown's arrow keys (DropCard), when it can be used.
   readonly property bool dropStop: clickable
   Accessible.role: Accessible.Button

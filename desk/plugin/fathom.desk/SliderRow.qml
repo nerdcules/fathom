@@ -25,7 +25,7 @@ Item {
     width: 32 * Skin.u
     height: width
     radius: width / 2
-    color: glyphMouse.containsMouse ? Skin.tint(Skin.fg, 0.12) : "transparent"
+    color: glyphMouse.containsMouse ? Skin.hoverFill : "transparent"
     Label {
       anchors.centerIn: parent
       text: row.glyph

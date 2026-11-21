@@ -18,10 +18,9 @@ Rectangle {
   height: 78 * Skin.u
   radius: 14 * Skin.u
   opacity: available ? 1 : 0.45
-  color: on ? Skin.tint(Skin.accent, mouse.pressed ? 0.55 : (mouse.containsMouse ? 0.45 : 0.36))
-    : (mouse.pressed ? Skin.tint(Skin.fg, 0.16) : (mouse.containsMouse ? Skin.tint(Skin.fg, 0.11) : Skin.tint(Skin.fg, 0.06)))
+  color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), on, mouse.containsMouse, mouse.pressed)
   border.width: 1
-  border.color: on ? Skin.tint(Skin.accent, 0.8) : Skin.tint(Skin.fg, 0.1)
+  border.color: on ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
   Behavior on color { ColorAnimation { duration: Skin.ms(120) } }
   Accessible.role: Accessible.CheckBox
   Accessible.name: title
@@ -51,7 +50,7 @@ Rectangle {
     width: 28 * Skin.u
     height: width
     radius: width / 2
-    color: moreMouse.containsMouse ? Skin.tint(Skin.fg, 0.18) : "transparent"
+    color: moreMouse.containsMouse ? Skin.hoverFill : "transparent"
     Label {
       anchors.centerIn: parent
       text: String.fromCodePoint(0xF0142)

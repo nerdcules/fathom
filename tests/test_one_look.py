@@ -109,6 +109,22 @@ class OneKit(unittest.TestCase):
         for path in ("deck/plugin/fathom.deck/StartView.qml", "deck/plugin/fathom.deck/Card.qml", "kit/DropCard.qml"):
             self.assertRegex(read(path), r"\bGlass \{", path)
 
+    def test_one_ladder_of_states(self):
+        # #18: hover, pressed and selected come from the skin, at the
+        # strengths Omarchy's controls take from the theme.
+        theme = read("theme/shell.toml")
+        skin = read("kit/Skin.qml")
+        for token, prop in (("hover-cursor-fill-alpha", "hoverFill"), ("pressed-fill-alpha", "pressedFill"),
+                            ("selected-fill-alpha", "selectedFill"), ("selected-border-alpha", "selectedEdge")):
+            value = re.search(r"(?m)^" + token + r"\s*=\s*([0-9.]+)", theme).group(1)
+            self.assertRegex(skin, r"property color " + prop + r": tint\(accent, " + re.escape(value) + r"\)", prop)
+        for path in ("kit/Pill.qml", "kit/DropRow.qml", "desk/plugin/fathom.desk/QuickTile.qml",
+                     "desk/plugin/fathom.desk/QuickList.qml", "deck/plugin/fathom.deck/ListRow.qml"):
+            src = read(path)
+            self.assertRegex(src, r"Skin\.(stateFill\(|selectedFill)", path)
+            own = re.findall(r"Skin\.tint\(Skin\.(?:fg|accent), 0\.(?:1[1-6]|22|36|45|8)\)", src)
+            self.assertEqual(own, [], f"{path}: states come from the skin")
+
 
 if __name__ == "__main__":
     unittest.main()

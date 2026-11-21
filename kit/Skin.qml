@@ -60,6 +60,19 @@ QtObject {
   // A dimmed screen behind a view.
   readonly property real scrimAlpha: glass ? 0.55 : 1
 
+  // One ladder of states for every control (#18), the strengths Omarchy's
+  // own controls use (theme/shell.toml): hover and pressed tint the accent;
+  // selected (on, chosen, a list's cursor) fills with it and edges it, and
+  // brightens under the pointer.
+  readonly property color hoverFill: tint(accent, 0.12)
+  readonly property color pressedFill: tint(accent, 0.22)
+  readonly property color selectedFill: tint(accent, 0.36)
+  readonly property color selectedEdge: tint(accent, 0.8)
+  function stateFill(idle, selected, hovered, pressed) {
+    if (selected) return tint(accent, pressed ? 0.55 : (hovered ? 0.45 : 0.36))
+    return pressed ? pressedFill : (hovered ? hoverFill : idle)
+  }
+
   function t(key) { return strings ? strings.t(key) : key }
   function tn(key, n) { return strings ? strings.tn(key, n) : key }
   function n(v, d) { return fmt(v, d || 0) }

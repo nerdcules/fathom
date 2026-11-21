@@ -155,8 +155,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       radius: 12 * Skin.u
-      color: tileMouse.pressed ? Skin.tint(Skin.accent, 0.22)
-        : (tileMouse.containsMouse || tile.activeFocus ? Skin.faint : "transparent")
+      color: Skin.stateFill("transparent", false, tileMouse.containsMouse || tile.activeFocus, tileMouse.pressed)
       border.width: tile.activeFocus ? 1 : 0
       border.color: Skin.accent
     }
