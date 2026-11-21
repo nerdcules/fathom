@@ -82,4 +82,6 @@ Rectangle {
       font.pixelSize: 11 * Skin.u
     }
   }
+
+  FocusRing {}
 }

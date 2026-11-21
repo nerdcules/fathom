@@ -80,7 +80,7 @@ GridLayout {
     height: width
     radius: width / 2
     color: hex
-    border.width: chosen ? 3 : (activeFocus || swatchMouse.containsMouse ? 2 : 0)
+    border.width: chosen ? 3 : (swatchMouse.containsMouse ? 2 : 0)
     border.color: chosen ? Skin.fg : Skin.tint(Skin.fg, 0.6)
     activeFocusOnTab: true
     Accessible.role: Accessible.RadioButton
@@ -88,6 +88,7 @@ GridLayout {
     Keys.onReturnPressed: picked()
     Keys.onEnterPressed: picked()
     Keys.onSpacePressed: picked()
+    FocusRing {}
     MouseArea {
       id: swatchMouse
       anchors.fill: parent
@@ -203,15 +204,15 @@ GridLayout {
         }
       }
       Rectangle {
+        id: lookKnob
         x: track.width * track.ratio - width / 2
         anchors.verticalCenter: parent.verticalCenter
         width: 16 * Skin.u
         height: width
         radius: width / 2
         color: Skin.fg
-        border.width: track.activeFocus ? 2 : 0
-        border.color: Skin.accent
       }
+      FocusRing { target: lookKnob; shown: track.activeFocus }
       MouseArea {
         anchors.fill: parent
         anchors.margins: -6 * Skin.u
@@ -447,11 +448,12 @@ GridLayout {
           height: 63 * Skin.u
           radius: 8 * Skin.u
           color: Skin.faint
-          border.width: current ? 2 : (activeFocus || thumbMouse.containsMouse ? 1 : 0)
+          border.width: current ? 2 : (thumbMouse.containsMouse ? 1 : 0)
           border.color: current ? Skin.accent : Skin.tint(Skin.fg, 0.6)
           activeFocusOnTab: true
           Accessible.role: Accessible.Button
           Accessible.name: modelData.name
+          FocusRing {}
           Keys.onReturnPressed: page.wallpaperRequested(modelData.path)
           Keys.onSpacePressed: page.wallpaperRequested(modelData.path)
           Image {

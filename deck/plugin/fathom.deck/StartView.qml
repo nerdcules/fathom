@@ -153,12 +153,12 @@ Item {
     Keys.onSpacePressed: start.openItem(item)
 
     Rectangle {
+      id: tileFace
       anchors.fill: parent
       radius: 12 * Skin.u
-      color: Skin.stateFill("transparent", false, tileMouse.containsMouse || tile.activeFocus, tileMouse.pressed)
-      border.width: tile.activeFocus ? 1 : 0
-      border.color: Skin.accent
+      color: Skin.stateFill("transparent", false, tileMouse.containsMouse, tileMouse.pressed)
     }
+    FocusRing { target: tileFace; shown: tile.activeFocus }
     Column {
       anchors.centerIn: parent
       spacing: 8 * Skin.u

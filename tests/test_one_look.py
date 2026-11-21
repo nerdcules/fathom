@@ -134,6 +134,24 @@ class OneKit(unittest.TestCase):
         for path in ("kit/DropSearch.qml", "kit/DropFields.qml", "desk/plugin/fathom.desk/QuickList.qml"):
             self.assertIn("Skin.idleEdge", read(path), f"{path}: a text field's edge")
 
+    def test_focus_is_a_ring_of_its_own(self):
+        # #16: focus is FocusRing (foreground, outside the part), never the
+        # selected look; only a text field shows focus with its edge.
+        fields = ("password", "field", "input", "hexField", "search")
+        for folder in ["kit"] + PLUGINS:
+            for path in qml_files(folder):
+                for line in read(path).splitlines():
+                    if re.search(r"\b(border\.width|border\.color|color):.*\bactiveFocus\b", line):
+                        self.assertTrue(any(f + ".activeFocus" in line for f in fields), f"{path}: {line.strip()}")
+        for path in ("kit/Pill.qml", "kit/DropRow.qml", "kit/DropSlider.qml", "desk/plugin/fathom.desk/QuickTile.qml",
+                     "desk/plugin/fathom.desk/SliderRow.qml", "deck/plugin/fathom.deck/StartView.qml",
+                     "deck/plugin/fathom.deck/LookPage.qml"):
+            self.assertIn("FocusRing {", read(path), path)
+        ring = read("kit/FocusRing.qml")
+        self.assertIn("border.color: Skin.fg", ring)
+        self.assertIn("border.width: 2", ring)
+        self.assertRegex(read("theme/shell.toml"), r'(?m)^focus-color\s*=\s*"foreground"')
+
 
 if __name__ == "__main__":
     unittest.main()

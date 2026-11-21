@@ -23,7 +23,7 @@ Rectangle {
   width: parent ? parent.width : 300
   height: 50 * Skin.u
   radius: 12 * Skin.u
-  readonly property bool hot: mouse.containsMouse || cursor || activeFocus
+  readonly property bool hot: mouse.containsMouse || cursor
   color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), active, hot && (clickable || active), mouse.pressed)
   border.width: 1
   border.color: active ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
@@ -75,4 +75,5 @@ Rectangle {
     color: Skin.dim
     font.pixelSize: 11 * Skin.u
   }
+  FocusRing {}
 }

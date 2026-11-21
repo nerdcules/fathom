@@ -59,15 +59,15 @@ Item {
       }
     }
     Rectangle {
+      id: knob
       x: track.width * Math.max(0, Math.min(1, row.value)) - width / 2
       anchors.verticalCenter: parent.verticalCenter
       width: 16 * Skin.u
       height: width
       radius: width / 2
       color: Skin.fg
-      border.width: row.activeFocus ? 2 : 0
-      border.color: Skin.accent
     }
+    FocusRing { target: knob; shown: row.activeFocus }
     MouseArea {
       anchors.fill: parent
       anchors.margins: -6 * Skin.u

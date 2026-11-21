@@ -57,10 +57,12 @@ hover-cursor-border-alpha = 0.45
 # Focus: Qt activeFocus. Mirror the hover-cursor values by default so
 # mouse hover, keyboard cursor, and tab focus all read as the same state
 # — themes that want focus to stand out override these four lines.
-focus-color        = "accent"
+# Fathom (#16): focus stands out from hover and selected, as Fathom's own
+# focus ring does: a 2 px edge of the foreground (was accent, 1 px, 0.45).
+focus-color        = "foreground"
 focus-fill-alpha   = 0.12
-focus-border-width = 1
-focus-border-alpha = 0.45
+focus-border-width = 2
+focus-border-alpha = 1
 
 # Selected: persistent chosen/current state.
 # Fathom (#14): filled like Quick settings' tiles when on (0.36, border

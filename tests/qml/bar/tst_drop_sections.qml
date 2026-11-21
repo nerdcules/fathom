@@ -216,6 +216,20 @@ Item {
       card.claimX = false
     }
 
+    function test_focus_is_a_ring_not_the_selected_look() {
+      // #16: the ring shows with focus; the fill and the edge stay as they were.
+      var pill = find("scale 1.25")
+      var ring = null
+      for (var i = 0; i < pill.children.length; i++) if (pill.children[i].objectName === "focusRing") ring = pill.children[i]
+      verify(ring !== null, "a pill has a focus ring")
+      verify(!ring.visible)
+      var look = String(pill.color) + " " + String(pill.border.color) + " " + pill.border.width
+      pill.forceActiveFocus()
+      verify(ring.visible, "focus shows the ring")
+      compare(String(pill.color) + " " + String(pill.border.color) + " " + pill.border.width, look)
+      verify(ring.width > pill.width && ring.height > pill.height, "outside the pill")
+    }
+
     function test_keys() {
       keyClick(Qt.Key_Escape)
       keyClick(Qt.Key_Tab)

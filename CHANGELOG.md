@@ -76,6 +76,11 @@ Each line names its commit.
   foreground at 0.4, 3.47:1 against the panel, over WCAG's 3:1 for a
   control's edge. The theme's idle edge for Omarchy's own controls goes
   back to Omarchy's default, the same 0.4 (it was 0.18, 1.62:1).
+- A focus ring (#16): where the keyboard is shows as 2 px of the
+  foreground just outside the button, row, tile, swatch or slider knob,
+  apart from the selected look; before, a picked choice on Personalise
+  didn't change when it took focus. Omarchy's own controls under the theme
+  show focus as a 2 px foreground edge (was the accent at 0.45, as hover).
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).
