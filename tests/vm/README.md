@@ -139,6 +139,25 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issues #15-#21, the design review: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree at `d8bc6fc` (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- `./install.sh --deck --desk`, then real keys through QMP in Quick
+  settings: Super+Alt+A opened it; Down put the focus ring on Wi-Fi;
+  Right opened Wi-Fi's list ("No Wi-Fi on this machine", as the VM has
+  none); Left came back to the tiles with the ring on Wi-Fi; Esc closed it.
+  The idle pills (Lock, Menu, copy) showed their edge and the key line
+  showed at the foot.
+- The shell's log after the install: no error from Fathom's QML; two
+  "Handler was registered but will not be used" lines while the clock and
+  weather dropdowns took their items' places, as before.
+- Not checked here: Personalise at other corner settings (#19) and the
+  status marks (#17), which the VM's deck has none of to show; both seen
+  on the laptop.
+
 ### Issue #22, one kit: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled
