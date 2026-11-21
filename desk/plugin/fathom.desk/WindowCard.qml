@@ -36,7 +36,7 @@ Item {
   Rectangle {
     id: frame
     anchors.fill: parent
-    radius: 14 * Skin.u
+    radius: Skin.corner(14)
     color: card.selected ? Skin.tint(Skin.accent, 0.16) : (card.hovered ? Skin.tint(Skin.fg, 0.07) : "transparent")
     border.width: card.selected ? 2 : (card.hovered ? 1 : 0)
     border.color: card.selected ? Skin.accent : Skin.tint(Skin.fg, 0.25)
@@ -94,7 +94,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       visible: !shot.hasContent
-      radius: 10 * Skin.u
+      radius: Skin.corner(10)
       color: Skin.tint(Skin.fg, 0.05)
       border.width: 1
       border.color: Skin.tint(Skin.fg, 0.08)

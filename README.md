@@ -1179,7 +1179,9 @@ or search Start for "personalise". It changes how Fathom looks:
 - **Window frame:** the focused window's border as a gradient from the
   accent to a second colour (Fathom's is cyan to violet), or the accent alone.
 - **Corners:** 0 to 30 px (Fathom's is 22). Windows, Fathom's panels and
-  Omarchy's menus and notifications share them.
+  Omarchy's menus and notifications share them, and the tiles, rows and
+  tooltips inside Fathom's panels follow in proportion (square at 0);
+  buttons, sliders and status marks stay round.
 - **Panel opacity:** 60 to 100% (Fathom's is 90%) for Fathom's panels and
   Omarchy's menus, launcher and notifications. It shows only while
   Hyprland's blur is on; with blur off, panels are solid, and the page says

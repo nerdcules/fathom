@@ -18,7 +18,7 @@ Row {
       objectName: "tile " + (item.key || index)
       width: strip.tile
       height: tileColumn.implicitHeight + 20 * Skin.u
-      radius: 12 * Skin.u
+      radius: Skin.corner(12)
       color: Skin.tint(Skin.fg, 0.06)
       border.width: 1
       border.color: Skin.tint(Skin.fg, 0.1)

@@ -141,7 +141,7 @@ Item {
     y: r ? r.y : 0
     width: r ? r.width : 0
     height: r ? r.height : 0
-    radius: 12 * Skin.u
+    radius: Skin.corner(12)
     color: Skin.tint(Skin.accent, 0.16)
     border.width: 2
     border.color: Skin.accent
@@ -189,7 +189,7 @@ Item {
               id: screenPic
               width: 128 * Skin.u
               height: width / (view.area ? view.area.width / view.area.height : 1.6)
-              radius: 8 * Skin.u
+              radius: Skin.corner(8)
               color: Skin.tint(Skin.fg, 0.05)
               border.width: 1
               border.color: Skin.tint(Skin.fg, 0.16)
@@ -203,7 +203,7 @@ Item {
                   y: 4 * Skin.u + modelData[1] * (screenPic.height - 8 * Skin.u) + 2 * Skin.u
                   width: modelData[2] * (screenPic.width - 8 * Skin.u) - 4 * Skin.u
                   height: modelData[3] * (screenPic.height - 8 * Skin.u) - 4 * Skin.u
-                  radius: 5 * Skin.u
+                  radius: Skin.corner(5)
                   color: lit ? Skin.accent : Skin.tint(Skin.fg, zoneMouse.containsMouse ? 0.3 : 0.16)
                   MouseArea {
                     id: zoneMouse
@@ -257,7 +257,7 @@ Item {
 
     Rectangle {
       anchors.fill: parent
-      radius: 14 * Skin.u
+      radius: Skin.corner(14)
       color: Skin.tint(Skin.bg, Skin.panelAlpha)
       border.width: 2
       border.color: Skin.accent

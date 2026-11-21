@@ -22,7 +22,7 @@ Rectangle {
 
   width: parent ? parent.width : 300
   height: 50 * Skin.u
-  radius: 12 * Skin.u
+  radius: Skin.corner(12)
   readonly property bool hot: mouse.containsMouse || cursor
   color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), active, hot && (clickable || active), mouse.pressed)
   border.width: 1

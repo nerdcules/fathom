@@ -90,6 +90,10 @@ Each line names its commit.
   ok is a filled disc, a warning a ring, a problem a diamond, idle a hollow
   disc. Green and red are 1.55:1 apart in lightness and green and amber
   1.01:1, so by colour alone they were one dot without colour vision.
+- The corners inside Fathom's panels follow Personalise's corners (#19):
+  a tile is 14 units at Fathom's 22, square at 0 and 19 at 30, and so on
+  for rows, cards and tooltips. They stayed fixed while the panels around
+  them changed. Buttons, sliders and status marks stay round.
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).

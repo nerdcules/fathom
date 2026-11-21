@@ -77,7 +77,7 @@ GridLayout {
       anchors.fill: parent
       anchors.leftMargin: -4 * Skin.u
       anchors.rightMargin: -4 * Skin.u
-      radius: 8 * Skin.u
+      radius: Skin.corner(8)
       color: mini.clickable && miniHover.hovered ? Skin.faint : "transparent"
     }
     HoverHandler { id: miniHover; cursorShape: mini.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor }
@@ -310,7 +310,7 @@ GridLayout {
           y: p ? p.y : 0
           width: map.boxW
           height: map.boxH
-          radius: 12 * Skin.u
+          radius: Skin.corner(12)
           // Opaque, so a line that skips a column passes behind the box.
           color: Qt.tint(Skin.bg, isSelected ? Skin.tint(Skin.accent, 0.16)
             : (modelData.kind === "service" ? Skin.tint(Skin.fg, 0.03) : Skin.tint(Skin.violet, 0.10)))
@@ -434,7 +434,7 @@ GridLayout {
           anchors.fill: parent
           anchors.leftMargin: -6 * Skin.u
           anchors.rightMargin: -6 * Skin.u
-          radius: 8 * Skin.u
+          radius: Skin.corner(8)
           color: agentRow.isPicked ? Skin.selectedFill : (rowHover.hovered ? Skin.hoverFill : "transparent")
           border.width: agentRow.isPicked ? 1 : 0
           border.color: Skin.selectedEdge
@@ -462,7 +462,7 @@ GridLayout {
             id: bar
             Layout.fillWidth: true
             Layout.preferredHeight: 12 * Skin.u
-            Rectangle { anchors.fill: parent; radius: 3 * Skin.u; color: Skin.tint(Skin.fg, 0.05) }
+            Rectangle { anchors.fill: parent; radius: Skin.corner(3); color: Skin.tint(Skin.fg, 0.05) }
             Repeater {
               model: page.axis ? F.agentsSegments(agentRow.modelData.spans, page.axis.from, page.axis.to) : []
               delegate: Rectangle {
@@ -470,7 +470,7 @@ GridLayout {
                 x: modelData.left * bar.width
                 width: Math.max(2 * Skin.u, modelData.width * bar.width)
                 height: bar.height
-                radius: 2 * Skin.u
+                radius: Skin.corner(2)
                 color: page.stateColor(modelData.state)
               }
             }
@@ -534,7 +534,7 @@ GridLayout {
           required property string modelData
           spacing: 6 * Skin.u
           Layout.alignment: Qt.AlignTop
-          Rectangle { width: 10 * Skin.u; height: 10 * Skin.u; radius: 3 * Skin.u; color: page.stateColor(modelData) }
+          Rectangle { width: 10 * Skin.u; height: 10 * Skin.u; radius: Skin.corner(3); color: page.stateColor(modelData) }
           Label { text: Skin.t("pulse.agents." + modelData); color: Skin.dim; font.pixelSize: 11 * Skin.u; Layout.rightMargin: 8 * Skin.u }
         }
       }
@@ -604,7 +604,7 @@ GridLayout {
           required property var modelData
           Layout.fillWidth: true
           implicitHeight: figure.implicitHeight + 20 * Skin.u
-          radius: 12 * Skin.u
+          radius: Skin.corner(12)
           color: Skin.faint
           Column {
             id: figure

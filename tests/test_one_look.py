@@ -152,6 +152,15 @@ class OneKit(unittest.TestCase):
         self.assertIn("border.width: 2", ring)
         self.assertRegex(read("theme/shell.toml"), r'(?m)^focus-color\s*=\s*"foreground"')
 
+    def test_inner_corners_follow_personalise(self):
+        # #19: an inner corner is Skin.corner(n), n at Fathom's own 22,
+        # scaled with Personalise's corners; round things stay round.
+        self.assertIn("function corner(n) { return Math.round(n * u * radius / 22) }", read("kit/Skin.qml"))
+        for folder in ["kit"] + PLUGINS:
+            for path in qml_files(folder):
+                fixed = re.findall(r"radius: \d+ \* Skin\.u", read(path))
+                self.assertEqual(fixed, [], f"{path}: a corner from Skin.corner()")
+
 
 if __name__ == "__main__":
     unittest.main()

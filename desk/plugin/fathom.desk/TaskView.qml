@@ -213,7 +213,7 @@ Item {
         readonly property bool target: !!view.dragging && view.tileAt(view.dragAt.x, view.dragAt.y) === tile
         width: strip.tileW
         height: strip.tileH + 26 * Skin.u
-        radius: 12 * Skin.u
+        radius: Skin.corner(12)
         // The one looked at (by Tab or the pointer) is lit with the accent;
         // the one on screen keeps an accent edge.
         color: target ? Skin.tint(Skin.accent, 0.28) : (looked ? Skin.tint(Skin.accent, 0.2) : (tileMouse.containsMouse ? Skin.tint(Skin.fg, 0.1) : Skin.tint(Skin.bg, 0.7)))
@@ -225,7 +225,7 @@ Item {
           id: mini
           anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 * Skin.u }
           height: strip.tileH - 12 * Skin.u
-          radius: 8 * Skin.u
+          radius: Skin.corner(8)
           color: Skin.tint(Skin.bg, 0.9)
           clip: true
           Repeater {
@@ -241,7 +241,7 @@ Item {
               y: r ? r.y * mini.height : 0
               width: r ? Math.max(4, r.w * mini.width - 2) : 0
               height: r ? Math.max(4, r.h * mini.height - 2) : 0
-              radius: 3 * Skin.u
+              radius: Skin.corner(3)
               color: Skin.tint(Skin.accent, 0.16)
               border.width: 1
               border.color: Skin.tint(Skin.accent, 0.45)
@@ -273,7 +273,7 @@ Item {
       readonly property bool target: !!view.dragging && view.tileAt(view.dragAt.x, view.dragAt.y) === newTile
       width: strip.tileH
       height: strip.tileH + 26 * Skin.u
-      radius: 12 * Skin.u
+      radius: Skin.corner(12)
       color: target ? Skin.tint(Skin.accent, 0.28) : (newMouse.containsMouse ? Skin.tint(Skin.fg, 0.1) : "transparent")
       border.width: target ? 2 : 1
       border.color: target ? Skin.accent : Skin.tint(Skin.fg, 0.25)
@@ -305,7 +305,7 @@ Item {
     y: view.dragAt.y - height / 2
     width: 200 * Skin.u
     height: 44 * Skin.u
-    radius: 12 * Skin.u
+    radius: Skin.corner(12)
     color: Skin.tint(Skin.bg, 0.95)
     border.width: 1
     border.color: Skin.accent

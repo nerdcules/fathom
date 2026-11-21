@@ -155,7 +155,7 @@ Item {
     Rectangle {
       id: tileFace
       anchors.fill: parent
-      radius: 12 * Skin.u
+      radius: Skin.corner(12)
       color: Skin.stateFill("transparent", false, tileMouse.containsMouse, tileMouse.pressed)
     }
     FocusRing { target: tileFace; shown: tile.activeFocus }
@@ -234,7 +234,7 @@ Item {
       Rectangle {
         Layout.fillWidth: true
         implicitHeight: 52 * Skin.u
-        radius: 14 * Skin.u
+        radius: Skin.corner(14)
         color: Skin.tint(Skin.fg, 0.06)
         border.width: 1
         border.color: search.activeFocus ? Skin.tint(Skin.accent, 0.7) : Skin.tint(Skin.accent, 0.25)
@@ -282,7 +282,7 @@ Item {
           Rectangle {
             implicitWidth: keyHint.implicitWidth + 16 * Skin.u
             implicitHeight: 24 * Skin.u
-            radius: 6 * Skin.u
+            radius: Skin.corner(6)
             color: Skin.faint
             Label { id: keyHint; anchors.centerIn: parent; text: "super"; color: Skin.dim; font.pixelSize: 11 * Skin.u }
           }
@@ -544,7 +544,7 @@ Item {
     height: (start.powerAsk !== "" ? askColumn.implicitHeight + 28 * Skin.u : powerColumn.implicitHeight + 16 * Skin.u)
     y: edge - height
     x: Math.max(8 * Skin.u, edgeRight - width)
-    radius: 14 * Skin.u
+    radius: Skin.corner(14)
     color: Skin.tint(Skin.bg, 0.97)
     border.width: 1
     border.color: Skin.tint(Skin.accent, 0.3)
@@ -640,7 +640,7 @@ Item {
     z: 60
     anchors.fill: parent
     color: Qt.rgba(0, 0, 0, 0.55)
-    radius: 14 * Skin.u
+    radius: Skin.corner(14)
     MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: aboutCard.visible = false }
 
     Rectangle {
@@ -648,7 +648,7 @@ Item {
       anchors.centerIn: parent
       width: Math.min(parent.width - 48 * Skin.u, 440 * Skin.u)
       height: aboutColumn.implicitHeight + 60 * Skin.u
-      radius: 16 * Skin.u
+      radius: Skin.corner(16)
       gradient: Gradient {
         orientation: Gradient.Horizontal
         GradientStop { position: 0; color: Skin.accent }

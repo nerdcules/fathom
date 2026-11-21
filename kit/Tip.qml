@@ -14,7 +14,7 @@ Rectangle {
   Behavior on opacity { NumberAnimation { duration: 120 * Skin.motion } }
   width: tipText.implicitWidth + 16 * Skin.u
   height: tipText.implicitHeight + 10 * Skin.u
-  radius: 6 * Skin.u
+  radius: Skin.corner(6)
   color: Skin.tint(Skin.bg, 0.96)
   border.width: 1
   border.color: Skin.faint

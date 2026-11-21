@@ -117,7 +117,7 @@ Item {
               visible: !entry.isHeader
               width: parent.width
               height: 50 * Skin.u
-              radius: 12 * Skin.u
+              radius: Skin.corner(12)
               readonly property bool lit: entry.modelData.active === true
               color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), lit, rowMouse.containsMouse, rowMouse.pressed)
               border.width: 1

@@ -126,13 +126,13 @@ GridLayout {
       Rectangle {
         width: 22 * Skin.u
         height: width
-        radius: 6 * Skin.u
+        radius: Skin.corner(6)
         color: F.lookHex(hexField.text) || picker.value
       }
       Rectangle {
         Layout.preferredWidth: 120 * Skin.u
         implicitHeight: 30 * Skin.u
-        radius: 8 * Skin.u
+        radius: Skin.corner(8)
         color: Skin.tint(Skin.fg, 0.06)
         border.width: 1
         border.color: hexField.activeFocus ? Skin.tint(Skin.accent, 0.7) : Skin.faint
@@ -345,7 +345,7 @@ GridLayout {
       readonly property color accent: page.draft.accent
       readonly property real panelAlpha: page.blur ? page.draft.opacity / 100 : 1
 
-      Rectangle { anchors.fill: parent; color: Skin.bg; radius: 10 * Skin.u }
+      Rectangle { anchors.fill: parent; color: Skin.bg; radius: Skin.corner(10) }
       Image {
         anchors.fill: parent
         source: page.lookState && page.lookState.wallpaper ? "file://" + page.lookState.wallpaper : ""
@@ -446,7 +446,7 @@ GridLayout {
           readonly property bool current: !!page.lookState && page.lookState.wallpaper === modelData.path
           width: 112 * Skin.u
           height: 63 * Skin.u
-          radius: 8 * Skin.u
+          radius: Skin.corner(8)
           color: Skin.faint
           border.width: current ? 2 : (thumbMouse.containsMouse ? 1 : 0)
           border.color: current ? Skin.accent : Skin.tint(Skin.fg, 0.6)

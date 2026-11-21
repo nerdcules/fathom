@@ -32,7 +32,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     anchors.margins: -4 * Skin.u
-    radius: 10 * Skin.u
+    radius: Skin.corner(10)
     color: row.current ? Skin.selectedFill
       : (rowHover.hovered || actionsRow.activeFocusInside ? Skin.hoverFill : "transparent")
     border.width: row.current ? 1 : 0

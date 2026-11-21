@@ -83,5 +83,9 @@ QtObject {
   function size(v) { return F.bytes(v, fmt) }
   function levelColor(l) { return l === "bad" ? urgent : (l === "warn" ? warn : (l === "ok" ? ok : dim)) }
   function tint(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
+  // An inner corner (#19): n units at Fathom's own corners (22), following
+  // Personalise's corners from there, so a tile of 14 is 14 × u at 22, 0
+  // when panels are square, 19 × u at 30. Pills, tracks and dots stay round.
+  function corner(n) { return Math.round(n * u * radius / 22) }
   function ms(n) { return Math.round(n * motion) }
 }

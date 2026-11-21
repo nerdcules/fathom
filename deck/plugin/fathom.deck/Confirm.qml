@@ -37,7 +37,7 @@ Item {
     anchors.centerIn: parent
     width: Math.min(parent.width - 64 * Skin.u, 520 * Skin.u)
     height: column.implicitHeight + 48 * Skin.u
-    radius: 18 * Skin.u
+    radius: Skin.corner(18)
     color: Skin.tint(Skin.bg, 0.97)
     border.width: 1
     border.color: Skin.tint(Skin.accent, 0.35)

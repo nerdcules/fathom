@@ -17,7 +17,7 @@ Rectangle {
   signal more()
 
   height: 78 * Skin.u
-  radius: 14 * Skin.u
+  radius: Skin.corner(14)
   opacity: available ? 1 : 0.45
   color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), on, mouse.containsMouse, mouse.pressed)
   border.width: 1

@@ -89,7 +89,7 @@ Column {
           objectName: "weekHeading"
           width: grid.weekColumn
           height: parent.height
-          radius: 8 * Skin.u
+          radius: Skin.corner(8)
           color: weekMouse.containsMouse ? Skin.hoverFill : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: grid.weekTip

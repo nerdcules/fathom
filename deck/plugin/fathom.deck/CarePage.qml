@@ -113,7 +113,7 @@ GridLayout {
       visible: !!page.disk
       Layout.fillWidth: true
       height: 14 * Skin.u
-      radius: 4 * Skin.u
+      radius: Skin.corner(4)
       color: Skin.faint
       clip: true
       Row {
@@ -147,7 +147,7 @@ GridLayout {
           Rectangle {
             width: 9 * Skin.u
             height: width
-            radius: 2 * Skin.u
+            radius: Skin.corner(2)
             color: page.segmentColor(modelData.key)
             anchors.verticalCenter: parent.verticalCenter
           }
