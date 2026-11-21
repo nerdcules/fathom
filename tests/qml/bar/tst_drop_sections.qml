@@ -78,6 +78,16 @@ Item {
     tc.wait(30)
   }
 
+  // Status marks (#17).
+  Row {
+    y: 900
+    Dot { id: okDot; tone: Skin.ok }
+    Dot { id: warnDot; tone: Skin.warn }
+    Dot { id: badDot; tone: Skin.urgent }
+    Dot { id: idleDot; tone: Skin.dim }
+    Dot { id: otherDot; tone: Skin.accent }
+  }
+
   TestCase {
     id: tc
     name: "DropSections"
@@ -228,6 +238,13 @@ Item {
       verify(ring.visible, "focus shows the ring")
       compare(String(pill.color) + " " + String(pill.border.color) + " " + pill.border.width, look)
       verify(ring.width > pill.width && ring.height > pill.height, "outside the pill")
+    }
+
+    function test_status_marks_differ_by_shape() {
+      compare([okDot.shape, warnDot.shape, badDot.shape, idleDot.shape, otherDot.shape],
+              ["disc", "ring", "diamond", "hollow", "disc"])
+      compare(okDot.width, 8 * Skin.u, "the same box as before")
+      compare(badDot.width, okDot.width)
     }
 
     function test_keys() {

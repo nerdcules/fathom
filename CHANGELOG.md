@@ -86,6 +86,10 @@ Each line names its commit.
   apart from the selected look; before, a picked choice on Personalise
   didn't change when it took focus. Omarchy's own controls under the theme
   show focus as a 2 px foreground edge (was the accent at 0.45, as hover).
+- Status marks tell their states apart by shape as well as colour (#17):
+  ok is a filled disc, a warning a ring, a problem a diamond, idle a hollow
+  disc. Green and red are 1.55:1 apart in lightness and green and amber
+  1.01:1, so by colour alone they were one dot without colour vision.
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).
