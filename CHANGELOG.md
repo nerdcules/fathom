@@ -72,6 +72,10 @@ Each line names its commit.
   Quick settings' tiles and lists, the dropdowns' rows, the deck's lists and
   Start's pinned apps drew these four ways (a picked button was 0.22 with a
   full edge, a list's cursor 0.16 with none; hover was grey on the tiles).
+- Idle buttons and text fields have an edge you can see (#21): the
+  foreground at 0.4, 3.47:1 against the panel, over WCAG's 3:1 for a
+  control's edge. The theme's idle edge for Omarchy's own controls goes
+  back to Omarchy's default, the same 0.4 (it was 0.18, 1.62:1).
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).

@@ -68,6 +68,10 @@ QtObject {
   readonly property color pressedFill: tint(accent, 0.22)
   readonly property color selectedFill: tint(accent, 0.36)
   readonly property color selectedEdge: tint(accent, 0.8)
+  // A control's edge when idle (#21): foreground at 0.4, 3.47:1 against
+  // Fathom's panel (#0a1020), over WCAG's 3:1 for a control's boundary;
+  // Omarchy's own default, which the theme uses too (normal-border-alpha).
+  readonly property color idleEdge: tint(fg, 0.4)
   function stateFill(idle, selected, hovered, pressed) {
     if (selected) return tint(accent, pressed ? 0.55 : (hovered ? 0.45 : 0.36))
     return pressed ? pressedFill : (hovered ? hoverFill : idle)

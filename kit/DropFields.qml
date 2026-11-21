@@ -65,7 +65,7 @@ Column {
           radius: height / 2
           color: Skin.tint(Skin.fg, 0.06)
           border.width: 1
-          border.color: input.activeFocus ? Skin.accent : Skin.tint(Skin.fg, 0.18)
+          border.color: input.activeFocus ? Skin.accent : Skin.idleEdge
           TextInput {
             id: input
             objectName: "field " + parent.parent.key

@@ -182,7 +182,7 @@ Item {
                 radius: height / 2
                 color: Skin.tint(Skin.fg, 0.06)
                 border.width: 1
-                border.color: password.activeFocus ? Skin.accent : Skin.tint(Skin.fg, 0.18)
+                border.color: password.activeFocus ? Skin.accent : Skin.idleEdge
                 TextInput {
                   id: password
                   objectName: "password"

@@ -37,7 +37,10 @@ normal-color        = "#e6f0ff"
 normal-fill-alpha   = 0.04
 normal-border       = "#e6f0ff"
 normal-border-width = 1
-normal-border-alpha = 0.18
+# Fathom (#21): Omarchy's default 0.4, as Fathom's own controls (Skin's
+# idleEdge): 3.47:1 against the panel, over WCAG's 3:1 for a control's edge.
+# Was 0.18 (1.62:1).
+normal-border-alpha = 0.4
 
 # Fathom: hover, focus and selected states take the accent, as Fathom's own
 # panels do (the Start menu, the deck, the desk), so switches, picked

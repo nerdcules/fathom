@@ -125,6 +125,15 @@ class OneKit(unittest.TestCase):
             own = re.findall(r"Skin\.tint\(Skin\.(?:fg|accent), 0\.(?:1[1-6]|22|36|45|8)\)", src)
             self.assertEqual(own, [], f"{path}: states come from the skin")
 
+    def test_idle_controls_have_an_edge_you_can_see(self):
+        # #21: 0.4 of the foreground on the panel is 3.47:1, over 3:1.
+        theme = re.search(r"(?m)^normal-border-alpha\s*=\s*([0-9.]+)", read("theme/shell.toml")).group(1)
+        self.assertEqual(theme, "0.4")
+        self.assertIn("readonly property color idleEdge: tint(fg, " + theme + ")", read("kit/Skin.qml"))
+        self.assertIn("Skin.idleEdge", read("kit/Pill.qml"))
+        for path in ("kit/DropSearch.qml", "kit/DropFields.qml", "desk/plugin/fathom.desk/QuickList.qml"):
+            self.assertIn("Skin.idleEdge", read(path), f"{path}: a text field's edge")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,7 +37,7 @@ Column {
     radius: height / 2
     color: Skin.tint(Skin.fg, 0.06)
     border.width: 1
-    border.color: field.activeFocus ? Skin.accent : Skin.tint(Skin.fg, 0.18)
+    border.color: field.activeFocus ? Skin.accent : Skin.idleEdge
     TextInput {
       id: field
       objectName: "search field"

@@ -30,8 +30,10 @@ Rectangle {
     if (primary) return Skin.tint(Skin.accent, pillMouse.pressed ? 0.55 : (pillMouse.containsMouse || activeFocus ? 0.42 : 0.30))
     return Skin.stateFill(Skin.faint, selected, pillMouse.containsMouse || activeFocus, pillMouse.pressed)
   }
-  border.width: activeFocus || selected ? 1 : 0
-  border.color: selected ? Skin.selectedEdge : Skin.accent
+  // Every usable pill has an edge, so its shape shows when idle (#21); a
+  // primary one is filled enough not to need it.
+  border.width: selected || activeFocus || (enabledAction && !primary) ? 1 : 0
+  border.color: selected ? Skin.selectedEdge : (activeFocus ? Skin.accent : Skin.idleEdge)
   opacity: enabledAction ? 1 : 0.4
   Accessible.role: Accessible.Button
   Accessible.name: tip || text
