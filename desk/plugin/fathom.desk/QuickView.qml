@@ -288,9 +288,12 @@ Item {
   // page that's hidden can't keep focus, so the view holds it meanwhile.
   property Item returnTo: null
   onPageChanged: {
-    if (page === "" && returnTo && returnTo.visible) returnTo.forceActiveFocus(Qt.OtherFocusReason)
-    else view.forceActiveFocus()
-    if (page === "") returnTo = null
+    view.forceActiveFocus()
+    // After the tiles show again: a hidden item can't take focus.
+    if (page === "" && returnTo) Qt.callLater(function() {
+      if (view.page === "" && view.returnTo && view.returnTo.visible) view.returnTo.forceActiveFocus(Qt.OtherFocusReason)
+      view.returnTo = null
+    })
   }
 
   PwObjectTracker { objects: view.sink ? [view.sink] : [] }
