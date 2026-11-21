@@ -36,7 +36,7 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
-| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display, the clock, the weather, Tailscale, Agents and the world clock so far (see [Desk](#desk)) |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display, the clock, the weather, Tailscale, Agents, the world clock, the Omarchy update, the keyboard layout and the microphone so far (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
@@ -508,7 +508,14 @@ time, day or night, the day when it isn't today, how far it is from here
 or from UTC, and its temperature; search to add a city or to say where
 you are; move or remove a city (Delete removes it, a adds one); 24-hour
 time, UTC offsets and °C or °F. Omarchy's own keeps its globe, daylight
-strips and people, which Fathom's leaves out). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
+strips and people, which Fathom's leaves out); the **Omarchy update**
+(shown only while one is waiting, as Omarchy's: what it is, Update now,
+Check again; a right-click updates at once); the **keyboard layout**
+(shown with two layouts or input methods, as Omarchy's: every layout by
+name, the one in use lit, to pick one; the next input method; a
+right-click goes to the next); and the **microphone** (muted or live, the
+input level, the microphones to choose from, and the apps listening; a
+right-click mutes, the wheel turns it up or down). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
 so `install.sh --desk` puts it where Omarchy's was, with its settings, and
 Omarchy's keys and scripts for it reach Fathom's; an item that isn't on
 the bar isn't touched. The install ends by naming the bar items that don't
@@ -1321,7 +1328,7 @@ already.
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
 | 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, alerts, actions) | first version |
-| 17 | The bar's dropdowns: Fathom's own for every Omarchy bar item (Display, clock, weather, Tailscale, Agents, world clock so far) | under way |
+| 17 | The bar's dropdowns: Fathom's own for every Omarchy bar item (Display, clock, weather, Tailscale, Agents, world clock, Omarchy update, keyboard layout, microphone so far) | under way |
 
 Parts that change system files or the firewall (the sign-in screen,
 Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on

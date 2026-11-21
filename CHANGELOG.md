@@ -12,6 +12,15 @@ Each line names its commit.
 
 ## [Unreleased]
 
+### Added
+
+- Fathom's dropdowns for three more of the bar's items (#14): the Omarchy
+  update (what's waiting, Update now, Check again), the keyboard layout
+  (every layout by name, the one in use lit, to pick one; the next input
+  method) and the microphone (mute, input level, the microphones to
+  choose from, the apps listening). Each keeps Omarchy's own behaviour on
+  the bar, with its old click now on a right-click.
+
 ## [0.5.0] - 2026-11-21
 
 Fathom's own dropdowns on the bar, one kit and one look across Fathom, and

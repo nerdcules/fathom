@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.keyboard-layout",
+  "name": "Keyboard layout (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's keyboard layout label with Fathom's dropdown: the layouts to pick from, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "KeyboardLayout.qml"
+  },
+  "barWidget": {
+    "displayName": "Keyboard layout (Fathom)",
+    "description": "The keyboard layout, with Fathom's dropdown",
+    "category": "Compositor",
+    "defaultSection": "right",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.keyboard-layout"
+  }
+}

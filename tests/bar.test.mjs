@@ -400,3 +400,44 @@ test("world clock: a chosen city, the searches, and the keys", () => {
   assert.equal(opts[0].value, "Asia/Tokyo");
   assert.deepEqual([WS.keyAction(0x01000007, ""), WS.keyAction(0, "a"), WS.keyAction(0, "x")], ["remove", "add", ""]);
 });
+
+// The small items: system update, keyboard layout, microphone.
+const SU = load("plugin/fathom.system-update/Update.js", ["sections", "updateRows"]);
+const KL = load("plugin/fathom.keyboard-layout/Layouts.js", ["sections", "layoutNames", "layouts"]);
+const MI = load("plugin/fathom.microphone/Mic.js", ["sections"]);
+
+test("system update: what's waiting, and Update now only when something is", () => {
+  const s = plain(SU.sections({ available: true, lines: "omarchy 4.5.0-3 -> 4.6.0-1\nomarchy-dev-checkout 3 new commits on origin/dev\n" }, wst));
+  assert.deepEqual(s[0].rows.map((r) => [r.name, r.detail]), [["omarchy", "4.5.0-3 → 4.6.0-1"], ["omarchy-dev-checkout 3 new commits on origin/dev", ""]]);
+  assert.deepEqual(s[2].buttons.map((b) => b.key), ["update", "check"]);
+  const none = plain(SU.sections({ available: false, lines: "" }, wst));
+  assert.deepEqual([none[0].hidden, none[1].text], [true, "[su.none]"]);
+  assert.deepEqual(none[2].buttons.map((b) => b.key), ["check"]);
+});
+
+test("keyboard layout: the layouts by name, the one in use lit", () => {
+  const xkb = "models:\n- name: pc105\n  description: Generic 105-key PC\nlayouts:\n- layout: 'gb'\n  variant: ''\n  brief: 'en'\n  description: English (UK)\n" +
+    "- layout: 'us'\n  variant: 'intl'\n  brief: 'en'\n  description: English (US, intl., with dead keys)\noptions:\n- name: x\n  description: y\n";
+  const names = KL.layoutNames(xkb);
+  assert.deepEqual(plain(names), { gb: "English (UK)", "us(intl)": "English (US, intl., with dead keys)" });
+  const list = plain(KL.layouts({ layout: "gb,us,fr", variant: ",intl," }, names));
+  assert.deepEqual(list, [{ code: "gb", name: "English (UK)" }, { code: "us(intl)", name: "English (US, intl., with dead keys)" }, { code: "fr", name: "fr" }]);
+  const s = plain(KL.sections({ layouts: list, index: 1, methods: 0 }, wst));
+  assert.deepEqual(s[0].rows.map((r) => r.active), [false, true, false]);
+  assert.equal(s[1].hidden, true);
+  assert.equal(plain(KL.sections({ layouts: list.slice(0, 1), index: 0, methods: 0 }, wst))[1].text, "[kb.one]");
+  const im = plain(KL.sections({ layouts: list.slice(0, 1), methods: 2, method: "Mozc" }, wst));
+  assert.deepEqual([im[2].hidden, im[2].rows[0].name], [false, "Mozc"]);
+});
+
+test("microphone: live or muted, the level, the inputs and who's listening", () => {
+  const s = plain(MI.sections({ present: true, muted: false, volume: 0.42, apps: ["Zoom"],
+    inputs: [{ key: "51", name: "Built-in", current: true }, { key: "60", name: "USB mic", current: false }] }, wst));
+  assert.deepEqual([s[0].on, s[0].detail], [true, "[@bar.microphoneInUse]"]);
+  assert.deepEqual([s[1].value, s[1].label], [0.42, "42%"]);
+  assert.deepEqual(s[2].rows.map((r) => [r.key, r.active]), [["51", true], ["60", false]]);
+  assert.deepEqual(s[3].rows.map((r) => r.name), ["Zoom"]);
+  const muted = plain(MI.sections({ present: true, muted: true, volume: 0, inputs: [], apps: [] }, wst));
+  assert.deepEqual([muted[0].on, muted[0].detail, muted[2].hidden, muted[3].hidden], [false, "[@bar.microphoneMuted]", true, true]);
+  assert.deepEqual(plain(MI.sections({ present: false }, wst)), [{ type: "text", text: "[mic.none]", dim: true }]);
+});

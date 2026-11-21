@@ -139,6 +139,29 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, Omarchy update, keyboard layout, microphone: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- With the three items put on the bar, `./install.sh --desk` put Fathom's
+  in their places; `uninstall.sh` put Omarchy's back.
+- Each opened through its IPC (`omarchy-shell <item> open`; their buttons
+  hide here, as Omarchy's: no update waiting, no microphone, one layout):
+  "Omarchy is up to date." with Check again; "No microphone."; "Only one
+  layout is set up.".
+- Two layouts (`hyprctl eval 'hl.config({ input = { kb_layout = "gb,us" }
+  })'`, after the install, whose Hyprland reload had put one back): the
+  dropdown listed English (UK) and English (US), the UK one lit; Down,
+  Down, Return (real keys, QMP) switched the keyboard to English (US)
+  (`hyprctl -j devices`: active_layout_index 1).
+- The shell's log: no error from the three. A `refreshDailyForecast`
+  TypeError from the weather while the shell was replaced: the VM's
+  journal has 17 since 17 November, from Omarchy's own weather before
+  Fathom's existed.
+- Not tried: an update waiting, a microphone, input methods.
+
 ### Issue #14, the world clock: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled

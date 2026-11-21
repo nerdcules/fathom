@@ -103,16 +103,31 @@
       "planned": "what's playing, with its controls"
     },
     "omarchy.keyboard-layout": {
-      "planned": "the layouts, to pick one (a click cycles them today)"
+      "fathom": "fathom.keyboard-layout",
+      "follows": {
+        "shell/plugins/bar/widgets/KeyboardLayout.qml": "3717d02d5dfd4389",
+        "shell/plugins/bar/widgets/KeyboardLayoutModel.js": "d61308b95a628cdf",
+        "shell/plugins/bar/widgets/KeyboardLayout.manifest.json": "7824e5e77a583edf",
+        "shell/Commons/InputMethodState.qml": "5b7498d3b6ddee43"
+      }
     },
     "omarchy.microphone": {
-      "planned": "the microphone: mute, level and input (a click mutes it today)"
+      "fathom": "fathom.microphone",
+      "follows": {
+        "shell/plugins/bar/widgets/Microphone.qml": "2beeac535ef93a96",
+        "shell/plugins/bar/widgets/Microphone.manifest.json": "58f9f212d3a840bc"
+      }
     },
     "omarchy.indicators": {
       "planned": "each indicator (Do not disturb, night light, stay awake, ...) with its switch"
     },
     "omarchy.system-update": {
-      "planned": "what the update brings, and Update now (a click starts it today)"
+      "fathom": "fathom.system-update",
+      "follows": {
+        "shell/plugins/bar/widgets/SystemUpdate.qml": "20b4b7b1e8e5a9e7",
+        "shell/plugins/bar/widgets/SystemUpdate.manifest.json": "daf0806360b5c8ff",
+        "bin/omarchy-update-available": "257387ccfcca6211"
+      }
     },
     "omarchy.tray": {
       "planned": "each app's tray menu in Fathom's look"

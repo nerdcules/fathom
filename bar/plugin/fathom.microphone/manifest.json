@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.microphone",
+  "name": "Microphone (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's microphone icon with Fathom's dropdown: mute, the level, the inputs and the apps listening, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Microphone.qml"
+  },
+  "barWidget": {
+    "displayName": "Microphone (Fathom)",
+    "description": "The microphone, with Fathom's dropdown",
+    "category": "Audio",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.microphone"
+  }
+}

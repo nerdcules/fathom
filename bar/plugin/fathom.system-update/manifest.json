@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.system-update",
+  "name": "Omarchy update (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's update button with Fathom's dropdown: what the update is, and Update now",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "SystemUpdate.qml"
+  },
+  "barWidget": {
+    "displayName": "Omarchy update (Fathom)",
+    "description": "Omarchy updates, with Fathom's dropdown",
+    "category": "System",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.system-update"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "kb.title": "Keyboard",
+  "kb.one": "Only one layout is set up. More go in kb_layout, in ~/.config/hypr/input.lua.",
+  "kb.inputMethod": "Input method",
+  "kb.next": "Next input method",
+  "drop.on": "On",
+  "drop.off": "Off"
+}
