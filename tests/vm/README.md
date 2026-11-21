@@ -139,6 +139,29 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, the world clock: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- With `omarchy.elsewhen` put on the bar, `./install.sh --desk` put
+  `fathom.elsewhen` in its place. The dropdown showed the five cities
+  Elsewhen had seeded (London, Dubai, Tokyo, Los Angeles, New York) with
+  their times, day or night, "Tomorrow · +9h" for Tokyo, and "It's 6:36 PM
+  here in London". Real keys (QMP): Down and Return chose London (Move up,
+  Move down, Remove appeared); `a` opened the search, and "tok" listed
+  the cities on Tokyo's zone with their UTC offsets, Tokyo itself left out
+  as it was on the list; Esc closed it. `omarchy-shell omarchy.elsewhen
+  times` answered with the rows.
+- No temperatures: open-meteo answers this network with 403 (as for the
+  weather).
+- The shell's log: no error from the world clock; the skin's `t()`
+  TypeError three times during the restarts, as before.
+- `uninstall.sh` put `omarchy.elsewhen` back.
+- Not tried: adding a city, moving or removing one, where you are (which
+  can move the machine's clock), the toggles.
+
 ### Issue #14, Agents: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled

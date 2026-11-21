@@ -59,6 +59,13 @@ Each line names its commit.
   starters; starting the default agent; and signing in to Claude Code,
   Codex or Grok, in a terminal. The kit gained a heading (a mark, a name
   and a plan) and a meter's alarm colour.
+- The world clock's Fathom dropdown: Omarchy's Elsewhen (by Jason
+  Fried) with its own model copied unchanged, drawn in Fathom's look: a
+  row per city with its time, day or night, the day when it isn't today,
+  the distance from here or from UTC and the temperature; a search to add
+  a city or to say where you are; moving and removing cities; 24-hour
+  time, UTC offsets and °C or °F. It leaves out Elsewhen's globe, daylight
+  strips and people. A kit row can show its trailing words strong.
 - A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
   records the Omarchy files each copies behaviour from, with a
   fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.

@@ -89,7 +89,12 @@
       }
     },
     "omarchy.elsewhen": {
-      "planned": "the world clock: the time in each city"
+      "fathom": "fathom.elsewhen",
+      "follows": {
+        "shell/plugins/panels/elsewhen/Panel.qml": "2a357c056109ca07",
+        "shell/plugins/panels/elsewhen/Model.js": "669cbfe9b28e65be",
+        "shell/plugins/panels/elsewhen/manifest.json": "c71ac75bf10be5c2"
+      }
     },
     "omarchy.dropbox": {
       "planned": "Dropbox's status, storage and recent files"

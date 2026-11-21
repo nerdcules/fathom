@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.elsewhen",
+  "name": "World clock (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's world clock (Elsewhen, by Jason Fried) with Fathom's dropdown: the time in each city, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Elsewhen.qml"
+  },
+  "barWidget": {
+    "displayName": "World clock (Fathom)",
+    "description": "The time in each city, with Fathom's dropdown",
+    "category": "Time",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "offsetMode": "home",
+      "units": ""
+    },
+    "schema": [
+      {
+        "key": "hour24",
+        "type": "boolean",
+        "label": "24-hour time (unset follows the system)"
+      },
+      {
+        "key": "offsetMode",
+        "type": "string",
+        "label": "Row offsets: home (distance from you) or utc",
+        "defaultValue": "home"
+      },
+      {
+        "key": "units",
+        "type": "string",
+        "label": "Temperature units (F or C; blank follows the system)",
+        "defaultValue": ""
+      }
+    ]
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.elsewhen"
+  }
+}

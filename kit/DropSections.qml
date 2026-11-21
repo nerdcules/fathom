@@ -8,7 +8,7 @@ import "."
 //   slider   {key, glyph, tip, value (0..1), label, steps}      -> moved(key, value)
 //   choices  {key, title, options: [{value, label}], chosen}    -> picked(key, value)
 //   rows     {key, title, rows: [{key, glyph, name, detail,
-//             trail, active, busy, clickable}], busyLabel}      -> picked(key, row key)
+//             trail, strong, active, busy, clickable}], busyLabel} -> picked(key, row key)
 //   switch   {key, glyph, name, detail, on}                     -> toggled(key, !on)
 //   actions  {key, buttons: [{key, label, glyph, primary}]}     -> picked(key, button key)
 //   meter    {key, label, trail, value (0..1), alarm}           -> picked(key, "doubleClick")
@@ -128,6 +128,7 @@ Column {
           name: modelData.name || ""
           detail: modelData.detail || ""
           trail: modelData.trail || ""
+          strong: modelData.strong === true
           active: modelData.active === true
           busy: modelData.busy === true
           busyLabel: spec.busyLabel || ""

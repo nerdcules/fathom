@@ -61,7 +61,7 @@ item needs a description, not a new screen:
 |---|---|---|
 | `slider` | `key`, `glyph`, `tip`, `value` (0 to 1), `label`, `steps` | `moved(key, value)` |
 | `choices` | `key`, `title`, `options: [{value, label}]`, `chosen` | `picked(key, value)` |
-| `rows` | `key`, `title`, `rows: [{key, glyph, name, detail, trail, active, busy, clickable}]`, `busyLabel` | `picked(key, row key)` |
+| `rows` | `key`, `title`, `rows: [{key, glyph, name, detail, trail, strong (the trail as the row's point), active, busy, clickable}]`, `busyLabel` | `picked(key, row key)` |
 | `switch` | `key`, `glyph`, `name`, `detail`, `on` | `toggled(key, !on)` |
 | `actions` | `key`, `buttons: [{key, label, glyph, primary}]` | `picked(key, button key)` |
 | `meter` | `key`, `label`, `trail`, `value` (0 to 1), `alarm` (the urgent colour) | `picked(key, "doubleClick")` |

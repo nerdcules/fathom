@@ -16,6 +16,8 @@ Rectangle {
   property bool busy: false
   property string busyLabel: ""
   property bool clickable: true
+  // The trailing words as the row's point (a city's time), not a note.
+  property bool strong: false
   // Keyboard cursor from the dropdown (its arrow keys), drawn as hover.
   property bool cursor: false
   signal clicked()
@@ -73,8 +75,9 @@ Rectangle {
     id: trailLabel
     anchors { right: parent.right; rightMargin: 14 * Skin.u; verticalCenter: parent.verticalCenter }
     text: row.busy ? row.busyLabel : row.trail
-    color: Skin.dim
-    font.pixelSize: Skin.text.caption
+    color: row.strong && !row.busy ? Skin.fg : Skin.dim
+    font.pixelSize: row.strong && !row.busy ? Skin.text.title : Skin.text.caption
+    font.weight: row.strong && !row.busy ? Font.DemiBold : Font.Normal
   }
   FocusRing {}
 }

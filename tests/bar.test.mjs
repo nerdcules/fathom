@@ -351,3 +351,52 @@ test("agents: no agents yet, the actions, starters and the summary line", () => 
     todayPrompts: 3, modelUsage: { m1: { inputTokens: 5, outputTokens: 5 } } }], atn, at, anum, () => "Opus", (n) => n + " tok", () => "Friday");
   assert.deepEqual(plain(phrases), ["[@agents.tokensThisWeek 900]", "[@agents.tokensToday 100]", "Mostly Opus", "[@agents.busiestDay]", "[@agents.promptsToday 3]"]);
 });
+
+// World clock: Fathom's dropdown over Elsewhen's own model (copied unchanged).
+const WS = load("plugin/fathom.elsewhen/Elsewhen.js", ["sections", "cityRow", "keyAction"]);
+const EM = load("plugin/fathom.elsewhen/Model.js", ["rows", "parseCities", "utcOffsetLabel", "searchZones", "zoneOptions"]);
+const wst = (k) => `[${k}]`;
+// 23:30 UTC: 23:30 in London, 00:30 the next day in Paris, 08:30 next day in Tokyo, 15:30 in Los Angeles.
+const wsNow = Date.parse("2026-11-21T23:30:00Z");
+const wsZones = EM.parseCities([{ name: "London", zone: "Europe/London" }, { name: "Paris", zone: "Europe/Paris" },
+  { name: "Tokyo", zone: "Asia/Tokyo" }, { name: "Los Angeles", zone: "America/Los_Angeles" }], "");
+// Elsewhen counts "Tomorrow" from this machine's own day; the tests read it in UTC.
+const wsRows = (hour24) => {
+  const tz = process.env.TZ;
+  process.env.TZ = "UTC";
+  try { return plain(EM.rows(wsZones, wsProbe, wsNow, 0, hour24, null)); }
+  finally { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz; }
+};
+const wsProbe = { "Europe/London": { offsetMinutes: 0, abbr: "GMT" }, "Europe/Paris": { offsetMinutes: 60, abbr: "CET" },
+  "Asia/Tokyo": { offsetMinutes: 540, abbr: "JST" }, "America/Los_Angeles": { offsetMinutes: -480, abbr: "PST" } };
+
+test("world clock: a row per city with its time, day, distance and temperature", () => {
+  const rows = wsRows(true);
+  const s = plain(WS.sections({ rows, offsets: rows.map((r) => r.relative), temps: ["9°C", "", "", ""], chosen: -1 }, wst));
+  const cities = s.find((x) => x.key === "cities").rows;
+  assert.deepEqual(cities.map((r) => [r.name, r.trail, r.detail]), [
+    ["London", "23:30", "9°C"], ["Paris", "00:30", "Tomorrow · +1h"], ["Tokyo", "08:30", "Tomorrow · +9h"], ["Los Angeles", "15:30", "-8h"]]);
+  assert.deepEqual(cities.map((r) => r.glyph === String.fromCodePoint(0xF0599)), [false, false, true, true], "day or night");
+  assert.ok(cities.every((r) => r.strong), "the time is the row's point");
+  assert.equal(s.find((x) => x.key === "city").hidden, true, "no city chosen, no city actions");
+  assert.equal(EM.utcOffsetLabel(-480, null), "UTC-8");
+});
+
+test("world clock: a chosen city, the searches, and the keys", () => {
+  const rows = wsRows(false);
+  assert.equal(WS.cityRow(rows[2], 2, 2, "", "").trail, "8:30 AM", "12-hour time with its AM or PM");
+  const chosen = plain(WS.sections({ rows, chosen: 1 }, wst));
+  assert.equal(chosen.find((x) => x.key === "city").hidden, false);
+  assert.equal(chosen.find((x) => x.key === "cities").rows[1].active, true);
+  const adding = plain(WS.sections({ rows, chosen: -1, adding: true, query: "san", searching: true,
+    matches: [{ label: "San Francisco", value: "America/Los_Angeles", region: "California, US", utc: "UTC-8" }] }, wst));
+  const search = adding.find((x) => x.type === "search");
+  assert.deepEqual([search.key, search.hidden, search.results[0].detail], ["add", false, "California, US · UTC-8"]);
+  assert.ok(adding.find((x) => x.key === "do").hidden && adding.find((x) => x.key === "show").hidden, "the buttons step aside while searching");
+  assert.ok(adding.some((x) => !x.hidden && x.text === "[@elsewhen.searchingPlaces]"));
+  const here = plain(WS.sections({ rows, chosen: -1, choosingHere: true }, wst)).find((x) => x.type === "search");
+  assert.deepEqual([here.key, here.placeholder], ["here", "[@elsewhen.whereAreYou]"]);
+  const opts = plain(EM.searchZones(EM.zoneOptions("Europe/London\nAsia/Tokyo\n", []), "tok", 6));
+  assert.equal(opts[0].value, "Asia/Tokyo");
+  assert.deepEqual([WS.keyAction(0x01000007, ""), WS.keyAction(0, "a"), WS.keyAction(0, "x")], ["remove", "add", ""]);
+});
