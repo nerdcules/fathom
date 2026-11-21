@@ -1321,6 +1321,7 @@ already.
 | 13 | Crumbs: every browser's cookies, a map of who follows you where, blocking by policy | first version |
 | 14 | Updates: `fathom-update`, semantic-version releases, a changelog | first version |
 | 15 | Phone: `fathom-phone`, the laptop side of Fathom for Android (pairing, alerts, actions) | first version |
+| 17 | The bar's dropdowns: Fathom's own for every Omarchy bar item (Display, clock, weather, Tailscale, Agents, world clock so far) | under way |
 
 Parts that change system files or the firewall (the sign-in screen,
 Sentinel, Pulse and Crumbs now; face login later) are opt-in flags on

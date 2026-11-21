@@ -12,6 +12,11 @@ Each line names its commit.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-21
+
+Fathom's own dropdowns on the bar, one kit and one look across Fathom, and
+Quick settings by keyboard.
+
 ### Added
 
 - The bar's cluster (#14): Omarchy's Bluetooth, network, volume and
@@ -29,20 +34,20 @@ Each line names its commit.
   (`kit/`) whose factory draws a dropdown from a list of sections.
   `bar/items.json` lists every Omarchy bar item with its Fathom dropdown
   or plan, and a test fails when Omarchy has one it doesn't name; the
-  install names the bar items still without one.
+  install names the bar items still without one (91193fa).
 - The clock's Fathom dropdown: Omarchy's label (formats, right-click to
   change, middle-click for the time zone) with Fathom's calendar: the
   month with ISO week numbers and today lit, the year so far, and
   Omarchy's life bar; its keys and settings are Omarchy's. The kit's
   factory gained a meter and text fields, and a card can take keys of its
-  own first.
+  own first (340ee5b).
 - The weather's Fathom dropdown: Omarchy's icon, sources (wttr.in,
   open-meteo, Omarchy's place lookup) and settings, with Fathom's
   dropdown: the temperature, feels-like, wind and humidity, the place
   (search for another, or go back to where you are), and the coming days.
   Unlike Omarchy's, a place being saved stops waiting when open-meteo
   keeps failing, instead of saying "Loading…" for good. The factory gained
-  facts, a strip of tiles and a search field.
+  facts, a strip of tiles and a search field (3a0d171).
 - Tailscale's Fathom dropdown: Omarchy's icon and its own Tailscale
   service and model (copied unchanged), with Fathom's dropdown: on or off,
   the accounts when there are several, exit nodes and a Mullvad region
@@ -50,7 +55,7 @@ Each line names its commit.
   DNS name or IPv6 address to copy, or files to send. Omarchy's letter
   keys (t, c, n, d, s, r, /) work as in Omarchy's. The kit's search field
   can wait for the arrow keys instead of taking the keyboard as it shows,
-  and the arrows go on past its first and last result.
+  and the arrows go on past its first and last result (a996f99).
 - The Agents' Fathom dropdown: Omarchy's icon and its own usage records
   (Main.qml and Agent.qml, copied unchanged), with Fathom's dropdown: each
   subscription's limits as meters with the time until they reset, a
@@ -58,25 +63,27 @@ Each line names its commit.
   several accounts with Use and Autoswitch; a prepaid balance; Omarchy's
   starters; starting the default agent; and signing in to Claude Code,
   Codex or Grok, in a terminal. The kit gained a heading (a mark, a name
-  and a plan) and a meter's alarm colour.
+  and a plan) and a meter's alarm colour (ad6d1a9).
 - The world clock's Fathom dropdown: Omarchy's Elsewhen (by Jason
   Fried) with its own model copied unchanged, drawn in Fathom's look: a
   row per city with its time, day or night, the day when it isn't today,
   the distance from here or from UTC and the temperature; a search to add
   a city or to say where you are; moving and removing cities; 24-hour
   time, UTC offsets and °C or °F. It leaves out Elsewhen's globe, daylight
-  strips and people. A kit row can show its trailing words strong.
+  strips and people. A kit row can show its trailing words strong
+  (0d3362d).
 - A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
   records the Omarchy files each copies behaviour from, with a
-  fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.
+  fingerprint, and `tests/test_bar.py` fails when Omarchy changes one
+  (340ee5b).
 - One look everywhere: the bar's dropdowns size for the screen by the
   rule the Command Deck and the desk use, so their text, sliders and
-  buttons match Quick settings'.
+  buttons match Quick settings' (aef97dd).
 - Quick settings by keyboard (#15): Tab or the arrows (or j and k) move
   between its tiles, sliders, buttons and list rows, Space or Return
   toggles or picks, Right (or l) opens a tile's list and Left (or h) comes
   back to that tile, and a line at the foot says so. Before, only Esc did
-  anything.
+  anything (e5f79ec, 4ca30fc).
 - Quick settings lists Wi-Fi networks and Bluetooth devices itself, behind
   the arrows on their tiles: join, leave, a password field, pair, connect
   (b52638d). `fathom-desk quick wifi|bluetooth` opens it on a list.
@@ -93,36 +100,41 @@ Each line names its commit.
   grows its own copy, uses something the skin lacks, or takes the theme
   or its size differently. Buttons in Quick settings, Snap layouts and the
   dropdowns are now the deck's: padding of 20 units (was 22, at Fathom's
-  size for the screen), and a lit (primary) one has a semibold word.
+  size for the screen), and a lit (primary) one has a semibold word
+  (6e5c03a).
 - One set of state strengths everywhere (#18), Omarchy's own: hover
   tints the accent at 0.12 and pressed at 0.22; selected, on, chosen and a
   list's cursor fill with it at 0.36 with a 0.8 edge. Fathom's buttons,
   Quick settings' tiles and lists, the dropdowns' rows, the deck's lists and
   Start's pinned apps drew these four ways (a picked button was 0.22 with a
-  full edge, a list's cursor 0.16 with none; hover was grey on the tiles).
+  full edge, a list's cursor 0.16 with none; hover was grey on the tiles)
+  (3bd6cac).
 - Idle buttons and text fields have an edge you can see (#21): the
   foreground at 0.4, 3.47:1 against the panel, over WCAG's 3:1 for a
   control's edge. The theme's idle edge for Omarchy's own controls goes
-  back to Omarchy's default, the same 0.4 (it was 0.18, 1.62:1).
+  back to Omarchy's default, the same 0.4 (it was 0.18, 1.62:1) (d8d7eba).
 - A focus ring (#16): where the keyboard is shows as 2 px of the
   foreground just outside the button, row, tile, swatch or slider knob,
   apart from the selected look; before, a picked choice on Personalise
   didn't change when it took focus. Omarchy's own controls under the theme
-  show focus as a 2 px foreground edge (was the accent at 0.45, as hover).
+  show focus as a 2 px foreground edge (was the accent at 0.45, as hover)
+  (624eb73).
 - Status marks tell their states apart by shape as well as colour (#17):
   ok is a filled disc, a warning a ring, a problem a diamond, idle a hollow
   disc. Green and red are 1.55:1 apart in lightness and green and amber
-  1.01:1, so by colour alone they were one dot without colour vision.
+  1.01:1, so by colour alone they were one dot without colour vision
+  (64474ec).
 - The corners inside Fathom's panels follow Personalise's corners (#19):
   a tile is 14 units at Fathom's 22, square at 0 and 19 at 30, and so on
   for rows, cards and tooltips. They stayed fixed while the panels around
-  them changed. Buttons, sliders and status marks stay round.
+  them changed. Buttons, sliders and status marks stay round (718f0b0).
 - A named type scale (#20): every text size comes from ten named sizes
   (caption 11, detail 12, body 13, label 14, title 15, large 17, heading
   18, greeting 26, display 30, clock 84, times Fathom's size for the
   screen). Five one-off sizes moved onto the nearest: Quick settings'
   battery glyph 16 to 17, its tiles' glyphs 19 to 18, Pulse's figures and
-  Task view's heading 20 to 18, the weather's day glyphs 22 to 18.
+  Task view's heading 20 to 18, the weather's day glyphs 22 to 18
+  (89889c7).
 - The theme brings the bar's dropdowns closer to Quick settings (#14):
   more padding and row room, taller buttons, larger titles, and the
   selected state filled like Quick settings' tiles (41e603a).
@@ -131,14 +143,15 @@ Each line names its commit.
 
 - Esc closes Start wherever the keyboard is: after Tab had moved it from
   the search field to a suggestion, a pinned app or a button, Esc did
-  nothing.
+  nothing (d8bc6fc).
 - `fathom-update` didn't reinstall the desk when only the bar's
   dropdowns (`bar/`) changed, so they stayed at the old version; it does
-  now, and reinstalls the deck and the desk when the kit changes.
+  now, and reinstalls the deck and the desk when the kit changes
+  (6e5c03a).
 - `fathom-desk --help` no longer prints `set -euo pipefail` (b52638d).
 - Super+Ctrl+A, B, N and P did nothing once the cluster had taken
   Omarchy's audio, Bluetooth, network and power widgets off the bar; they
-  open Quick settings now (B and N on their lists).
+  open Quick settings now (B and N on their lists) (91193fa).
 
 ## [0.4.0] - 2026-11-20
 
@@ -345,7 +358,8 @@ The first release: everything Fathom had on 17 November 2026.
 - Care's own description said its check runs hourly; it runs every 3 hours
   (332a7c4).
 
-[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/nerdcules/fathom/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/nerdcules/fathom/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/nerdcules/fathom/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nerdcules/fathom/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nerdcules/fathom/compare/v0.1.0...v0.2.0
