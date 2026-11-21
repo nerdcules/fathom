@@ -83,6 +83,16 @@ Item {
       return all(powerMenu, isRow)
     }
 
+    function test_esc_closes_start_wherever_the_keyboard_is() {
+      // Tab moves the keyboard off the search field onto a button; Esc
+      // still closes Start.
+      var pills = all(sv, function(i) { return i.activeFocusOnTab === true && i.visible && i.hasOwnProperty("tabStop") })
+      verify(pills.length > 0, "Start has buttons that take Tab")
+      pills[0].forceActiveFocus()
+      keyClick(Qt.Key_Escape)
+      compare(top.log, ["close"])
+    }
+
     function test_power_rows_click_nothing_beneath_data() {
       return sv.powerIds.map(function(id, i) { return { tag: id, index: i, id: id } })
     }

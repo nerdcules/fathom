@@ -22,6 +22,15 @@ Item {
   property bool allApps: false
   property int selected: 0
 
+  // Esc from anywhere in Start, not only the search field: after Tab has
+  // moved the keyboard to a suggestion, a pinned app or a button, Esc did
+  // nothing. The same steps as in the search field.
+  Keys.onEscapePressed: {
+    if (aboutCard.visible) aboutCard.visible = false
+    else if (start.allApps) start.allApps = false
+    else start.closeRequested()
+  }
+
   signal closeRequested()
   signal launchApp(string id)
   signal openPage(string page)

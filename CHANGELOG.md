@@ -106,6 +106,9 @@ Each line names its commit.
 
 ### Fixed
 
+- Esc closes Start wherever the keyboard is: after Tab had moved it from
+  the search field to a suggestion, a pinned app or a button, Esc did
+  nothing.
 - `fathom-update` didn't reinstall the desk when only the bar's
   dropdowns (`bar/`) changed, so they stayed at the old version; it does
   now, and reinstalls the deck and the desk when the kit changes.
