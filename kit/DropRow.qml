@@ -27,8 +27,9 @@ Rectangle {
   color: Skin.stateFill(Skin.tint(Skin.fg, 0.06), active, hot && (clickable || active), mouse.pressed)
   border.width: 1
   border.color: active ? Skin.selectedEdge : Skin.tint(Skin.fg, 0.1)
-  // A stop for the dropdown's arrow keys (DropCard), when it can be used.
-  readonly property bool dropStop: clickable
+  // A stop for the dropdown's arrow keys (DropCard), when it can be used;
+  // a search's results aren't (the field's Up and Down choose them).
+  property bool dropStop: clickable
   Accessible.role: Accessible.Button
   Accessible.name: name
   Keys.onReturnPressed: if (clickable) clicked()

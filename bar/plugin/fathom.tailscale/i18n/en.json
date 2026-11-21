@@ -1,0 +1,13 @@
+{
+  "ts.connected": "Connected",
+  "ts.disconnected": "Disconnected",
+  "ts.offline": "offline",
+  "ts.copyIp": "Copy IP",
+  "ts.copyName": "Copy name",
+  "ts.copyDns": "Copy DNS name",
+  "ts.copyIpv6": "Copy IPv6",
+  "ts.copied": "Copied %1",
+  "ts.more": "Showing %1 of %2 · type to narrow",
+  "drop.on": "On",
+  "drop.off": "Off"
+}

@@ -68,7 +68,7 @@ item needs a description, not a new screen:
 | `fields` | `key`, `fields: [{key, label, value, placeholder, digits}]`, `okLabel`, `cancelLabel` | `submitted(key, {field: text})`, `cancelled(key)` |
 | `facts` | `items: [{label, value}]` | |
 | `strip` | `key`, `items: [{key, glyph, name, detail}]` | |
-| `search` | `key`, `text`, `placeholder`, `busy`, `busyLabel`, `results: [{key, name, detail}]`, `chosen` | `edited(key, text)`, `moved(key, chosen)`, `submitted(key, {text, chosen})`, `cancelled(key)`, `picked(key, result key)` |
+| `search` | `key`, `text`, `placeholder`, `busy`, `busyLabel`, `autoFocus` (default true: the field takes the keyboard as it shows; false: the arrows reach it), `results: [{key, glyph, name, detail}]`, `chosen` | `edited(key, text)`, `moved(key, chosen)`, `submitted(key, {text, chosen})`, `cancelled(key)`, `picked(key, result key)` |
 | `text` | `text`, `dim` | |
 
 `hidden: true` leaves a section out. A new description, which every value
@@ -77,7 +77,14 @@ control with the keyboard keeps it. An item that needs a picture of its
 own puts its own QML in the card beside the sections, as the clock's
 month does (`plugin/fathom.clock/MonthGrid.qml`), and can take keys of
 its own first through the card's `keyHandler` (the clock's arrows step
-the month, as Omarchy's do).
+the month, as Omarchy's do), and put the keyboard on a section by its key
+with the card's `focusPart(key)` (Tailscale's `/`).
+
+A dropdown can use Omarchy's own words, in every language Omarchy has:
+its `t()` reads a key that starts with `@` from Omarchy's catalog
+(Tailscale's `t("@tailscale.exitNodes")`), and its own keys from its
+`i18n/en.json`. `tests/test_bar.py` checks that each `@` key exists in
+Omarchy's English catalog.
 
 ### The look and the keys
 
@@ -94,7 +101,8 @@ dropdown as it happens.
 walk the controls (round from the last to the first), Left and Right move
 a slider, Return or Space presses, Tab and Shift+Tab go to the next or
 previous dropdown on the bar, and Esc closes it. Nothing shows as chosen
-until a key is used.
+until a key is used. In a search field, Up and Down choose a result, and
+past the first or the last go on to the controls around it.
 
 ## Keeping up with Omarchy
 

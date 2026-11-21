@@ -218,6 +218,27 @@ Item {
       sections.model = Qt.binding(function() { return top.spec })
     }
 
+    function test_a_search_that_waits_for_the_keys() {
+      // Tailscale's machines: the field is a stop the arrows reach, not
+      // where the keyboard starts; past the last result Down goes on.
+      var copy = top.spec.map(function(x) { var c = {}; for (var k in x) c[k] = x[k]; return c })
+      copy[12].hidden = false
+      copy[12].autoFocus = false
+      copy[12].chosen = 1
+      sections.model = copy
+      wait(80)
+      var field = find("search field")
+      verify(!field.activeFocus, "the field doesn't take the keyboard")
+      card.rest()
+      verify(card.focusPart("city"), "a part can be given the keyboard by name")
+      verify(field.activeFocus)
+      keyClick(Qt.Key_Down)
+      verify(!field.activeFocus, "Down past the last result leaves the field")
+      verify(find("level").activeFocus, "for the next control (round to the first)")
+      compare(top.log, [], "and chooses nothing")
+      sections.model = Qt.binding(function() { return top.spec })
+    }
+
     function test_an_item_can_claim_keys_first() {
       card.claimX = true
       keyClick(Qt.Key_X)

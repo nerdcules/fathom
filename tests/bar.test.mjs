@@ -232,3 +232,62 @@ test("weather: changing the place, and before anything is fetched", () => {
   // Return in the field takes the chosen result, as Omarchy's does.
   assert.equal(plain(WM.locationCommit("Lon", results, 1)).latitude, 42.98);
 });
+
+// Tailscale: Fathom's dropdown over Omarchy's own model (copied unchanged).
+const TS = load("plugin/fathom.tailscale/Tailscale.js", ["sections", "keyAction", "filterPeers", "fill", "MACHINE_LIMIT"]);
+const TM = load("plugin/fathom.tailscale/Model.js", ["parseStatus", "osIcon"]);
+const tsWords = { "@tailscale.machinesCount": "MACHINES · %1", "@tailscale.machinesFiltered": "MACHINES · %1 OF %2",
+  "ts.more": "Showing %1 of %2", "ts.copied": "Copied %1" };
+const tt = (k) => tsWords[k] || `[${k}]`;
+const tsStatus = TM.parseStatus(JSON.stringify({
+  BackendState: "Running",
+  Self: { HostName: "laptop", DNSName: "laptop.tail.ts.net.", TailscaleIPs: ["100.64.0.1"], UserID: 1 },
+  Peer: {
+    k1: { HostName: "pc", DNSName: "pc.tail.ts.net.", TailscaleIPs: ["100.64.0.2", "fd7a:115c:a1e0::2"], Online: true, OS: "windows" },
+    k2: { HostName: "nas", DNSName: "nas.tail.ts.net.", TailscaleIPs: ["100.64.0.3"], Online: true, OS: "linux", ExitNodeOption: true, ExitNode: true }
+  }
+}), (s) => s);
+const tsView = (more) => Object.assign({
+  installed: true, active: true, status: "Connected", peersLoaded: true, peers: tsStatus.peers,
+  exitNodes: tsStatus.exitNodes.concat([{ id: "mullvad:add", AddMullvad: true }]), accounts: [], osIcon: TM.osIcon
+}, more || {});
+const shownTypes = (s) => plain(s).filter((x) => !x.hidden).map((x) => x.type + (x.key ? ":" + x.key : ""));
+
+test("tailscale: on, with its machines, exit nodes and what can be copied", () => {
+  const s = plain(TS.sections(tsView({ chosenPeer: tsStatus.peers[1], canSend: true }), tt));
+  assert.deepEqual(shownTypes(s), ["switch:power", "rows:exit", "search:machines", "actions:peer"]);
+  const machines = s.find((x) => x.key === "machines");
+  assert.equal(machines.placeholder, "MACHINES · 2");
+  assert.deepEqual(machines.results.map((r) => [r.name, r.detail]), [["nas", "100.64.0.3 · linux"], ["pc", "100.64.0.2 · windows"]]);
+  assert.equal(machines.results[1].glyph, TM.osIcon("windows"));
+  const exit = s.find((x) => x.key === "exit").rows;
+  assert.deepEqual(exit.map((r) => [r.name, !!r.active]), [["nas", true], ["[@tailscale.chooseMullvadRegion]", false]]);
+  assert.deepEqual(s.find((x) => x.key === "peer").buttons.map((b) => b.key), ["ip", "name", "dns", "ipv6", "send"]);
+});
+
+test("tailscale: searching narrows the machines and says how many", () => {
+  const s = plain(TS.sections(tsView({ query: "PC" }), tt));
+  const machines = s.find((x) => x.key === "machines");
+  assert.deepEqual(machines.results.map((r) => r.name), ["pc"]);
+  assert.equal(machines.placeholder, "MACHINES · 1 OF 2");
+  const none = plain(TS.sections(tsView({ query: "zzz" }), tt));
+  assert.ok(shownTypes(none).includes("text"), "no matching machines says so");
+  assert.equal(none.filter((x) => !x.hidden && x.type === "text")[0].text, "[@tailscale.noMatchingMachines]");
+});
+
+test("tailscale: a big tailnet draws the first machines and says there are more", () => {
+  const many = Array.from({ length: 45 }, (_, i) => ({ id: "p" + i, DisplayName: "m" + i, TailscaleIPs: ["100.64.1." + i], Online: true }));
+  const s = plain(TS.sections(tsView({ peers: many }), tt));
+  assert.equal(s.find((x) => x.key === "machines").results.length, TS.MACHINE_LIMIT);
+  assert.ok(s.some((x) => !x.hidden && x.text === "Showing 40 of 45"));
+});
+
+test("tailscale: off, logged out and not installed", () => {
+  assert.deepEqual(shownTypes(TS.sections(tsView({ active: false, status: "Disconnected" }), tt)), ["switch:power"]);
+  assert.deepEqual(shownTypes(TS.sections({ installed: false }, tt)), ["text"]);
+  const accounts = plain(TS.sections(tsView({ showAccounts: true, operatorDenied: true, accountId: "a1",
+    accounts: [{ id: "a1", label: "home" }, { id: "a2", label: "work" }] }), tt)).find((x) => x.key === "account").rows;
+  assert.deepEqual(accounts.map((r) => [r.key, !!r.active]), [["@operator", false], ["a1", true], ["a2", false]]);
+  assert.deepEqual(["t", "r", "c", "n", "d", "s", "/", "x"].map((c) => TS.keyAction(0, c)), ["toggle", "refresh", "ip", "name", "dns", "send", "search", ""]);
+  assert.equal(TS.fill("%1 of %2", 3, 9), "3 of 9");
+});

@@ -9,6 +9,7 @@ plugin's description.
 import glob
 import hashlib
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -140,6 +141,27 @@ class Coverage(unittest.TestCase):
         self.assertTrue(found, "Omarchy's bar items were found")
         missing = sorted(found - set(items()))
         self.assertEqual(missing, [], "Omarchy bar items with no line in bar/items.json")
+
+    def test_omarchys_words_a_dropdown_borrows_exist(self):
+        """Where Omarchy is installed: a dropdown can use Omarchy's own words
+        (a key starting with "@", in every language Omarchy has); each one
+        it asks for is in Omarchy's English catalog."""
+        catalog = "/usr/share/omarchy/default/i18n/en/shell.json"
+        if not os.path.isfile(catalog):
+            self.skipTest("Omarchy isn't installed here")
+        with open(catalog) as f:
+            data = json.load(f)
+        def has(key):
+            return isinstance(data.get(key), str)
+        missing, used = [], 0
+        for path in glob.glob(os.path.join(BAR, "plugin", "*", "*.js")) + glob.glob(os.path.join(BAR, "plugin", "*", "*.qml")):
+            with open(path) as f:
+                for key in re.findall(r'\bt\("@([a-zA-Z][\w.]*)"\)', f.read()):
+                    used += 1
+                    if not has(key):
+                        missing.append(f"{os.path.relpath(path, BAR)}: {key}")
+        self.assertGreater(used, 0)
+        self.assertEqual(missing, [])
 
 
 class Install(unittest.TestCase):

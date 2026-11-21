@@ -32,9 +32,16 @@ def read(path):
 
 
 def qml_files(folder):
+    """Fathom's own QML and JS in a folder; not the files a dropdown copies
+    unchanged from Omarchy (they say so on their first line), which keep
+    Omarchy's look and are checked against Omarchy instead (test_bar)."""
     for name in sorted(os.listdir(os.path.join(REPO, folder))):
         if name.endswith(".qml") or name.endswith(".js"):
-            yield os.path.join(folder, name)
+            path = os.path.join(folder, name)
+            with open(os.path.join(REPO, path)) as f:
+                if f.readline().startswith("// Copied unchanged from Omarchy"):
+                    continue
+            yield path
 
 
 def skin_members():

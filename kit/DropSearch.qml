@@ -1,12 +1,15 @@
 import QtQuick
 import "."
 
-// A search field with its results under it (the weather's city search).
-// The field takes the keyboard as it appears, holding `text` to start
-// with. Typing is `edited`; Up and Down move the chosen result (`chose`),
-// Return sends the field and the chosen result (`submitted`), Esc drops it
-// (`cancelled`), and clicking a result is `picked`. While `busy`, the field
-// is locked and shows the working label (after a choice, while it loads).
+// A search field with its results under it (the weather's city search,
+// Tailscale's machines). With `autoFocus` the field takes the keyboard as
+// it appears, holding `text` to start with; without, the card's arrow keys
+// reach it like any control. Typing is `edited`; Up and Down move the
+// chosen result (`chose`), and past the first or the last go on to the
+// card's previous or next control; Return sends the field and the chosen
+// result (`submitted`), Esc drops it (`cancelled`), and clicking a result
+// is `picked`. While `busy`, the field is locked and shows the working
+// label (after a choice, while it loads).
 Column {
   id: search
   property string text: ""
@@ -16,6 +19,7 @@ Column {
   // [{key, name, detail}]
   property var results: []
   property int chosen: 0
+  property bool autoFocus: true
   signal edited(string text)
   signal chose(int index)
   signal submitted(string text, int chosen)
@@ -26,6 +30,7 @@ Column {
 
   function begin() {
     field.text = search.text
+    if (!search.autoFocus) return
     field.selectAll()
     field.forceActiveFocus()
   }
@@ -49,11 +54,15 @@ Column {
       font.pixelSize: Skin.text.body
       clip: true
       Accessible.name: search.placeholder
+      // A stop for the card's arrow keys (DropCard).
+      readonly property bool dropStop: true
       onTextEdited: search.edited(text)
       Keys.onPressed: function(e) {
         if (e.key === Qt.Key_Escape) { search.cancelled(); e.accepted = true }
-        else if (e.key === Qt.Key_Down) { if (search.chosen < search.results.length - 1) search.chose(search.chosen + 1); e.accepted = true }
-        else if (e.key === Qt.Key_Up) { if (search.chosen > 0) search.chose(search.chosen - 1); e.accepted = true }
+        else if (e.key === Qt.Key_Down && search.chosen < search.results.length - 1) { search.chose(search.chosen + 1); e.accepted = true }
+        else if (e.key === Qt.Key_Up && search.chosen > 0) { search.chose(search.chosen - 1); e.accepted = true }
+        // Past the ends, Up and Down go on to the card (not accepted here).
+        else if (e.key === Qt.Key_Down || e.key === Qt.Key_Up) e.accepted = false
         else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { search.submitted(field.text, search.chosen); e.accepted = true }
         else if (e.key === Qt.Key_Tab || e.key === Qt.Key_Backtab) e.accepted = true
       }
@@ -76,9 +85,11 @@ Column {
       objectName: "result " + (result.key || index)
       width: search.width
       height: 44 * Skin.u
+      glyph: result.glyph || ""
       name: result.name || ""
       detail: result.detail || ""
       cursor: index === search.chosen
+      dropStop: false
       onClicked: search.picked(String(result.key))
     }
   }

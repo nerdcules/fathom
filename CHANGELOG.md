@@ -43,6 +43,14 @@ Each line names its commit.
   Unlike Omarchy's, a place being saved stops waiting when open-meteo
   keeps failing, instead of saying "Loading…" for good. The factory gained
   facts, a strip of tiles and a search field.
+- Tailscale's Fathom dropdown: Omarchy's icon and its own Tailscale
+  service and model (copied unchanged), with Fathom's dropdown: on or off,
+  the accounts when there are several, exit nodes and a Mullvad region
+  search, and the machines with a search; the chosen machine's IP, name,
+  DNS name or IPv6 address to copy, or files to send. Omarchy's letter
+  keys (t, c, n, d, s, r, /) work as in Omarchy's. The kit's search field
+  can wait for the arrow keys instead of taking the keyboard as it shows,
+  and the arrows go on past its first and last result.
 - A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
   records the Omarchy files each copies behaviour from, with a
   fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.

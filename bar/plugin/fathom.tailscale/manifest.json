@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "fathom.tailscale",
+  "name": "Tailscale (Fathom)",
+  "version": "0.1.0",
+  "author": "nerdcules",
+  "license": "MIT",
+  "description": "Omarchy's Tailscale icon with Fathom's dropdown: on or off, accounts, exit nodes and machines, in the Quick settings look",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Tailscale.qml"
+  },
+  "barWidget": {
+    "displayName": "Tailscale (Fathom)",
+    "description": "Tailscale, with Fathom's dropdown",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 30
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 5,
+        "max": 3600,
+        "step": 5,
+        "defaultValue": 30
+      }
+    ]
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.tailscale"
+  }
+}

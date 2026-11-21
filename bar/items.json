@@ -67,7 +67,14 @@
       }
     },
     "omarchy.tailscale": {
-      "planned": "the tailnet: on or off, exit node, machines, copy an address"
+      "fathom": "fathom.tailscale",
+      "follows": {
+        "shell/plugins/panels/tailscale/Panel.qml": "949a23670596411c",
+        "shell/plugins/panels/tailscale/Service.qml": "ca6869aa7cbf4a58",
+        "shell/plugins/panels/tailscale/Model.js": "634d4fac4018e2a2",
+        "shell/plugins/panels/tailscale/TailscaleIcon.qml": "05142bf1863a671c",
+        "bin/omarchy-tailscale-send": "e2b1e7d2306f919d"
+      }
     },
     "omarchy.agents": {
       "planned": "each AI agent's usage, limits and balance"

@@ -17,8 +17,8 @@ import "."
 //                                                                  cancelled(key)
 //   facts    {items: [{label, value}]}
 //   strip    {key, items: [{key, glyph, name, detail}]}
-//   search   {key, text, placeholder, busy, busyLabel,
-//             results: [{key, name, detail}], chosen}           -> edited(key, text), moved(key, chosen
+//   search   {key, text, placeholder, busy, busyLabel, autoFocus,
+//             results: [{key, glyph, name, detail}], chosen}           -> edited(key, text), moved(key, chosen
 //                                                                  index), submitted(key, {text,
 //                                                                  chosen}), cancelled(key),
 //                                                                  picked(key, result key)
@@ -234,6 +234,7 @@ Column {
       busyLabel: spec.busyLabel || ""
       results: spec.results || []
       chosen: Number(spec.chosen) || 0
+      autoFocus: spec.autoFocus !== false
       onEdited: function(t) { sections.edited(spec.key, t) }
       onChose: function(i) { sections.moved(spec.key, i) }
       onSubmitted: function(t, i) { sections.submitted(spec.key, { text: t, chosen: i }) }

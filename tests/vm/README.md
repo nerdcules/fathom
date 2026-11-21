@@ -139,6 +139,22 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, Tailscale: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- The VM has no Tailscale. With `omarchy.tailscale` put on the bar,
+  `./install.sh --desk` put `fathom.tailscale` in its place;
+  `omarchy-shell omarchy.tailscale status` said "Not installed", and the
+  dropdown showed Omarchy's "Tailscale CLI is not installed or not on
+  PATH." and nothing else. The shell's log had no error from it.
+- `uninstall.sh` put `omarchy.tailscale` back.
+- Tried on the laptop instead (Tailscale running, one machine online):
+  the dropdown with live data, and, by the user, the keys and buttons.
+  Not tried anywhere: several accounts, exit nodes, Mullvad, Taildrop.
+
 ### Issues #15-#21, the design review: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree at `d8bc6fc` (labelled

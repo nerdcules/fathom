@@ -60,6 +60,24 @@ FocusScope {
     card.forceActiveFocus()
   }
 
+  // The keyboard onto the first control inside the part named `name` (a
+  // section's key), for a dropdown's own key (Tailscale's /).
+  function focusPart(name) {
+    function find(item) {
+      if (!item || !item.visible) return null
+      if (item.objectName === name) return item
+      for (var i = 0; i < item.children.length; i++) { var f = find(item.children[i]); if (f) return f }
+      return null
+    }
+    var part = find(bodyColumn)
+    if (!part) return false
+    var list = stops()
+    for (var j = 0; j < list.length; j++) {
+      for (var p = list[j]; p; p = p.parent) if (p === part) { list[j].forceActiveFocus(); return true }
+    }
+    return false
+  }
+
   // The next or previous of them, round from the last to the first.
   function walk(forward) {
     var list = stops()

@@ -36,7 +36,7 @@ cd ~/Work/fathom
 | `--skin` | The desktop theme, with a glassy bar: its bar, menus and notifications are frosted glass, so Hyprland's blur goes on (the bar's own panels, such as Wi-Fi, are solid: Hyprland doesn't blur behind them). Omarchy's switches, buttons and lists take the accent. Also `fathom-look`, which builds the theme with your look from [Personalise](#personalise) and sets the screensaver |
 | `--player` | The mini-player, its keys and its bar widget |
 | `--deck` | The Start menu, the Command Deck with its Care and Personalise pages, their keys, Care's check every 3 hours, and the deck's pill in the bar |
-| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display, the clock and the weather so far (see [Desk](#desk)) |
+| `--desk` | Alt+Tab with window previews, Task view, Snap layouts and Quick settings, and their keys, and the bar's cluster: Omarchy's Bluetooth, network, volume and battery widgets become one button that opens Quick settings; and Fathom's own dropdowns for the bar's items, Display, the clock, the weather and Tailscale so far (see [Desk](#desk)) |
 | `--screensaver` | Blueprint as the screensaver: software patterns and architectures drawn as blueprints (see [Screensaver](#screensaver)). Built during the install with `qmake6` and `make` (15 s in the test VM) |
 | `--mail` | New-mail notifications and their background service, for Outlook.com only. Adding an account is parked for now (see [Mail](#mail)), so with none added it does nothing (below) |
 | `--sentinel` | Sentinel, its key and its watcher service, plus its daily file check and firewall buttons, which need your password. At a terminal it also asks, once, whether to set up [Ward](#ward) |
@@ -490,7 +490,14 @@ changes the first day of the week, as in Omarchy's) and the **weather**
 (Omarchy's icon and sources: the temperature, feels-like, wind and
 humidity, the place, and the coming days; click the place to search for
 another, or go back to where you are; a right-click sends the weather as
-a notification, a middle-click fetches it again). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
+a notification, a middle-click fetches it again) and **Tailscale**
+(Omarchy's icon and its own way of running Tailscale: a switch to turn it
+on or off, the accounts when there's more than one, exit nodes and a
+search of Mullvad's regions, and the machines with a search; for the
+chosen machine, buttons to copy its IP, name, DNS name or IPv6 address
+or send it files; Omarchy's keys too: t turns it on or off, c, n and d
+copy, s sends, / searches, r fetches again; a right-click on the icon
+turns it on or off). Each is a clone of Omarchy's item (Omarchy's own way to replace one),
 so `install.sh --desk` puts it where Omarchy's was, with its settings, and
 Omarchy's keys and scripts for it reach Fathom's; an item that isn't on
 the bar isn't touched. The install ends by naming the bar items that don't
