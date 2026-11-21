@@ -64,7 +64,8 @@ item needs a description, not a new screen:
 | `rows` | `key`, `title`, `rows: [{key, glyph, name, detail, trail, active, busy, clickable}]`, `busyLabel` | `picked(key, row key)` |
 | `switch` | `key`, `glyph`, `name`, `detail`, `on` | `toggled(key, !on)` |
 | `actions` | `key`, `buttons: [{key, label, glyph, primary}]` | `picked(key, button key)` |
-| `meter` | `key`, `label`, `trail`, `value` (0 to 1) | `picked(key, "doubleClick")` |
+| `meter` | `key`, `label`, `trail`, `value` (0 to 1), `alarm` (the urgent colour) | `picked(key, "doubleClick")` |
+| `heading` | `key`, `icon` (an image URL), `glyph` (when there's no image), `text`, `detail`, `trail` | |
 | `fields` | `key`, `fields: [{key, label, value, placeholder, digits}]`, `okLabel`, `cancelLabel` | `submitted(key, {field: text})`, `cancelled(key)` |
 | `facts` | `items: [{label, value}]` | |
 | `strip` | `key`, `items: [{key, glyph, name, detail}]` | |

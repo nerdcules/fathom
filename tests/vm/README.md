@@ -139,6 +139,22 @@ FATHOM_VM_USER=<the VM's user> tests/vm/check.sh
 
 ## Results
 
+### Issue #14, Agents: 21 November 2026, Windows 11 (WSL2)
+
+Same PC and VM, from the working tree before it was committed (labelled
+`137102b-dirty`).
+
+- `check.sh` 27 passed, 0 failed.
+- `./install.sh --desk` put `fathom.agents` in `omarchy.agents`'s place.
+  The VM has 23 usage records but no agent with anything to show, so the
+  dropdown opened on Omarchy's sign-in words, "Start the default agent",
+  "Add an account" and the three starters; Down twice (real keys, QMP) put
+  the focus ring on "Add an account". The shell's log had no error from
+  it, only "Handler was registered but will not be used" while it took
+  the item's place, as the others do.
+- `uninstall.sh` put `omarchy.agents` back.
+- Not tried in the VM: limits, accounts, a balance, signing in.
+
 ### Issue #14, Tailscale: 21 November 2026, Windows 11 (WSL2)
 
 Same PC and VM, from the working tree before it was committed (labelled

@@ -33,7 +33,9 @@ Item {
     { type: "facts", items: [{ label: "Wind", value: "12 km/h" }, { label: "Humidity", value: "80%" }] },
     { type: "strip", key: "days", items: [{ key: "sat", glyph: "S", name: "Sat", detail: "9° / 4°" }, { key: "sun", glyph: "S", name: "Sun", detail: "8° / 3°" }] },
     { type: "search", key: "city", hidden: true, text: "Lon", placeholder: "Search city", chosen: 0,
-      results: [{ key: "0", name: "London", detail: "England" }, { key: "1", name: "Londonderry", detail: "Northern Ireland" }] }
+      results: [{ key: "0", name: "London", detail: "England" }, { key: "1", name: "Londonderry", detail: "Northern Ireland" }] },
+    { type: "heading", key: "agent", icon: "file:///nowhere/none.svg", glyph: "G", text: "Claude Code", detail: "Max" },
+    { type: "meter", key: "weekly", label: "Weekly", trail: "92%", value: 0.92, alarm: true }
   ]
 
   DropCard {
@@ -266,6 +268,17 @@ Item {
               ["disc", "ring", "diamond", "hollow", "disc"])
       compare(okDot.width, 8 * Skin.u, "the same box as before")
       compare(badDot.width, okDot.width)
+    }
+
+    function test_a_heading_and_a_meter_in_alarm() {
+      var heading = find("agent")
+      verify(heading !== null, "a heading is drawn")
+      compare(heading.text, "Claude Code")
+      // No image at that address: the glyph stands in.
+      tryVerify(function() { return heading.children[1].visible }, 2000, "the glyph shows when the mark doesn't load")
+      var weekly = find("weekly")
+      verify(weekly.alarm, "a meter takes the alarm")
+      verify(!find("year").alarm)
     }
 
     function test_keys() {

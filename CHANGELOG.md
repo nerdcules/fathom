@@ -51,6 +51,14 @@ Each line names its commit.
   keys (t, c, n, d, s, r, /) work as in Omarchy's. The kit's search field
   can wait for the arrow keys instead of taking the keyboard as it shows,
   and the arrows go on past its first and last result.
+- The Agents' Fathom dropdown: Omarchy's icon and its own usage records
+  (Main.qml and Agent.qml, copied unchanged), with Fathom's dropdown: each
+  subscription's limits as meters with the time until they reset, a
+  model's own allowance beside its window, red from 90%; a lapsed sign-in;
+  several accounts with Use and Autoswitch; a prepaid balance; Omarchy's
+  starters; starting the default agent; and signing in to Claude Code,
+  Codex or Grok, in a terminal. The kit gained a heading (a mark, a name
+  and a plan) and a meter's alarm colour.
 - A check that Fathom's dropdowns keep up with Omarchy: `bar/items.json`
   records the Omarchy files each copies behaviour from, with a
   fingerprint, and `tests/test_bar.py` fails when Omarchy changes one.

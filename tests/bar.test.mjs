@@ -291,3 +291,63 @@ test("tailscale: off, logged out and not installed", () => {
   assert.deepEqual(["t", "r", "c", "n", "d", "s", "/", "x"].map((c) => TS.keyAction(0, c)), ["toggle", "refresh", "ip", "name", "dns", "send", "search", ""]);
   assert.equal(TS.fill("%1 of %2", 3, 9), "3 of 9");
 });
+
+// Agents: Fathom's dropdown over the records Omarchy's Main.qml reads.
+const AG = load("plugin/fathom.agents/Agents.js", ["sections", "displayWindows", "bindingWindow", "formatDuration",
+  "usageNote", "needsSignIn", "summaryPhrases", "alarming", "fill", "starterPrompt"]);
+const agWords = { "@agents.durationDaysHours": "%1d %2h", "@agents.durationHoursMinutes": "%1h %2m", "@agents.durationMinutes": "%1m",
+  "@agents.windowSession": "Session", "@agents.windowWeekly": "Weekly", "@agents.balanceSpent": "%1 spent of %2 funded",
+  "@agents.switchAutoAt": "Switch here automatically at %1%", "@agents.mostlyModel": "Mostly %1" };
+const at = (k) => agWords[k] || `[${k}]`;
+const atn = (k, n) => `[${k} ${n}]`;
+const anum = (n, d) => d ? Number(n).toFixed(d) : String(n);
+const agNow = Date.parse("2026-11-21T12:00:00Z");
+const claude = { providerId: "claude", providerName: "Claude Code", tierLabel: "max", usageStatusText: "", limits: [
+  { label: "Session (5-hour)", percent: 0.03, resetsAt: "2026-11-21T14:30:00Z" },
+  { label: "Weekly (7-day)", percent: 0.92, resetsAt: "2026-11-25T13:00:00Z" },
+  { label: "Fable Weekly", title: "Fable Weekly", percent: 0.23, resetsAt: "2026-11-25T13:00:00Z" } ] };
+
+test("agents: limits as meters, a model's own allowance on its window, the alarm from 90%", () => {
+  const s = plain(AG.sections({ providers: [claude], now: agNow, iconFor: (id) => "file:///x/" + id + ".svg" }, at, atn, anum));
+  assert.deepEqual(s[0], { type: "heading", key: "agent claude", icon: "file:///x/claude.svg", glyph: String.fromCodePoint(0xF16A3),
+    text: "Claude Code", detail: "Max" });
+  const meters = s.filter((x) => x.type === "meter");
+  assert.deepEqual(meters.map((m) => [m.label, m.trail, m.alarm]), [
+    ["Session", "3% · 2h 30m", false], ["Weekly · Fable 23%", "92% · 4d 1h", true]]);
+  assert.equal(AG.alarming([claude], agNow), true);
+  assert.equal(AG.alarming([claude], Date.parse("2026-11-26T00:00:00Z")), false, "a window past its reset is empty");
+});
+
+test("agents: a lapsed sign-in, a stale note, accounts and a balance", () => {
+  const lapsed = Object.assign({}, claude, { usageStatusText: "Sign-in expired" });
+  assert.equal(AG.needsSignIn(lapsed), true);
+  assert.equal(AG.needsSignIn(Object.assign({}, lapsed, { providerId: "cursor" })), false, "only the agents Omarchy signs in");
+  assert.equal(AG.usageNote(Object.assign({}, claude, { limitsStale: true, authHelpText: "Run `codex login` to authenticate." }), at),
+    "[@agents.helpRunToAuthenticate]");
+  const s = plain(AG.sections({ providers: [lapsed, {
+    providerId: "codex", providerName: "Codex", tierLabel: "", accountSwitch: { mode: "auto", threshold: 90 },
+    accounts: [{ id: "a", label: "Home", active: true, limits: [{ label: "5h window", percent: 0.5 }] },
+               { id: "b", label: "Work", active: false, plan: "Pro", limits: [] }] }, {
+    providerId: "openrouter", providerName: "OpenRouter", tierLabel: "Prepaid",
+    balance: { remaining: 4, funded: 50, spent: 46, currency: "USD", estimated: false } }], now: agNow }, at, atn, anum));
+  assert.deepEqual(s.find((x) => x.key === "signin").buttons.map((b) => b.key), ["claude"]);
+  const rows = s.filter((x) => x.key === "account codex").map((x) => x.rows[0]);
+  assert.deepEqual(rows.map((r) => [r.name, r.active, r.clickable, r.detail]), [["Home", true, false, ""], ["Work", false, true, "Pro"]]);
+  const sw = s.find((x) => x.key === "autoswitch codex");
+  assert.deepEqual([sw.on, sw.detail], [true, "Switch here automatically at 90%"]);
+  const bal = s.find((x) => x.key === "balance openrouter");
+  assert.deepEqual([bal.trail, bal.value, bal.alarm], ["$4.00", 0.08, true]);
+  assert.ok(s.some((x) => x.text === "$46.00 spent of $50.00 funded"));
+});
+
+test("agents: no agents yet, the actions, starters and the summary line", () => {
+  const s = plain(AG.sections({ providers: [], now: agNow, adding: true }, at, atn, anum));
+  assert.equal(s[0].text, "[@agents.signInIntro]");
+  assert.deepEqual(s.find((x) => x.key === "add").buttons.map((b) => b.key), ["claude", "codex", "grok"]);
+  assert.equal(s.find((x) => x.key === "add").hidden, false);
+  assert.deepEqual(s.find((x) => x.key === "starter").rows.map((r) => r.key), ["theme", "plugin", "app"]);
+  assert.match(AG.starterPrompt("app"), /omarchy-app skill/);
+  const phrases = AG.summaryPhrases([{ recentDays: [{ date: "2026-11-20", messageCount: 900 }], todayTotalTokens: 100,
+    todayPrompts: 3, modelUsage: { m1: { inputTokens: 5, outputTokens: 5 } } }], atn, at, anum, () => "Opus", (n) => n + " tok", () => "Friday");
+  assert.deepEqual(plain(phrases), ["[@agents.tokensThisWeek 900]", "[@agents.tokensToday 100]", "Mostly Opus", "[@agents.busiestDay]", "[@agents.promptsToday 3]"]);
+});

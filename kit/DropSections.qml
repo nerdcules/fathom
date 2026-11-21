@@ -11,7 +11,8 @@ import "."
 //             trail, active, busy, clickable}], busyLabel}      -> picked(key, row key)
 //   switch   {key, glyph, name, detail, on}                     -> toggled(key, !on)
 //   actions  {key, buttons: [{key, label, glyph, primary}]}     -> picked(key, button key)
-//   meter    {key, label, trail, value (0..1)}                  -> picked(key, "doubleClick")
+//   meter    {key, label, trail, value (0..1), alarm}           -> picked(key, "doubleClick")
+//   heading  {key, icon (image URL), glyph, text, detail, trail}
 //   fields   {key, fields: [{key, label, value, placeholder,
 //             digits}], okLabel, cancelLabel}                   -> submitted(key, {field: text}),
 //                                                                  cancelled(key)
@@ -54,7 +55,7 @@ Column {
       active: !spec.hidden
       sourceComponent: ({ slider: sliderPart, choices: choicesPart, rows: rowsPart, "switch": switchPart,
                           actions: actionsPart, text: textPart, meter: meterPart, fields: fieldsPart,
-                          facts: factsPart, strip: stripPart, search: searchPart })[spec.type] || null
+                          facts: factsPart, strip: stripPart, search: searchPart, heading: headingPart })[spec.type] || null
     }
   }
 
@@ -177,6 +178,20 @@ Column {
   }
 
   Component {
+    id: headingPart
+    DropHeading {
+      property var spec: parent ? parent.spec : ({})
+      objectName: spec.key || ""
+      width: sections.width
+      icon: spec.icon || ""
+      glyph: spec.glyph || ""
+      text: spec.text || ""
+      detail: spec.detail || ""
+      trail: spec.trail || ""
+    }
+  }
+
+  Component {
     id: meterPart
     DropMeter {
       property var spec: parent ? parent.spec : ({})
@@ -185,6 +200,7 @@ Column {
       label: spec.label || ""
       trail: spec.trail || ""
       value: Number(spec.value) || 0
+      alarm: spec.alarm === true
       onDoubleClicked: sections.picked(spec.key, "doubleClick")
     }
   }

@@ -77,7 +77,16 @@
       }
     },
     "omarchy.agents": {
-      "planned": "each AI agent's usage, limits and balance"
+      "fathom": "fathom.agents",
+      "follows": {
+        "shell/plugins/agents/Panel.qml": "9e23f39a47f416fa",
+        "shell/plugins/agents/Main.qml": "5811977c29f2068f",
+        "shell/plugins/agents/Agent.qml": "fc37dfb3363e3212",
+        "bin/omarchy-agent-account-add": "574f348700a0a802",
+        "bin/omarchy-agent-account-use": "7efda61481e87e65",
+        "bin/omarchy-agent-account-mode": "6c65fd80d32605d7",
+        "bin/omarchy-agent-prompt": "bc49cec0c157fd2f"
+      }
     },
     "omarchy.elsewhen": {
       "planned": "the world clock: the time in each city"
